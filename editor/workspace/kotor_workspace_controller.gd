@@ -97,6 +97,26 @@ func persist_session() -> void:
 		workspace_session.save_registry(document_registry)
 
 
+func get_transaction_store() -> RefCounted:
+	return mutation_service.get_transaction_store()
+
+
+func list_transactions() -> Array[Dictionary]:
+	return mutation_service.get_transaction_store().list_transactions()
+
+
+func get_transaction_metadata(transaction_id: String) -> Dictionary:
+	var store = mutation_service.get_transaction_store()
+	var tx = store.get_transaction(transaction_id)
+	if tx.is_empty():
+		return {}
+	return store.get_transactions_for_session().filter(func(t): return t.get("id") == transaction_id)[0] if store.get_transactions_for_session().any(func(t): return t.get("id") == transaction_id) else {}
+
+
+func restore_transaction_from_history(transaction_id: String) -> Dictionary:
+	return mutation_service.restore_transaction(transaction_id)
+
+
 func _on_gamefs_reindexed(status_text: String) -> void:
 	var reason := "Target reindexed: %s" % status_text
 	for entry in document_registry.list_documents():

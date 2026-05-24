@@ -26,6 +26,8 @@ func _assert_restore() -> void:
 	var install_result := service.apply_install_to_override(state.gamefs, "restore_script.nss", "void main() { SpeakString(\"after\"); }\n")
 	var transaction: Dictionary = install_result.get("transaction", {})
 	assert(str(transaction.get("id", "")) != "")
+	assert(transaction.get("action", "") == "overwrite")
+	assert(transaction.get("restore_eligible", false) == true)
 
 	var restore_result := service.restore_transaction(str(transaction.get("id", "")))
 	assert(restore_result.get("ok", false))
@@ -36,6 +38,25 @@ func _assert_restore() -> void:
 	assert(KotorModdingPipeline.write_bytes(_target_path, "void main() { SpeakString(\"manual\"); }\n".to_ascii_buffer()) == OK)
 	var conflict_result := service.restore_transaction(str(second_transaction.get("id", "")))
 	assert(conflict_result.get("status", "") == "conflict")
+	
+	# Verify transaction history is properly maintained with metadata
+	var store = service.get_transaction_store()
+	var all_txs = store.list_transactions()
+	assert(all_txs.size() >= 2, "Expected at least 2 transactions")
+	
+	# Verify metadata list is queryable without full payloads
+	var metadata = store.get_transactions_for_session()
+	assert(metadata.size() >= 2)
+	for tx_meta in metadata:
+		assert(tx_meta.has("id"))
+		assert(tx_meta.has("action"))
+		assert(tx_meta.has("status"))
+		assert(tx_meta.has("restore_eligible"))
+		# These fields must be present for UI but not payloads
+		assert(tx_meta.has("target_path"))
+		assert(tx_meta.has("file_name"))
+		assert(not tx_meta.has("before_bytes"))
+		assert(not tx_meta.has("after_bytes"))
 
 	_cleanup()
 	quit()
