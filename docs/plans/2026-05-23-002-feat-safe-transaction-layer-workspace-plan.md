@@ -12,8 +12,8 @@ date: 2026-05-23
 | U1 | Landed (`b5daddb`) |
 | U2 | Landed (`d503b7c`) — preflight dialogs in workspace editors |
 | U3 | Landed (`d503b7c`) — transaction history panel |
-| U4 | **In progress** — legacy dock → shared mutation contract |
-| U5 | Partial — extend dock/acceptance tests this pass |
+| U4 | Landed — legacy dock install/export → shared mutation contract |
+| U5 | Landed — acceptance matrix tests + backup-capture guard |
 
 # feat: Implement the safe transaction layer workspace workflow
 

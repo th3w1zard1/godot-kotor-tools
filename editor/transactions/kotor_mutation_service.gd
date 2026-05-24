@@ -34,6 +34,8 @@ func apply_install_to_override(gamefs: RefCounted, file_name: String, payload: V
 	if not preview.get("ok", false) or not proceed:
 		preview["applied"] = false
 		return preview
+	if _blocks_destructive_without_rollback(preview):
+		return _blocked_rollback_result(preview)
 	if preview.get("action", "") == "noop":
 		preview["applied"] = false
 		return preview
@@ -95,6 +97,8 @@ func apply_remove_override(gamefs: RefCounted, file_name: String, proceed: bool 
 	if not preview.get("ok", false) or not proceed:
 		preview["applied"] = false
 		return preview
+	if _blocks_destructive_without_rollback(preview):
+		return _blocked_rollback_result(preview)
 	if preview.get("action", "") == "noop":
 		preview["applied"] = false
 		return preview
@@ -166,7 +170,7 @@ func _preview_mutation(kind: String, target_path: String, file_name: String, pay
 		else:
 			action = "overwrite"
 			rollback_mode = "restore_bytes"
-	var rollback_available := action == "create" or action == "overwrite"
+	var rollback_available := action == "create" or (action == "overwrite" and _backup_capture_possible(target_path))
 	var message := "Will create %s" % file_name
 	if action == "overwrite":
 		message = "Will overwrite %s" % file_name
@@ -208,6 +212,27 @@ func _finalize_mutation(kind: String, preview: Dictionary, result: Dictionary) -
 	})
 	envelope["transaction"] = transaction
 	return envelope
+
+
+func _backup_capture_possible(target_path: String) -> bool:
+	var backup_path := target_path + ".bak"
+	if DirAccess.dir_exists_absolute(backup_path):
+		return false
+	return true
+
+
+func _blocks_destructive_without_rollback(preview: Dictionary) -> bool:
+	var action := str(preview.get("action", ""))
+	return action in ["overwrite", "remove"] and not bool(preview.get("rollback_available", false))
+
+
+func _blocked_rollback_result(preview: Dictionary) -> Dictionary:
+	var blocked := preview.duplicate(true)
+	blocked["ok"] = false
+	blocked["applied"] = false
+	blocked["status"] = "blocked"
+	blocked["message"] = "Cannot proceed because rollback could not be created."
+	return blocked
 
 
 func _invalid_result(kind: String, message: String) -> Dictionary:
