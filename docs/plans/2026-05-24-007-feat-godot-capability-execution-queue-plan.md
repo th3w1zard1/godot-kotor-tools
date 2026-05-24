@@ -1,6 +1,6 @@
 ---
 title: "feat: Add Godot capability execution queue"
-status: "active"
+status: "completed"
 created: "2026-05-24"
 owner: "copilot"
 ---
@@ -111,4 +111,3 @@ The repository now documents support gaps and strategy direction, but contributo
 ## Deferred to Implementation
 
 - Future queue revisions can add owner/date fields once an execution cadence is established.
-
