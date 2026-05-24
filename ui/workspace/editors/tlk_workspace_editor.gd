@@ -409,12 +409,39 @@ func _on_item_selected() -> void:
 func _apply_text() -> void:
 	if _document == null or _selected_strref < 0:
 		return
-	if not _document.set_entry_text(_selected_strref, _text_edit.text):
+	var strref := _selected_strref
+	var new_text := _text_edit.text
+	var old_text := String(_document.get_entry(strref).get("text", ""))
+	if old_text == new_text:
 		return
-	var item := _tree.get_selected()
-	if item != null and int(item.get_metadata(0)) == _selected_strref:
-		item.set_text(1, _text_edit.text)
-	_entry_status_label.text = "Updated StrRef %d" % _selected_strref
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit TLK string", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_entry_text_edit", strref, new_text)
+		ur.add_undo_method(self, "_exec_entry_text_edit", strref, old_text)
+		ur.commit_action()
+	else:
+		_exec_entry_text_edit(strref, new_text)
+
+
+func _exec_entry_text_edit(strref: int, value: String) -> void:
+	if _document == null:
+		return
+	_document.set_entry_text(strref, value)
+	if _tree != null:
+		var root := _tree.get_root()
+		if root != null:
+			var item := root.get_first_child()
+			while item != null:
+				if int(item.get_metadata(0)) == strref:
+					item.set_text(1, value)
+					break
+				item = item.get_next()
+	if _text_edit != null and _selected_strref == strref:
+		_text_edit.text = value
+	if _entry_status_label != null:
+		_entry_status_label.text = "Updated StrRef %d" % strref
+	# _on_document_changed handles dirty + status
 
 
 func _refresh_validation() -> void:
@@ -666,3 +693,10 @@ func _mutation_message(result: Dictionary) -> String:
 	if result.has("result") and typeof(result.get("result", {})) == TYPE_DICTIONARY:
 		return String((result.get("result", {}) as Dictionary).get("message", result.get("message", "")))
 	return String(result.get("message", ""))
+
+
+func _get_undo_redo() -> EditorUndoRedoManager:
+	if not Engine.is_editor_hint():
+		return null
+	return EditorInterface.get_editor_undo_redo()
+

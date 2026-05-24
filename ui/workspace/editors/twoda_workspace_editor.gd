@@ -347,7 +347,26 @@ func _on_tree_item_edited() -> void:
 	var row_index := int(item.get_metadata(0))
 	var column_name := _resource.columns[column - 1]
 	var new_value := item.get_text(column)
-	if _document.set_cell(row_index, column_name, null if new_value.is_empty() else new_value):
+	var normalized_new: Variant = null if new_value.is_empty() else new_value
+	var old_value: Variant = _resource.rows[row_index].get(column_name, null)
+	if old_value == normalized_new:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit 2DA cell", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_cell_edit", row_index, column_name, normalized_new)
+		ur.add_undo_method(self, "_exec_cell_edit", row_index, column_name, old_value)
+		ur.commit_action()
+	else:
+		_exec_cell_edit(row_index, column_name, normalized_new)
+
+
+func _exec_cell_edit(row: int, col: String, value: Variant) -> void:
+	if _document == null:
+		return
+	_document.set_cell(row, col, value)
+	_refresh_tree()
+	if _summary_label != null:
 		_summary_label.text = _document.build_summary_text()
 
 
@@ -573,3 +592,10 @@ func _mutation_message(result: Dictionary) -> String:
 	if result.has("result") and typeof(result.get("result", {})) == TYPE_DICTIONARY:
 		return String((result.get("result", {}) as Dictionary).get("message", result.get("message", "")))
 	return String(result.get("message", ""))
+
+
+func _get_undo_redo() -> EditorUndoRedoManager:
+	if not Engine.is_editor_hint():
+		return null
+	return EditorInterface.get_editor_undo_redo()
+

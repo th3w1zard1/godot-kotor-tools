@@ -452,12 +452,27 @@ func _on_tag_focus_exited() -> void:
 func _apply_tag_edit(new_text: String) -> void:
 	if _document == null:
 		return
-	if _document.set_string("Tag", new_text.strip_edges()):
-		_dirty = true
-		_update_controller_dirty_state()
+	var stripped := new_text.strip_edges()
+	var prev := _document.get_string("Tag")
+	if prev == stripped:
+		_refresh_tag_edit()
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit GFF Tag", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_tag_edit", stripped)
+		ur.add_undo_method(self, "_exec_tag_edit", prev)
+		ur.commit_action()
+	else:
+		_exec_tag_edit(stripped)
+
+
+func _exec_tag_edit(value: String) -> void:
+	if _document == null:
+		return
+	_document.set_string("Tag", value)
 	_refresh_tag_edit()
-	_refresh_summary()
-	_refresh_status()
+	# _on_document_changed handles dirty + other UI refreshes
 
 
 func apply_display_name_edit(new_text: String) -> void:
@@ -484,13 +499,26 @@ func _apply_display_name_edit(new_text: String) -> void:
 	var field := _display_name_field()
 	if field.is_empty():
 		return
-	if _document.set_locstring_text(field, new_text.strip_edges()):
-		_dirty = true
-		_update_controller_dirty_state()
-	_refresh_display_name_edit()
-	_refresh_tree()
-	_refresh_summary()
-	_refresh_status()
+	var stripped := new_text.strip_edges()
+	var prev := _document.get_locstring_text(field)
+	if prev == stripped:
+		_refresh_display_name_edit()
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit GFF display name", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_display_name_edit", field, stripped)
+		ur.add_undo_method(self, "_exec_display_name_edit", field, prev)
+		ur.commit_action()
+	else:
+		_exec_display_name_edit(field, stripped)
+
+
+func _exec_display_name_edit(field: String, value: String) -> void:
+	if _document == null:
+		return
+	_document.set_locstring_text(field, value)
+	# _on_document_changed handles dirty, _refresh_display_name_edit, _refresh_tree, _refresh_summary, _refresh_status
 
 
 func _on_tree_item_edited() -> void:
@@ -512,14 +540,25 @@ func _apply_tree_field_edit(path: Array, text: String) -> void:
 	if current == null and text.strip_edges().is_empty():
 		return
 	var coerced: Variant = _document.coerce_scalar_edit_text(text, current)
-	if _document.set_field_at_path(path, coerced):
-		_dirty = true
-		_update_controller_dirty_state()
-	_refresh_tree()
+	if coerced == current:
+		_refresh_tree()
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit GFF field", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_tree_field_edit", path, coerced)
+		ur.add_undo_method(self, "_exec_tree_field_edit", path, current)
+		ur.commit_action()
+	else:
+		_exec_tree_field_edit(path, coerced)
+
+
+func _exec_tree_field_edit(path: Array, value: Variant) -> void:
+	if _document == null:
+		return
+	_document.set_field_at_path(path, value)
 	_refresh_tag_edit()
-	_refresh_display_name_edit()
-	_refresh_summary()
-	_refresh_status()
+	# _on_document_changed handles dirty, _refresh_tree, _refresh_display_name_edit, _refresh_summary, _refresh_status
 
 
 func _connect_document_signal() -> void:
@@ -703,3 +742,10 @@ func _mutation_message(result: Dictionary) -> String:
 	if result.has("result") and typeof(result.get("result", {})) == TYPE_DICTIONARY:
 		return String((result.get("result", {}) as Dictionary).get("message", result.get("message", "")))
 	return String(result.get("message", ""))
+
+
+func _get_undo_redo() -> EditorUndoRedoManager:
+	if not Engine.is_editor_hint():
+		return null
+	return EditorInterface.get_editor_undo_redo()
+
