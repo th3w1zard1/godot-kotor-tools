@@ -9,6 +9,7 @@ const KotorDLGWorkspaceEditor := preload("./editors/dlg_workspace_editor.gd")
 const KotorTwoDaWorkspaceEditor := preload("./editors/twoda_workspace_editor.gd")
 const KotorTLKWorkspaceEditor := preload("./editors/tlk_workspace_editor.gd")
 const KotorScriptWorkspaceEditor := preload("./editors/script_workspace_editor.gd")
+const KotorGFFWorkspaceEditor := preload("./editors/gff_workspace_editor.gd")
 const KotorResourceBrowserPanel := preload("./panels/resource_browser_panel.gd")
 const KotorTransactionHistoryPanel := preload("./panels/transaction_history_panel.gd")
 
@@ -23,6 +24,7 @@ var _dlg_editor: Control
 var _twoda_editor: Control
 var _tlk_editor: Control
 var _script_editor: Control
+var _gff_editor: Control
 
 
 func _init(controller: RefCounted = null) -> void:
@@ -108,6 +110,13 @@ func _ensure_shell() -> void:
 	_script_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_script_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs.add_child(_script_editor)
+
+	_gff_editor = KotorGFFWorkspaceEditor.new()
+	_gff_editor.name = "GFF Entity Editor"
+	_gff_editor.setup(_resolve_editor_state(), _controller)
+	_gff_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_gff_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_gff_editor)
 	_restore_workspace_session()
 
 
@@ -153,6 +162,10 @@ func get_script_workspace_editor() -> Control:
 	return _script_editor
 
 
+func get_gff_workspace_editor() -> Control:
+	return _gff_editor
+
+
 func _restore_workspace_session() -> void:
 	if _controller == null or _dlg_editor == null or not _controller.has_method("restore_workspace_session"):
 		return
@@ -189,6 +202,10 @@ func _restore_workspace_session() -> void:
 				_script_editor.call("open_script_file", source_path)
 				if str(document_entry.get("key", "")) == active_key:
 					_tabs.current_tab = _script_editor.get_index()
+			"gff":
+				_gff_editor.call("open_gff_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _gff_editor.get_index()
 			_:
 				pass
 
@@ -234,6 +251,15 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 		]
 		_script_editor.call("open_script_bytes", script_label, script_bytes, extension, source_path)
 		_tabs.current_tab = _script_editor.get_index()
+		return
+	if KotorGFFWorkspaceEditor.entity_extension_allowed(extension):
+		var gff_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		var gff_label := "%s [%s]" % [
+			"%s.%s" % [entry.get("resref", ""), entry.get("extension", "")],
+			entry.get("source", ""),
+		]
+		_gff_editor.call("open_gff_bytes", gff_label, gff_bytes, source_path)
+		_tabs.current_tab = _gff_editor.get_index()
 		return
 	if _shell != null and _shell.has_method("open_gamefs_entry"):
 		_shell.call("open_gamefs_entry", entry)
