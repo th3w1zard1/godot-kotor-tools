@@ -26,6 +26,7 @@ const KotorDLGDocument := preload("../resources/documents/kotor_dlg_document.gd"
 const KotorEditorState := preload("../editor/core/kotor_editor_state.gd")
 const KotorModdingPipeline := preload("../editor/modding/kotor_modding_pipeline.gd")
 const KotorMutationService := preload("../editor/transactions/kotor_mutation_service.gd")
+const KotorPreflightDialog := preload("./workspace/dialogs/kotor_preflight_dialog.gd")
 const GAME_TLK_NAME := KotorEditorState.GAME_TLK_NAME
 const GAMEFS_RESULT_LIMIT := 500
 const AREA_RESULT_LIMIT := 256
@@ -49,6 +50,10 @@ const ARCHIVE_EXTENSIONS := {
 var _editor_state: RefCounted
 var _modding_pipeline: RefCounted
 var _mutation_service: RefCounted
+var _preflight_dialog: KotorPreflightDialog
+var _preflight_pending_apply: Callable
+var _preflight_pending_complete: Callable
+var _skip_preflight_for_testing := false
 var _tabs: TabContainer
 var _path_status_label: Label
 var _workspace_status_label: Label
@@ -1110,8 +1115,15 @@ func _export_gamefs_entry(entry: Dictionary) -> void:
 	)
 	dialog.file_selected.connect(func(path: String) -> void:
 		var payload: PackedByteArray = _editor_state.gamefs.load_resource_entry_bytes(entry)
-		var result: Dictionary = _resolve_mutation_service().apply_export_to_path(path, payload)
-		_show_gamefs_report(_mutation_status_text(result))
+		var service := _resolve_mutation_service()
+		var preview: Dictionary = service.preview_export_to_path(path, payload)
+		_run_mutation_preflight(
+			preview,
+			func(proceed: bool) -> Dictionary:
+				return service.apply_export_to_path(path, payload, proceed),
+			func(result: Dictionary) -> void:
+				_show_gamefs_report(_mutation_status_text(result))
+		)
 		dialog.queue_free()
 	)
 	add_child(dialog)
@@ -1124,16 +1136,19 @@ func _install_gamefs_entry(entry: Dictionary) -> void:
 		return
 	var file_name := _gamefs_entry_file_name(entry)
 	var payload: PackedByteArray = _editor_state.gamefs.load_resource_entry_bytes(entry)
-	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
-		_editor_state.gamefs,
-		file_name,
-		payload
+	var service := _resolve_mutation_service()
+	var preview: Dictionary = service.preview_install_to_override(_editor_state.gamefs, file_name, payload)
+	_run_mutation_preflight(
+		preview,
+		func(proceed: bool) -> Dictionary:
+			return service.apply_install_to_override(_editor_state.gamefs, file_name, payload, proceed),
+		func(result: Dictionary) -> void:
+			_show_gamefs_report(_mutation_status_text(result))
+			if _mutation_applied_ok(result):
+				_editor_state.refresh_gamefs()
+				_refresh_game_path_status()
+				_refresh_gamefs_view()
 	)
-	_show_gamefs_report(_mutation_status_text(result))
-	if _mutation_applied_ok(result):
-		_editor_state.refresh_gamefs()
-		_refresh_game_path_status()
-		_refresh_gamefs_view()
 
 
 func _compare_gamefs_entry(entry: Dictionary) -> void:
@@ -1678,10 +1693,18 @@ func _export_selected_erf_entry() -> void:
 		"%s.%s" % [entry.resref, entry.extension]
 	)
 	dialog.file_selected.connect(func(path: String) -> void:
-		var result: Dictionary = _resolve_mutation_service().apply_export_to_path(path, entry.read_data())
-		_erf_status_text = _mutation_status_text(result)
-		_refresh_erf_status()
-		_append_activity(_erf_status_text)
+		var payload := entry.read_data()
+		var service := _resolve_mutation_service()
+		var preview: Dictionary = service.preview_export_to_path(path, payload)
+		_run_mutation_preflight(
+			preview,
+			func(proceed: bool) -> Dictionary:
+				return service.apply_export_to_path(path, payload, proceed),
+			func(result: Dictionary) -> void:
+				_erf_status_text = _mutation_status_text(result)
+				_refresh_erf_status()
+				_append_activity(_erf_status_text)
+		)
 		dialog.queue_free()
 	)
 	add_child(dialog)
@@ -1695,18 +1718,22 @@ func _install_selected_erf_entry() -> void:
 		_refresh_erf_status()
 		return
 	var file_name := "%s.%s" % [entry.resref, entry.extension]
-	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
-		_editor_state.gamefs,
-		file_name,
-		entry.read_data()
+	var payload := entry.read_data()
+	var service := _resolve_mutation_service()
+	var preview: Dictionary = service.preview_install_to_override(_editor_state.gamefs, file_name, payload)
+	_run_mutation_preflight(
+		preview,
+		func(proceed: bool) -> Dictionary:
+			return service.apply_install_to_override(_editor_state.gamefs, file_name, payload, proceed),
+		func(result: Dictionary) -> void:
+			_erf_status_text = _mutation_status_text(result)
+			_refresh_erf_status()
+			_append_activity(_erf_status_text)
+			if _mutation_applied_ok(result):
+				_editor_state.refresh_gamefs()
+				_refresh_game_path_status()
+				_refresh_gamefs_view()
 	)
-	_erf_status_text = _mutation_status_text(result)
-	_refresh_erf_status()
-	_append_activity(_erf_status_text)
-	if _mutation_applied_ok(result):
-		_editor_state.refresh_gamefs()
-		_refresh_game_path_status()
-		_refresh_gamefs_view()
 
 
 # --------------------------------------------------------------------------- #
@@ -2237,35 +2264,46 @@ func _save_dlg_as() -> void:
 
 func _save_dlg_to(path: String) -> void:
 	var target_path := _ensure_extension(path, "dlg")
-	var result: Dictionary = _resolve_mutation_service().apply_export_to_path(target_path, _dlg_resource)
-	_dlg_status_text = _mutation_status_text(result)
-	if not _mutation_applied_ok(result):
-		push_error("KotOR Tools: failed to save DLG to %s" % target_path)
-		_refresh_dlg_status()
-		return
-	_dlg_source_path = target_path
-	_dlg_file_name = target_path.get_file()
-	_dlg_dirty = false
-	_refresh_dlg_status()
-	_append_activity(_dlg_status_text)
+	var service := _resolve_mutation_service()
+	var preview: Dictionary = service.preview_export_to_path(target_path, _dlg_resource)
+	_run_mutation_preflight(
+		preview,
+		func(proceed: bool) -> Dictionary:
+			return service.apply_export_to_path(target_path, _dlg_resource, proceed),
+		func(result: Dictionary) -> void:
+			_dlg_status_text = _mutation_status_text(result)
+			if not _mutation_applied_ok(result):
+				push_error("KotOR Tools: failed to save DLG to %s" % target_path)
+				_refresh_dlg_status()
+				return
+			_dlg_source_path = target_path
+			_dlg_file_name = target_path.get_file()
+			_dlg_dirty = false
+			_refresh_dlg_status()
+			_append_activity(_dlg_status_text)
+	)
 
 
 func _install_dlg_to_override() -> void:
 	if _dlg_resource == null:
 		return
-	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
-		_editor_state.gamefs,
-		_current_dlg_file_name(),
-		_dlg_resource
+	var file_name := _current_dlg_file_name()
+	var service := _resolve_mutation_service()
+	var preview: Dictionary = service.preview_install_to_override(_editor_state.gamefs, file_name, _dlg_resource)
+	_run_mutation_preflight(
+		preview,
+		func(proceed: bool) -> Dictionary:
+			return service.apply_install_to_override(_editor_state.gamefs, file_name, _dlg_resource, proceed),
+		func(result: Dictionary) -> void:
+			_dlg_status_text = _mutation_status_text(result)
+			if _mutation_applied_ok(result):
+				_dlg_dirty = false
+				_editor_state.refresh_gamefs()
+				_refresh_game_path_status()
+				_refresh_gamefs_view()
+			_refresh_dlg_status()
+			_append_activity(_dlg_status_text)
 	)
-	_dlg_status_text = _mutation_status_text(result)
-	if _mutation_applied_ok(result):
-		_dlg_dirty = false
-		_editor_state.refresh_gamefs()
-		_refresh_game_path_status()
-		_refresh_gamefs_view()
-	_refresh_dlg_status()
-	_append_activity(_dlg_status_text)
 
 
 # --------------------------------------------------------------------------- #
@@ -2386,35 +2424,46 @@ func _save_twoda_as() -> void:
 
 func _save_twoda_to(path: String) -> void:
 	var target_path := _ensure_extension(path, "2da")
-	var result: Dictionary = _resolve_mutation_service().apply_export_to_path(target_path, _twoda_resource)
-	_twoda_status_text = _mutation_status_text(result)
-	if not _mutation_applied_ok(result):
-		push_error("KotOR Tools: failed to save 2DA to %s" % target_path)
-		_twoda_path_label.text = "Failed to save %s" % target_path.get_file()
-		return
-	_twoda_source_path = target_path
-	_twoda_file_name = target_path.get_file()
-	_twoda_dirty = false
-	_refresh_twoda_status()
-	_append_activity(_twoda_status_text)
+	var service := _resolve_mutation_service()
+	var preview: Dictionary = service.preview_export_to_path(target_path, _twoda_resource)
+	_run_mutation_preflight(
+		preview,
+		func(proceed: bool) -> Dictionary:
+			return service.apply_export_to_path(target_path, _twoda_resource, proceed),
+		func(result: Dictionary) -> void:
+			_twoda_status_text = _mutation_status_text(result)
+			if not _mutation_applied_ok(result):
+				push_error("KotOR Tools: failed to save 2DA to %s" % target_path)
+				_twoda_path_label.text = "Failed to save %s" % target_path.get_file()
+				return
+			_twoda_source_path = target_path
+			_twoda_file_name = target_path.get_file()
+			_twoda_dirty = false
+			_refresh_twoda_status()
+			_append_activity(_twoda_status_text)
+	)
 
 
 func _install_twoda_to_override() -> void:
 	if _twoda_resource == null:
 		return
-	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
-		_editor_state.gamefs,
-		_current_twoda_file_name(),
-		_twoda_resource
+	var file_name := _current_twoda_file_name()
+	var service := _resolve_mutation_service()
+	var preview: Dictionary = service.preview_install_to_override(_editor_state.gamefs, file_name, _twoda_resource)
+	_run_mutation_preflight(
+		preview,
+		func(proceed: bool) -> Dictionary:
+			return service.apply_install_to_override(_editor_state.gamefs, file_name, _twoda_resource, proceed),
+		func(result: Dictionary) -> void:
+			_twoda_status_text = _mutation_status_text(result)
+			if _mutation_applied_ok(result):
+				_twoda_dirty = false
+				_editor_state.refresh_gamefs()
+				_refresh_game_path_status()
+				_refresh_gamefs_view()
+			_refresh_twoda_status()
+			_append_activity(_twoda_status_text)
 	)
-	_twoda_status_text = _mutation_status_text(result)
-	if _mutation_applied_ok(result):
-		_twoda_dirty = false
-		_editor_state.refresh_gamefs()
-		_refresh_game_path_status()
-		_refresh_gamefs_view()
-	_refresh_twoda_status()
-	_append_activity(_twoda_status_text)
 
 
 # --------------------------------------------------------------------------- #
@@ -2577,38 +2626,48 @@ func _save_tlk_as() -> void:
 
 func _save_tlk_to(path: String) -> void:
 	var target_path := _ensure_extension(path, "tlk")
-	var result: Dictionary = _resolve_mutation_service().apply_export_to_path(target_path, _tlk_resource)
-	_tlk_status_text = _mutation_status_text(result)
-	if not _mutation_applied_ok(result):
-		push_error("KotOR Tools: failed to save TLK to %s" % target_path)
-		_tlk_path_label.text = "Failed to save %s" % target_path.get_file()
-		return
-	_tlk_source_path = target_path
-	_tlk_file_name = target_path.get_file()
-	_tlk_dirty = false
-	_refresh_tlk_status()
-	_tlk_entry_status_label.text = "Saved %s" % target_path.get_file()
-	_append_activity(_tlk_status_text)
+	var service := _resolve_mutation_service()
+	var preview: Dictionary = service.preview_export_to_path(target_path, _tlk_resource)
+	_run_mutation_preflight(
+		preview,
+		func(proceed: bool) -> Dictionary:
+			return service.apply_export_to_path(target_path, _tlk_resource, proceed),
+		func(result: Dictionary) -> void:
+			_tlk_status_text = _mutation_status_text(result)
+			if not _mutation_applied_ok(result):
+				push_error("KotOR Tools: failed to save TLK to %s" % target_path)
+				_tlk_path_label.text = "Failed to save %s" % target_path.get_file()
+				return
+			_tlk_source_path = target_path
+			_tlk_file_name = target_path.get_file()
+			_tlk_dirty = false
+			_refresh_tlk_status()
+			_tlk_entry_status_label.text = "Saved %s" % target_path.get_file()
+			_append_activity(_tlk_status_text)
+	)
 
 
 func _install_tlk_to_override() -> void:
 	if _tlk_resource == null:
 		return
-	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
-		_editor_state.gamefs,
-		_current_tlk_file_name(),
-		_tlk_resource
+	var file_name := _current_tlk_file_name()
+	var service := _resolve_mutation_service()
+	var preview: Dictionary = service.preview_install_to_override(_editor_state.gamefs, file_name, _tlk_resource)
+	_run_mutation_preflight(
+		preview,
+		func(proceed: bool) -> Dictionary:
+			return service.apply_install_to_override(_editor_state.gamefs, file_name, _tlk_resource, proceed),
+		func(result: Dictionary) -> void:
+			_tlk_status_text = _mutation_status_text(result)
+			if _mutation_applied_ok(result):
+				_tlk_dirty = false
+				_editor_state.refresh_gamefs()
+				_refresh_game_path_status()
+				_refresh_gamefs_view()
+				_tlk_entry_status_label.text = "Installed %s to override" % _current_tlk_file_name()
+			_refresh_tlk_status()
+			_append_activity(_tlk_status_text)
 	)
-	_tlk_status_text = _mutation_status_text(result)
-	if _mutation_applied_ok(result):
-		_tlk_dirty = false
-		_editor_state.refresh_gamefs()
-		_refresh_game_path_status()
-		_refresh_gamefs_view()
-	_refresh_tlk_status()
-	if _mutation_applied_ok(result):
-		_tlk_entry_status_label.text = "Installed %s to override" % _current_tlk_file_name()
-	_append_activity(_tlk_status_text)
 
 
 func _open_script() -> void:
@@ -2695,15 +2754,23 @@ func _save_script_as() -> void:
 
 func _save_script_to(path: String) -> void:
 	var target_path := _ensure_extension(path, "nss")
-	var result: Dictionary = _resolve_mutation_service().apply_export_to_path(target_path, _script_text_edit.text)
-	_script_status_text = _mutation_status_text(result)
-	if _mutation_applied_ok(result):
-		_script_source_path = target_path
-		_script_file_name = target_path.get_file()
-		_script_dirty = false
-	_refresh_script_summary()
-	_validate_script()
-	_append_activity(_script_status_text)
+	var payload := _script_text_edit.text
+	var service := _resolve_mutation_service()
+	var preview: Dictionary = service.preview_export_to_path(target_path, payload)
+	_run_mutation_preflight(
+		preview,
+		func(proceed: bool) -> Dictionary:
+			return service.apply_export_to_path(target_path, payload, proceed),
+		func(result: Dictionary) -> void:
+			_script_status_text = _mutation_status_text(result)
+			if _mutation_applied_ok(result):
+				_script_source_path = target_path
+				_script_file_name = target_path.get_file()
+				_script_dirty = false
+			_refresh_script_summary()
+			_validate_script()
+			_append_activity(_script_status_text)
+	)
 
 
 func _install_script_to_override() -> void:
@@ -2712,20 +2779,25 @@ func _install_script_to_override() -> void:
 		_refresh_script_summary()
 		_validate_script()
 		return
-	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
-		_editor_state.gamefs,
-		_current_script_file_name(),
-		_script_text_edit.text
+	var file_name := _current_script_file_name()
+	var payload := _script_text_edit.text
+	var service := _resolve_mutation_service()
+	var preview: Dictionary = service.preview_install_to_override(_editor_state.gamefs, file_name, payload)
+	_run_mutation_preflight(
+		preview,
+		func(proceed: bool) -> Dictionary:
+			return service.apply_install_to_override(_editor_state.gamefs, file_name, payload, proceed),
+		func(result: Dictionary) -> void:
+			_script_status_text = _mutation_status_text(result)
+			if _mutation_applied_ok(result):
+				_script_dirty = false
+				_editor_state.refresh_gamefs()
+				_refresh_game_path_status()
+				_refresh_gamefs_view()
+			_refresh_script_summary()
+			_validate_script()
+			_append_activity(_script_status_text)
 	)
-	_script_status_text = _mutation_status_text(result)
-	if _mutation_applied_ok(result):
-		_script_dirty = false
-		_editor_state.refresh_gamefs()
-		_refresh_game_path_status()
-		_refresh_gamefs_view()
-	_refresh_script_summary()
-	_validate_script()
-	_append_activity(_script_status_text)
 
 
 func _open_script_counterpart() -> void:
@@ -3131,6 +3203,53 @@ func _resolve_mutation_service() -> RefCounted:
 
 func _gamefs_entry_file_name(entry: Dictionary) -> String:
 	return "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+
+
+func _ensure_preflight_dialog() -> void:
+	if _preflight_dialog != null:
+		return
+	_preflight_dialog = KotorPreflightDialog.new()
+	_preflight_dialog.preflight_proceed.connect(_on_dock_preflight_proceed)
+	_preflight_dialog.preflight_cancel.connect(_on_dock_preflight_cancel)
+	add_child(_preflight_dialog)
+
+
+func _run_mutation_preflight(preview: Dictionary, apply_fn: Callable, on_complete: Callable) -> void:
+	if not preview.get("ok", false):
+		on_complete.call(preview)
+		return
+	if str(preview.get("action", "")) == "noop":
+		var noop_result := preview.duplicate(true)
+		noop_result["applied"] = false
+		on_complete.call(noop_result)
+		return
+	if _skip_preflight_for_testing:
+		on_complete.call(apply_fn.call(true))
+		return
+	_preflight_pending_apply = apply_fn
+	_preflight_pending_complete = on_complete
+	_ensure_preflight_dialog()
+	_preflight_dialog.show_preflight(preview)
+
+
+func _on_dock_preflight_proceed() -> void:
+	if not _preflight_pending_apply.is_valid():
+		return
+	var result: Dictionary = _preflight_pending_apply.call(true)
+	var complete := _preflight_pending_complete
+	_preflight_pending_apply = Callable()
+	_preflight_pending_complete = Callable()
+	if complete.is_valid():
+		complete.call(result)
+
+
+func _on_dock_preflight_cancel() -> void:
+	var complete := _preflight_pending_complete
+	_preflight_pending_apply = Callable()
+	_preflight_pending_complete = Callable()
+	var cancelled := {"ok": true, "applied": false, "message": "Operation cancelled."}
+	if complete.is_valid():
+		complete.call(cancelled)
 
 
 func _mutation_applied_ok(result: Dictionary) -> bool:

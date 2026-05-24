@@ -24,6 +24,7 @@ func _assert_dock_mutation_contract() -> void:
 	var controller := KotorWorkspaceController.new(state)
 	var dock := KotorDock.new()
 	dock.setup(state, controller.mutation_service)
+	dock._skip_preflight_for_testing = true
 	assert(dock._mutation_service == controller.mutation_service)
 
 	var install_result: Dictionary = dock._mutation_service.apply_install_to_override(
