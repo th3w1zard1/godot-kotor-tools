@@ -4,10 +4,10 @@ extends ResourceFormatSaver
 const GFFResource := preload("../resources/gff_resource.gd")
 const GFFWriter := preload("../formats/gff_writer.gd")
 
-const EXTENSIONS := PackedStringArray([
+const EXTENSIONS := [
 	"are", "dlg", "gff", "git", "ifo", "jrl",
 	"utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw",
-])
+]
 
 
 func _recognize(resource: Resource) -> bool:
@@ -17,7 +17,7 @@ func _recognize(resource: Resource) -> bool:
 func _get_recognized_extensions(resource: Resource) -> PackedStringArray:
 	if not _recognize(resource):
 		return PackedStringArray()
-	return EXTENSIONS
+	return PackedStringArray(EXTENSIONS)
 
 
 func _save(resource: Resource, path: String, _flags: int) -> Error:
