@@ -530,7 +530,26 @@ func _on_tree_item_edited() -> void:
 	var path: Variant = item.get_metadata(1)
 	if typeof(path) != TYPE_ARRAY:
 		return
-	_apply_tree_field_edit(path, item.get_text(1))
+	if item.get_cell_mode(1) == TreeItem.CELL_MODE_CHECK:
+		_apply_tree_field_bool_edit(path, item.is_checked(1))
+	else:
+		_apply_tree_field_edit(path, item.get_text(1))
+
+
+func _apply_tree_field_bool_edit(path: Array, value: bool) -> void:
+	if _document == null or path.is_empty():
+		return
+	var current: Variant = _document.get_field_at_path(path)
+	if typeof(current) == TYPE_BOOL and bool(current) == value:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit GFF bool field", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_tree_field_edit", path, value)
+		ur.add_undo_method(self, "_exec_tree_field_edit", path, current if typeof(current) == TYPE_BOOL else not value)
+		ur.commit_action()
+	else:
+		_exec_tree_field_edit(path, value)
 
 
 func _apply_tree_field_edit(path: Array, text: String) -> void:

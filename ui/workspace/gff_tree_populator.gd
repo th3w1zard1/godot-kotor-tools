@@ -36,6 +36,12 @@ static func populate(parent: TreeItem, data: Dictionary, path_prefix: Array = []
 
 
 static func _configure_scalar_leaf(item: TreeItem, value: Variant, path: Array) -> void:
+	if typeof(value) == TYPE_BOOL:
+		item.set_cell_mode(1, TreeItem.CELL_MODE_CHECK)
+		item.set_checked(1, bool(value))
+		item.set_editable(1, true)
+		item.set_metadata(1, path)
+		return
 	item.set_text(1, str(value))
 	if _is_scalar_leaf(value):
 		item.set_metadata(1, path)

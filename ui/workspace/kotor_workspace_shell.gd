@@ -74,6 +74,7 @@ func _ensure_shell() -> void:
 	_transaction_history.setup(_controller)
 	_transaction_history.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_transaction_history.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_transaction_history.restore_completed.connect(_on_restore_completed)
 	_tabs.add_child(_transaction_history)
 
 	_shell = KotorEditorShell.new()
@@ -273,3 +274,12 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 	if _shell != null and _shell.has_method("open_gamefs_entry"):
 		_shell.call("open_gamefs_entry", entry)
 		_tabs.current_tab = _shell.get_index()
+
+
+func _on_restore_completed(result: Dictionary) -> void:
+	if not result.get("ok", false):
+		return
+	var editor_state := _resolve_editor_state()
+	if editor_state != null and editor_state.has_method("refresh_gamefs"):
+		editor_state.call("refresh_gamefs")
+
