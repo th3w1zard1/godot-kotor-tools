@@ -1,42 +1,60 @@
-# KotOR Tools Product Strategy
+---
+name: KotOR Tools
+last_updated: 2026-05-24
+---
 
-## Target Problem
+# KotOR Tools Strategy
 
-KotOR and Jade Empire modding workflows still rely on fragmented external tools and manual file operations for core edit/install loops. This project's job is to make those workflows reliable inside a single Godot-native workspace.
+## Target problem
 
-## Target Users
+KotOR and Jade Empire modders still bounce between fragmented tools and manual file operations for core edit/install loops. The hard part is keeping install-aware edits safe and coherent without losing trust in what changed.
 
-- Modders editing game resources with minimal manual file-system risk
-- Technical contributors extending parser/importer/saver/editor support
-- Tool maintainers responsible for long-term format and workflow parity
+## Our approach
 
-## Product Approach
+We commit to a Godot-native, install-aware workspace where parser/importer/editor/write-back capabilities land as coherent vertical slices. We favor document-driven mutation paths with explicit recoverability and reporting so edits stay reliable against real game installs.
 
-1. Keep the plugin install-aware so every action is grounded in real game-install context.
-2. Deliver vertical slices per capability family (format support, editor UX, safe write/install flow) instead of disconnected utilities.
-3. Favor document-driven editing abstractions and pipeline-owned mutation logic over ad hoc UI writes.
-4. Preserve recoverability and explicit mutation reporting as default behavior.
+## Who it's for
 
-## Product Identity
+**Primary:** KotOR/Jade Empire modders and contributor-maintainers - They're hiring KotOR Tools to edit real game resources safely inside Godot without stitching together multiple external tools.
 
-KotOR Tools is a **Godot 4.6 editor plugin** focused on practical modding parity for Aurora-family resources, not a generic binary reverse-engineering toolkit.
+## Key metrics
 
-## Success Metrics
+- **Format parity coverage** - Number of target format families that reach parser/importer/resource/write-back parity; measured from repository capability docs.
+- **In-workspace completion rate** - Share of high-frequency modding edits completed in workspace editors without external tooling; measured from tracked workflow checks and release notes.
+- **Mutation consistency pass rate** - Percentage of install/restore/edit consistency scenarios that pass without stale state drift; measured from editor test suite outcomes.
+- **Planning-to-execution throughput** - Ratio of documented strategy/gap items converted into completed plans and shipped slices; measured from `docs/` artifacts and merged PR history.
 
-- More supported format families reach parser/importer/resource/write-back parity.
-- More high-frequency edits complete in workspace editors without external tools.
-- Install/restore operations remain deterministic and inspectable.
-- Contributor planning/docs map directly to implementable slices with less re-discovery effort.
+## Tracks
 
-## Current Work Tracks
+### Parity expansion
 
-1. **Parity expansion:** close write-back and editor parity gaps identified in `docs/30-gap-analysis/godot-support-gaps.md`.
-2. **Editing safety and consistency:** strengthen post-mutation consistency, reload behavior, and state coherence.
-3. **Godot capability leverage:** adopt additional Godot editor systems (undo/redo, inspector-guided editing, targeted refresh hooks) where they reduce user risk or effort.
-4. **Execution readiness:** keep strategy, requirements, plans, and gap-analysis docs aligned so implementation starts from authoritative inputs.
+Close remaining format and write-back/editor parity gaps so modders can run full round-trip workflows in one workspace.
 
-## Near-Term Priorities
+_Why it serves the approach:_ Vertical parity slices are the fastest path to a trustworthy Godot-native workflow.
 
-- Convert the highest-priority gap items into focused implementation plans.
-- Land one strategy-aligned capability slice end-to-end, then refresh strategy/gap docs based on outcomes.
-- Keep this strategy updated as capabilities shift so contributors inherit current direction by default.
+### Editing safety and consistency
+
+Strengthen post-mutation refresh behavior, state coherence, and failure-path handling across install-aware workflows.
+
+_Why it serves the approach:_ Recoverable and deterministic editing is required for users to trust live-install mutations.
+
+### Godot capability leverage
+
+Adopt high-value Godot editor systems (undo/redo boundaries, inspector-guided editing, targeted refresh hooks) where they reduce manual error risk.
+
+_Why it serves the approach:_ Native editor primitives improve reliability without introducing parallel architecture.
+
+### Execution readiness
+
+Keep strategy, requirements, plans, and gap-analysis docs aligned so contributors can start implementation from authoritative context.
+
+_Why it serves the approach:_ Coherent planning input reduces drift and preserves the strategy's guiding choices during execution.
+
+## Not working on
+
+- Replacing the plugin with a generic reverse-engineering platform.
+- Large schedule-heavy roadmap management inside this strategy doc.
+
+## Marketing
+
+**One-liner:** Godot-native KotOR modding, with install-aware safety and parity-first editing workflows.
