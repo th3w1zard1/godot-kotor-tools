@@ -29,6 +29,7 @@ var _display_name_edit: LineEdit
 var _tree: Tree
 var _validation_panel: KotorValidationPanel
 var _preflight_dialog: KotorPreflightDialog
+var _array_context_menu: PopupMenu
 
 var _mutation_service: RefCounted
 var _resource: GFFResource
@@ -38,6 +39,10 @@ var _file_name := "blueprint.utc"
 var _dirty := false
 var _status_text := ""
 var _document_key := ""
+
+# Context menu state (for struct array operations)
+var _context_array_field := ""
+var _context_array_index := -1
 
 var _pending_resource: GFFResource
 var _pending_source_path := ""
@@ -306,7 +311,12 @@ func _build_ui() -> void:
 	_tree.set_column_title(1, "Value")
 	_tree.column_titles_visible = true
 	_tree.item_edited.connect(_on_tree_item_edited)
+	_tree.item_mouse_selected.connect(_on_gff_item_mouse_selected)
 	add_child(_tree)
+
+	_array_context_menu = PopupMenu.new()
+	add_child(_array_context_menu)
+	_array_context_menu.id_pressed.connect(_on_array_context_menu_selected)
 
 	_validation_panel = KotorValidationPanel.new()
 	add_child(_validation_panel)
@@ -780,3 +790,186 @@ func _get_undo_redo() -> EditorUndoRedoManager:
 		return null
 	return EditorInterface.get_editor_undo_redo()
 
+
+# === Struct Array Context Menu Handlers (U3) ===
+
+func _on_gff_item_mouse_selected(item: TreeItem, column: int, at_position: Vector2) -> void:
+	# Right-click (button 2) shows context menu for struct array items
+	var button_index = _tree.get_button_index_at_position(at_position)
+	if button_index != 2:
+		return
+	if item == null or not item.has_meta(GFFTreePopulator.META_IS_STRUCT_ARRAY_ITEM):
+		return
+	
+	_context_array_field = item.get_meta(GFFTreePopulator.META_ARRAY_FIELD)
+	_context_array_index = item.get_meta(GFFTreePopulator.META_ARRAY_INDEX)
+	
+	_show_array_context_menu(_context_array_field, _context_array_index, at_position)
+
+
+func _show_array_context_menu(array_field: String, index: int, position: Vector2) -> void:
+	if _array_context_menu == null:
+		return
+	_array_context_menu.clear()
+	
+	# Add Item / Remove / Move Up / Move Down options
+	_array_context_menu.add_item("Add Item", 0)
+	_array_context_menu.add_item("Remove Item", 1)
+	_array_context_menu.add_separator()
+	
+	# Check if we can move up (not first item)
+	if index > 0:
+		_array_context_menu.add_item("Move Up", 2)
+	else:
+		_array_context_menu.add_item("Move Up", 2)
+		_array_context_menu.set_item_disabled(_array_context_menu.get_item_count() - 1, true)
+	
+	# Check if we can move down (not last item)
+	var array_field_obj = _document.get_field(array_field) if _document != null else null
+	var can_move_down = false
+	if typeof(array_field_obj) == TYPE_ARRAY:
+		var arr := array_field_obj as Array
+		can_move_down = index < arr.size() - 1
+	
+	if can_move_down:
+		_array_context_menu.add_item("Move Down", 3)
+	else:
+		_array_context_menu.add_item("Move Down", 3)
+		_array_context_menu.set_item_disabled(_array_context_menu.get_item_count() - 1, true)
+	
+	_array_context_menu.popup_rect(Rect2(position, Vector2.ZERO))
+
+
+func _on_array_context_menu_selected(menu_id: int) -> void:
+	if _context_array_field.is_empty() or _context_array_index < 0:
+		return
+	
+	match menu_id:
+		0:  # Add Item
+			var new_struct = _create_default_struct(_context_array_field)
+			_apply_array_insert(_context_array_field, _context_array_index + 1, new_struct)
+		1:  # Remove Item
+			_apply_array_remove(_context_array_field, _context_array_index)
+		2:  # Move Up
+			if _context_array_index > 0:
+				_apply_array_reorder(_context_array_field, _context_array_index, _context_array_index - 1)
+		3:  # Move Down
+			var array_field_obj = _document.get_field(_context_array_field) if _document != null else null
+			if typeof(array_field_obj) == TYPE_ARRAY:
+				var arr := array_field_obj as Array
+				if _context_array_index < arr.size() - 1:
+					_apply_array_reorder(_context_array_field, _context_array_index, _context_array_index + 1)
+	
+	_context_array_field = ""
+	_context_array_index = -1
+
+
+func _create_default_struct(array_field: String) -> Dictionary:
+	# Return default struct based on the array field type (from U1 schema)
+	match array_field:
+		"CreatureActions":
+			return {
+				"ActionID": -1,
+				"Comment": "",
+				"Flags": 0,
+			}
+		"Scripts":
+			return {
+				"Script": "",
+				"EventID": 0,
+			}
+		"ConditionList", "OnCondition", "OnSuccess", "OnFailure":
+			return {
+				"Operator": 0,
+				"Script": "",
+				"Parameter": 0,
+				"Comment": "",
+			}
+		# DLG default (for backwards compatibility)
+		"EntryList", "ReplyList", "StartingList":
+			return {
+				"Index": -1,
+				"Comment": "",
+				"Active": "",
+				"IsChild": 0,
+			}
+		_:
+			# Generic fallback: return empty dict
+			return {}
+
+
+func _apply_array_insert(array_field_name: String, index: int, new_struct: Dictionary) -> void:
+	if _document == null or array_field_name.is_empty():
+		return
+	if new_struct.is_empty():
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Insert array item", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_array_insert", array_field_name, index, new_struct)
+		ur.add_undo_method(self, "_exec_array_remove", array_field_name, index)
+		ur.commit_action()
+	else:
+		_exec_array_insert(array_field_name, index, new_struct)
+
+
+func _exec_array_insert(array_field_name: String, index: int, new_struct: Dictionary) -> void:
+	if _document == null:
+		return
+	_document.insert_struct_at_array(array_field_name, index, new_struct)
+	_refresh_tree()
+
+
+func _apply_array_remove(array_field_name: String, index: int) -> void:
+	if _document == null or array_field_name.is_empty():
+		return
+	var array_field = _document.get_field(array_field_name)
+	if typeof(array_field) != TYPE_ARRAY:
+		return
+	var arr := array_field as Array
+	if index < 0 or index >= arr.size():
+		return
+	var removed_struct = arr[index].duplicate()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Remove array item", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_array_remove", array_field_name, index)
+		ur.add_undo_method(self, "_exec_array_insert", array_field_name, index, removed_struct)
+		ur.commit_action()
+	else:
+		_exec_array_remove(array_field_name, index)
+
+
+func _exec_array_remove(array_field_name: String, index: int) -> void:
+	if _document == null:
+		return
+	_document.remove_struct_from_array(array_field_name, index)
+	_refresh_tree()
+
+
+func _apply_array_reorder(array_field_name: String, from_index: int, to_index: int) -> void:
+	if _document == null or array_field_name.is_empty():
+		return
+	if from_index == to_index:
+		return
+	var array_field = _document.get_field(array_field_name)
+	if typeof(array_field) != TYPE_ARRAY:
+		return
+	var arr := array_field as Array
+	if from_index < 0 or from_index >= arr.size() or to_index < 0 or to_index >= arr.size():
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Reorder array item", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_array_reorder", array_field_name, from_index, to_index)
+		ur.add_undo_method(self, "_exec_array_reorder", array_field_name, to_index, from_index)
+		ur.commit_action()
+	else:
+		_exec_array_reorder(array_field_name, from_index, to_index)
+
+
+func _exec_array_reorder(array_field_name: String, from_index: int, to_index: int) -> void:
+	if _document == null:
+		return
+	_document.reorder_array_item(array_field_name, from_index, to_index)
+	_refresh_tree()
