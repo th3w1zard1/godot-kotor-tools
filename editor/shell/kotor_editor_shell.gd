@@ -43,6 +43,10 @@ func _ensure_dock() -> void:
 	add_child(_dock)
 
 
+func get_dock() -> Control:
+	return _dock
+
+
 func open_gamefs_entry(entry: Dictionary) -> void:
 	if _dock != null and _dock.has_method("open_gamefs_entry"):
 		_dock.call("open_gamefs_entry", entry)

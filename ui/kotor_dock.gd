@@ -27,6 +27,7 @@ const KotorEditorState := preload("../editor/core/kotor_editor_state.gd")
 const KotorModdingPipeline := preload("../editor/modding/kotor_modding_pipeline.gd")
 const KotorMutationService := preload("../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("./workspace/dialogs/kotor_preflight_dialog.gd")
+const KotorGFFWorkspaceEditor := preload("./workspace/editors/gff_workspace_editor.gd")
 const GAME_TLK_NAME := KotorEditorState.GAME_TLK_NAME
 const GAMEFS_RESULT_LIMIT := 500
 const AREA_RESULT_LIMIT := 256
@@ -54,6 +55,7 @@ var _preflight_dialog: KotorPreflightDialog
 var _preflight_pending_apply: Callable
 var _preflight_pending_complete: Callable
 var _skip_preflight_for_testing := false
+var _workspace_entry_opener: Callable = Callable()
 var _tabs: TabContainer
 var _path_status_label: Label
 var _workspace_status_label: Label
@@ -148,6 +150,10 @@ var _script_loading := false
 
 func _init() -> void:
 	custom_minimum_size = Vector2(0, 220)
+
+
+func set_workspace_entry_opener(opener: Callable) -> void:
+	_workspace_entry_opener = opener
 
 
 func setup(editor_state: RefCounted, mutation_service: RefCounted = null) -> void:
@@ -1164,10 +1170,16 @@ func _compare_gamefs_entry(entry: Dictionary) -> void:
 
 
 func _open_gamefs_entry(entry: Dictionary) -> void:
-	if _editor_state.gamefs == null:
-		return
 	if entry.is_empty():
 		_append_activity("Select a GameFS resource first.")
+		return
+
+	var extension := str(entry.get("extension", "")).to_lower()
+	if _workspace_entry_opener.is_valid() and _should_delegate_to_workspace_editor(extension):
+		_workspace_entry_opener.call(entry)
+		return
+
+	if _editor_state.gamefs == null:
 		return
 
 	var bytes: PackedByteArray = _editor_state.gamefs.load_resource_entry_bytes(entry)
@@ -1178,7 +1190,6 @@ func _open_gamefs_entry(entry: Dictionary) -> void:
 		return
 
 	var resref := str(entry.get("resref", ""))
-	var extension := str(entry.get("extension", "")).to_lower()
 	var label := "%s.%s [%s]" % [resref, extension, entry.get("source", "")]
 
 	if extension == "dlg":
@@ -3309,6 +3320,17 @@ func _append_activity(text: String) -> void:
 	else:
 		_activity_log.text += "\n\n" + message
 	_activity_log.scroll_vertical = _activity_log.get_line_count()
+
+
+func _should_delegate_to_workspace_editor(extension: String) -> bool:
+	var normalized := extension.strip_edges().to_lower()
+	if normalized == "dlg":
+		return true
+	if normalized == "2da" or normalized == "tlk":
+		return true
+	if SCRIPT_EXTENSIONS.has(normalized):
+		return true
+	return KotorGFFWorkspaceEditor.workspace_gff_extension_allowed(normalized)
 
 
 func _viewer_for_extension(extension: String) -> String:

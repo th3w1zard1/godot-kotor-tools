@@ -82,6 +82,7 @@ func _ensure_shell() -> void:
 	_shell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_shell.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs.add_child(_shell)
+	_wire_legacy_dock_workspace_routing()
 
 	_dlg_editor = KotorDLGWorkspaceEditor.new()
 	_dlg_editor.name = "DLG Pilot"
@@ -208,6 +209,14 @@ func _restore_workspace_session() -> void:
 					_tabs.current_tab = _gff_editor.get_index()
 			_:
 				pass
+
+
+func _wire_legacy_dock_workspace_routing() -> void:
+	if _shell == null or not _shell.has_method("get_dock"):
+		return
+	var dock: Control = _shell.call("get_dock")
+	if dock != null and dock.has_method("set_workspace_entry_opener"):
+		dock.call("set_workspace_entry_opener", Callable(self, "_open_workspace_entry"))
 
 
 func _open_workspace_entry(entry: Dictionary) -> void:

@@ -10,7 +10,8 @@
 
 ## Limits (v1 foundation)
 
-- Legacy `ui/kotor_dock.gd` remains for area tools and migration-era routes; new cross-editor orchestration belongs in workspace modules.
+- Legacy `ui/kotor_dock.gd` remains for area tools and migration-era routes; when embedded in `KotorWorkspaceShell`, dock GameFS opens for DLG/2DA/TLK/script/workspace-GFF extensions delegate to the workspace editors instead of legacy dock tabs.
+- New cross-editor orchestration belongs in workspace modules.
 - Entity and module GFF files (UTC/UTP/… blueprint extensions plus ARE/GIT/IFO) open in `ui/workspace/editors/gff_workspace_editor.gd` with document registration, Tag editing, display-name locstring editing (`LocName`/`Name`), scalar leaf editing in the field tree (struct fields and array scalar elements), and preflight mutations; locstring/struct tree editing and array add/remove remain deferred.
 - Profile management and packaging/share workflows are deferred.
 
