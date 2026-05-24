@@ -90,6 +90,7 @@ find . -name '*.gd' -print0 | xargs -0 -I{} godot --headless --quiet --check-onl
 - **Product direction and active tracks:** [STRATEGY.md](STRATEGY.md)
 - **Support coverage + implementation gaps:** [docs/30-gap-analysis/godot-support-gaps.md](docs/30-gap-analysis/godot-support-gaps.md)
 - **Next implementation-wave requirements (brainstorm):** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md)
+- **Prioritized capability execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md)
 - **Godot API source references used by this repo:** [docs/90-meta/godot-doc-source-map.md](docs/90-meta/godot-doc-source-map.md)
 - **Implementation playbook for contributors:** [docs/50-execution/godot-kotor-implementation-playbook.md](docs/50-execution/godot-kotor-implementation-playbook.md)
 

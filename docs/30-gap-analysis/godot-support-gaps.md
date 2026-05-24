@@ -54,6 +54,7 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 ## Next Planning Seeds
 
 - Use `docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md` as the direct requirement source for the next implementation wave.
+- Use `docs/50-execution/godot-capability-execution-queue.md` for prioritized implementation ordering and readiness criteria.
 
 ## Refresh Triggers
 

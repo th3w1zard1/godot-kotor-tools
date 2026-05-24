@@ -50,6 +50,8 @@ Keep strategy, requirements, plans, and gap-analysis docs aligned so contributor
 
 _Why it serves the approach:_ Coherent planning input reduces drift and preserves the strategy's guiding choices during execution.
 
+Execution queue reference: [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md)
+
 ## Not working on
 
 - Replacing the plugin with a generic reverse-engineering platform.
