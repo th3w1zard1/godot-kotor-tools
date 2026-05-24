@@ -150,6 +150,52 @@ func set_field_at_path(path: Array, value: Variant) -> bool:
 	return false
 
 
+func insert_struct_at_array(array_field_name: String, index: int, struct_value: Dictionary) -> bool:
+	if not _root.has(array_field_name):
+		return false
+	var array = _root[array_field_name]
+	if typeof(array) != TYPE_ARRAY:
+		return false
+	var arr := array as Array
+	if index < 0 or index > arr.size():
+		return false
+	arr.insert(index, struct_value)
+	_notify_changed()
+	return true
+
+
+func remove_struct_from_array(array_field_name: String, index: int) -> bool:
+	if not _root.has(array_field_name):
+		return false
+	var array = _root[array_field_name]
+	if typeof(array) != TYPE_ARRAY:
+		return false
+	var arr := array as Array
+	if index < 0 or index >= arr.size():
+		return false
+	arr.remove_at(index)
+	_notify_changed()
+	return true
+
+
+func reorder_array_item(array_field_name: String, from_index: int, to_index: int) -> bool:
+	if not _root.has(array_field_name):
+		return false
+	var array = _root[array_field_name]
+	if typeof(array) != TYPE_ARRAY:
+		return false
+	var arr := array as Array
+	if from_index < 0 or from_index >= arr.size() or to_index < 0 or to_index >= arr.size():
+		return false
+	if from_index == to_index:
+		return false
+	var item = arr[from_index]
+	arr.remove_at(from_index)
+	arr.insert(to_index, item)
+	_notify_changed()
+	return true
+
+
 func coerce_scalar_edit_text(text: String, current: Variant) -> Variant:
 	match typeof(current):
 		TYPE_INT:
