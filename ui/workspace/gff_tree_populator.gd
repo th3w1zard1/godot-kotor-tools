@@ -3,8 +3,18 @@ extends RefCounted
 class_name GFFTreePopulator
 
 const META_FIELD_PATH := &"field_path"
+const META_ARRAY_FIELD := &"array_field_name"
+const META_ARRAY_INDEX := &"array_index"
+const META_IS_DLG_ARRAY_ITEM := &"is_dlg_array_item"
 
 const TypedFieldHelpers := preload("../workspace/typed_field_helpers.gd")
+
+# DLG array field names that support context menu operations
+const DLG_ARRAY_FIELDS := {
+	"EntryList": true,
+	"ReplyList": true,
+	"StartingList": true,
+}
 
 
 static func populate(parent: TreeItem, data: Dictionary, path_prefix: Array = []) -> void:
@@ -30,6 +40,11 @@ static func populate(parent: TreeItem, data: Dictionary, path_prefix: Array = []
 					if typeof(val[i]) == TYPE_DICTIONARY:
 						li.set_text(1, "<struct>")
 						li.collapsed = true
+						# Mark DLG array items for context menu support
+						if str(key_variant) in DLG_ARRAY_FIELDS:
+							li.set_meta(META_IS_DLG_ARRAY_ITEM, true)
+							li.set_meta(META_ARRAY_FIELD, str(key_variant))
+							li.set_meta(META_ARRAY_INDEX, i)
 						populate(li, val[i], element_path)
 					else:
 						_configure_scalar_leaf(li, val[i], element_path, str(key_variant))
