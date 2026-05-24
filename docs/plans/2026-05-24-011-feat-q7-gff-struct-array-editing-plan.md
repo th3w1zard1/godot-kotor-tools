@@ -2,7 +2,7 @@
 created: 2026-05-24
 updated: 2026-05-24
 type: feat
-status: active
+status: completed
 origin: docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md
 phase: Q7
 track: Phase 2 Capability Expansion
