@@ -76,7 +76,7 @@ func _ensure_shell() -> void:
 
 	_shell = KotorEditorShell.new()
 	_shell.name = "Legacy Workspace"
-	_shell.setup(_resolve_editor_state())
+	_shell.setup(_resolve_editor_state(), _mutation_service)
 	_shell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_shell.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs.add_child(_shell)

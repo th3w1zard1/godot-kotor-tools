@@ -5,6 +5,7 @@ const KotorDock := preload("../../ui/kotor_dock.gd")
 const KotorEditorState := preload("../core/kotor_editor_state.gd")
 
 var _editor_state: RefCounted
+var _mutation_service: RefCounted
 var _dock: Control
 
 
@@ -14,8 +15,9 @@ func _init(editor_state: RefCounted = null) -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 
-func setup(editor_state: RefCounted) -> void:
+func setup(editor_state: RefCounted, mutation_service: RefCounted = null) -> void:
 	_editor_state = editor_state
+	_mutation_service = mutation_service
 	if is_node_ready():
 		_ensure_dock()
 
@@ -34,7 +36,7 @@ func _ensure_dock() -> void:
 		_editor_state = KotorEditorState.new()
 		_editor_state.load_settings()
 	_dock = KotorDock.new()
-	_dock.setup(_editor_state)
+	_dock.setup(_editor_state, _mutation_service)
 	_dock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_dock.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_dock.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

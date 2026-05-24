@@ -145,22 +145,18 @@ func _init() -> void:
 	custom_minimum_size = Vector2(0, 220)
 
 
-func setup(editor_state: RefCounted) -> void:
+func setup(editor_state: RefCounted, mutation_service: RefCounted = null) -> void:
 	_editor_state = editor_state
-	if _modding_pipeline == null:
-		_modding_pipeline = KotorModdingPipeline.new()
-	if _mutation_service == null:
-		_mutation_service = KotorMutationService.new()
+	if mutation_service != null:
+		_mutation_service = mutation_service
+	_ensure_mutation_services()
 
 
 func _ready() -> void:
 	if _editor_state == null:
 		_editor_state = KotorEditorState.new()
 		_editor_state.load_settings()
-	if _modding_pipeline == null:
-		_modding_pipeline = KotorModdingPipeline.new()
-	if _mutation_service == null:
-		_mutation_service = KotorMutationService.new()
+	_ensure_mutation_services()
 	_build_ui()
 
 
@@ -1113,8 +1109,9 @@ func _export_gamefs_entry(entry: Dictionary) -> void:
 		file_name
 	)
 	dialog.file_selected.connect(func(path: String) -> void:
-		var result: Dictionary = _modding_pipeline.export_gamefs_entry(_editor_state.gamefs, entry, path)
-		_show_gamefs_report(_format_pipeline_result(result))
+		var payload: PackedByteArray = _editor_state.gamefs.load_resource_entry_bytes(entry)
+		var result: Dictionary = _resolve_mutation_service().apply_export_to_path(path, payload)
+		_show_gamefs_report(_mutation_status_text(result))
 		dialog.queue_free()
 	)
 	add_child(dialog)
@@ -1125,9 +1122,15 @@ func _install_gamefs_entry(entry: Dictionary) -> void:
 	if entry.is_empty():
 		_show_gamefs_report("Select a GameFS resource first.")
 		return
-	var result: Dictionary = _modding_pipeline.install_gamefs_entry_to_override(_editor_state.gamefs, entry)
-	_show_gamefs_report(_format_pipeline_result(result))
-	if result.get("ok", false):
+	var file_name := _gamefs_entry_file_name(entry)
+	var payload: PackedByteArray = _editor_state.gamefs.load_resource_entry_bytes(entry)
+	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
+		_editor_state.gamefs,
+		file_name,
+		payload
+	)
+	_show_gamefs_report(_mutation_status_text(result))
+	if _mutation_applied_ok(result):
 		_editor_state.refresh_gamefs()
 		_refresh_game_path_status()
 		_refresh_gamefs_view()
@@ -1675,8 +1678,8 @@ func _export_selected_erf_entry() -> void:
 		"%s.%s" % [entry.resref, entry.extension]
 	)
 	dialog.file_selected.connect(func(path: String) -> void:
-		var result: Dictionary = _modding_pipeline.export_erf_entry(entry, path)
-		_erf_status_text = _format_pipeline_result(result)
+		var result: Dictionary = _resolve_mutation_service().apply_export_to_path(path, entry.read_data())
+		_erf_status_text = _mutation_status_text(result)
 		_refresh_erf_status()
 		_append_activity(_erf_status_text)
 		dialog.queue_free()
@@ -1691,11 +1694,16 @@ func _install_selected_erf_entry() -> void:
 		_erf_status_text = "Select an archive entry first."
 		_refresh_erf_status()
 		return
-	var result: Dictionary = _modding_pipeline.install_erf_entry_to_override(_editor_state.gamefs, entry)
-	_erf_status_text = _format_pipeline_result(result)
+	var file_name := "%s.%s" % [entry.resref, entry.extension]
+	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
+		_editor_state.gamefs,
+		file_name,
+		entry.read_data()
+	)
+	_erf_status_text = _mutation_status_text(result)
 	_refresh_erf_status()
 	_append_activity(_erf_status_text)
-	if result.get("ok", false):
+	if _mutation_applied_ok(result):
 		_editor_state.refresh_gamefs()
 		_refresh_game_path_status()
 		_refresh_gamefs_view()
@@ -2229,13 +2237,9 @@ func _save_dlg_as() -> void:
 
 func _save_dlg_to(path: String) -> void:
 	var target_path := _ensure_extension(path, "dlg")
-	var result: Dictionary = _modding_pipeline.export_payload_to_path(
-		target_path,
-		_dlg_resource,
-		_current_dlg_file_name()
-	)
-	_dlg_status_text = _format_pipeline_result(result)
-	if not result.get("ok", false):
+	var result: Dictionary = _resolve_mutation_service().apply_export_to_path(target_path, _dlg_resource)
+	_dlg_status_text = _mutation_status_text(result)
+	if not _mutation_applied_ok(result):
 		push_error("KotOR Tools: failed to save DLG to %s" % target_path)
 		_refresh_dlg_status()
 		return
@@ -2249,13 +2253,13 @@ func _save_dlg_to(path: String) -> void:
 func _install_dlg_to_override() -> void:
 	if _dlg_resource == null:
 		return
-	var result: Dictionary = _modding_pipeline.install_payload_to_override(
+	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
 		_editor_state.gamefs,
 		_current_dlg_file_name(),
 		_dlg_resource
 	)
-	_dlg_status_text = _format_pipeline_result(result)
-	if result.get("ok", false):
+	_dlg_status_text = _mutation_status_text(result)
+	if _mutation_applied_ok(result):
 		_dlg_dirty = false
 		_editor_state.refresh_gamefs()
 		_refresh_game_path_status()
@@ -2382,13 +2386,9 @@ func _save_twoda_as() -> void:
 
 func _save_twoda_to(path: String) -> void:
 	var target_path := _ensure_extension(path, "2da")
-	var result: Dictionary = _modding_pipeline.export_payload_to_path(
-		target_path,
-		_twoda_resource,
-		_current_twoda_file_name()
-	)
-	_twoda_status_text = _format_pipeline_result(result)
-	if not result.get("ok", false):
+	var result: Dictionary = _resolve_mutation_service().apply_export_to_path(target_path, _twoda_resource)
+	_twoda_status_text = _mutation_status_text(result)
+	if not _mutation_applied_ok(result):
 		push_error("KotOR Tools: failed to save 2DA to %s" % target_path)
 		_twoda_path_label.text = "Failed to save %s" % target_path.get_file()
 		return
@@ -2402,13 +2402,13 @@ func _save_twoda_to(path: String) -> void:
 func _install_twoda_to_override() -> void:
 	if _twoda_resource == null:
 		return
-	var result: Dictionary = _modding_pipeline.install_payload_to_override(
+	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
 		_editor_state.gamefs,
 		_current_twoda_file_name(),
 		_twoda_resource
 	)
-	_twoda_status_text = _format_pipeline_result(result)
-	if result.get("ok", false):
+	_twoda_status_text = _mutation_status_text(result)
+	if _mutation_applied_ok(result):
 		_twoda_dirty = false
 		_editor_state.refresh_gamefs()
 		_refresh_game_path_status()
@@ -2577,13 +2577,9 @@ func _save_tlk_as() -> void:
 
 func _save_tlk_to(path: String) -> void:
 	var target_path := _ensure_extension(path, "tlk")
-	var result: Dictionary = _modding_pipeline.export_payload_to_path(
-		target_path,
-		_tlk_resource,
-		_current_tlk_file_name()
-	)
-	_tlk_status_text = _format_pipeline_result(result)
-	if not result.get("ok", false):
+	var result: Dictionary = _resolve_mutation_service().apply_export_to_path(target_path, _tlk_resource)
+	_tlk_status_text = _mutation_status_text(result)
+	if not _mutation_applied_ok(result):
 		push_error("KotOR Tools: failed to save TLK to %s" % target_path)
 		_tlk_path_label.text = "Failed to save %s" % target_path.get_file()
 		return
@@ -2598,19 +2594,19 @@ func _save_tlk_to(path: String) -> void:
 func _install_tlk_to_override() -> void:
 	if _tlk_resource == null:
 		return
-	var result: Dictionary = _modding_pipeline.install_payload_to_override(
+	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
 		_editor_state.gamefs,
 		_current_tlk_file_name(),
 		_tlk_resource
 	)
-	_tlk_status_text = _format_pipeline_result(result)
-	if result.get("ok", false):
+	_tlk_status_text = _mutation_status_text(result)
+	if _mutation_applied_ok(result):
 		_tlk_dirty = false
 		_editor_state.refresh_gamefs()
 		_refresh_game_path_status()
 		_refresh_gamefs_view()
 	_refresh_tlk_status()
-	if result.get("ok", false):
+	if _mutation_applied_ok(result):
 		_tlk_entry_status_label.text = "Installed %s to override" % _current_tlk_file_name()
 	_append_activity(_tlk_status_text)
 
@@ -2699,9 +2695,9 @@ func _save_script_as() -> void:
 
 func _save_script_to(path: String) -> void:
 	var target_path := _ensure_extension(path, "nss")
-	var result: Dictionary = _modding_pipeline.export_payload_to_path(target_path, _script_text_edit.text, _current_script_file_name())
-	_script_status_text = _format_pipeline_result(result)
-	if result.get("ok", false):
+	var result: Dictionary = _resolve_mutation_service().apply_export_to_path(target_path, _script_text_edit.text)
+	_script_status_text = _mutation_status_text(result)
+	if _mutation_applied_ok(result):
 		_script_source_path = target_path
 		_script_file_name = target_path.get_file()
 		_script_dirty = false
@@ -2716,13 +2712,13 @@ func _install_script_to_override() -> void:
 		_refresh_script_summary()
 		_validate_script()
 		return
-	var result: Dictionary = _modding_pipeline.install_payload_to_override(
+	var result: Dictionary = _resolve_mutation_service().apply_install_to_override(
 		_editor_state.gamefs,
 		_current_script_file_name(),
 		_script_text_edit.text
 	)
-	_script_status_text = _format_pipeline_result(result)
-	if result.get("ok", false):
+	_script_status_text = _mutation_status_text(result)
+	if _mutation_applied_ok(result):
 		_script_dirty = false
 		_editor_state.refresh_gamefs()
 		_refresh_game_path_status()
@@ -3119,6 +3115,38 @@ func _guess_loaded_file_name(label: String, fallback: String) -> String:
 		file_name = file_name.substr(0, separator)
 	file_name = file_name.get_file()
 	return file_name if not file_name.is_empty() else fallback
+
+
+func _ensure_mutation_services() -> void:
+	if _modding_pipeline == null:
+		_modding_pipeline = KotorModdingPipeline.new()
+	if _mutation_service == null:
+		_mutation_service = KotorMutationService.new()
+
+
+func _resolve_mutation_service() -> RefCounted:
+	_ensure_mutation_services()
+	return _mutation_service
+
+
+func _gamefs_entry_file_name(entry: Dictionary) -> String:
+	return "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+
+
+func _mutation_applied_ok(result: Dictionary) -> bool:
+	if not bool(result.get("applied", false)):
+		return false
+	var pipeline_result: Dictionary = result.get("result", {}) as Dictionary
+	if pipeline_result.is_empty():
+		return bool(result.get("ok", false))
+	return bool(pipeline_result.get("ok", false))
+
+
+func _mutation_status_text(result: Dictionary) -> String:
+	var pipeline_result: Dictionary = result.get("result", {}) as Dictionary
+	if not pipeline_result.is_empty():
+		return _format_pipeline_result(pipeline_result)
+	return _format_pipeline_result(result)
 
 
 func _format_pipeline_result(result: Dictionary) -> String:

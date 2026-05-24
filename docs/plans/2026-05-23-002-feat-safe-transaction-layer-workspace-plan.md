@@ -5,6 +5,16 @@ status: active
 date: 2026-05-23
 ---
 
+## Progress (2026-05-23)
+
+| Unit | Status |
+|------|--------|
+| U1 | Landed (`b5daddb`) |
+| U2 | Landed (`d503b7c`) — preflight dialogs in workspace editors |
+| U3 | Landed (`d503b7c`) — transaction history panel |
+| U4 | **In progress** — legacy dock → shared mutation contract |
+| U5 | Partial — extend dock/acceptance tests this pass |
+
 # feat: Implement the safe transaction layer workspace workflow
 
 ## Summary
