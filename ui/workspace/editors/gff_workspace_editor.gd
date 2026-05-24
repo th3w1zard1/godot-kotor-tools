@@ -11,6 +11,7 @@ const KotorMutationService := preload("../../../editor/transactions/kotor_mutati
 const KotorValidationPanel := preload("../panels/validation_panel.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const GFFTreePopulator := preload("../gff_tree_populator.gd")
+const TypedFieldHelpers := preload("../typed_field_helpers.gd")
 
 const WORKSPACE_GFF_EXTENSIONS := [
 	"utc", "utp", "uti", "utd", "ute", "utm", "uts", "utt", "utw",
@@ -559,6 +560,10 @@ func _apply_tree_field_edit(path: Array, text: String) -> void:
 	if current == null and text.strip_edges().is_empty():
 		return
 	var coerced: Variant = _document.coerce_scalar_edit_text(text, current)
+	
+	if typeof(coerced) == TYPE_STRING and _is_resref_field(path):
+		coerced = _document.validate_resref(coerced)
+	
 	if coerced == current:
 		_refresh_tree()
 		return
@@ -578,6 +583,13 @@ func _exec_tree_field_edit(path: Array, value: Variant) -> void:
 	_document.set_field_at_path(path, value)
 	_refresh_tag_edit()
 	# _on_document_changed handles dirty, _refresh_tree, _refresh_display_name_edit, _refresh_summary, _refresh_status
+
+
+func _is_resref_field(path: Array) -> bool:
+	if path.is_empty():
+		return false
+	var field_name = str(path[path.size() - 1])
+	return TypedFieldHelpers.is_resref_field(field_name)
 
 
 func _connect_document_signal() -> void:

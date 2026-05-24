@@ -4,6 +4,8 @@ class_name GFFTreePopulator
 
 const META_FIELD_PATH := &"field_path"
 
+const TypedFieldHelpers := preload("../workspace/typed_field_helpers.gd")
+
 
 static func populate(parent: TreeItem, data: Dictionary, path_prefix: Array = []) -> void:
 	for key_variant in data.keys():
@@ -30,12 +32,12 @@ static func populate(parent: TreeItem, data: Dictionary, path_prefix: Array = []
 						li.collapsed = true
 						populate(li, val[i], element_path)
 					else:
-						_configure_scalar_leaf(li, val[i], element_path)
+						_configure_scalar_leaf(li, val[i], element_path, str(key_variant))
 			_:
-				_configure_scalar_leaf(item, val, path)
+				_configure_scalar_leaf(item, val, path, str(key_variant))
 
 
-static func _configure_scalar_leaf(item: TreeItem, value: Variant, path: Array) -> void:
+static func _configure_scalar_leaf(item: TreeItem, value: Variant, path: Array, field_name: String = "") -> void:
 	if typeof(value) == TYPE_BOOL:
 		item.set_cell_mode(1, TreeItem.CELL_MODE_CHECK)
 		item.set_checked(1, bool(value))
@@ -46,6 +48,13 @@ static func _configure_scalar_leaf(item: TreeItem, value: Variant, path: Array) 
 	if _is_scalar_leaf(value):
 		item.set_metadata(1, path)
 		item.set_editable(1, true)
+		
+		if not field_name.is_empty():
+			if TypedFieldHelpers.is_resref_field(field_name):
+				item.set_meta("is_resref", true)
+			
+			if TypedFieldHelpers.has_enum_hints(field_name):
+				item.set_meta("enum_field_name", field_name)
 
 
 static func _is_scalar_leaf(value: Variant) -> bool:
@@ -55,3 +64,4 @@ static func _is_scalar_leaf(value: Variant) -> bool:
 		TYPE_FLOAT,
 		TYPE_BOOL,
 	]
+

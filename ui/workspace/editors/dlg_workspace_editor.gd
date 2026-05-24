@@ -11,6 +11,7 @@ const KotorModdingPipeline := preload("../../../editor/modding/kotor_modding_pip
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorValidationPanel := preload("../panels/validation_panel.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
+const TypedFieldHelpers := preload("../typed_field_helpers.gd")
 
 var _toolbar: HBoxContainer
 var _path_label: Label
@@ -1060,16 +1061,21 @@ func _apply_string_edit(struct_value: Dictionary, field_name: String, new_text: 
 	if _dlg_document == null or struct_value.is_empty():
 		return
 	var current: Variant = struct_value.get(field_name, "")
-	if String(current) == new_text:
+	var validated_text := new_text
+	
+	if TypedFieldHelpers.is_resref_field(field_name):
+		validated_text = _dlg_document.validate_resref(new_text)
+	
+	if String(current) == validated_text:
 		return
 	var ur := _get_undo_redo()
 	if ur != null:
 		ur.create_action("Edit DLG string field", UndoRedo.MERGE_DISABLE, self)
-		ur.add_do_method(self, "_exec_string_edit", struct_value, field_name, new_text)
+		ur.add_do_method(self, "_exec_string_edit", struct_value, field_name, validated_text)
 		ur.add_undo_method(self, "_exec_string_edit", struct_value, field_name, current)
 		ur.commit_action()
 	else:
-		_exec_string_edit(struct_value, field_name, new_text)
+		_exec_string_edit(struct_value, field_name, validated_text)
 
 
 func _exec_string_edit(struct_value: Dictionary, field_name: String, value: String) -> void:
@@ -1127,6 +1133,12 @@ func _apply_int_edit(struct_value: Dictionary, field_name: String, new_value: fl
 	if _dlg_document == null or struct_value.is_empty():
 		return
 	var normalized := int(new_value)
+	
+	if TypedFieldHelpers.has_enum_hints(field_name):
+		if not TypedFieldHelpers.validate_enum_value(field_name, normalized):
+			push_warning("Invalid enum value %d for field %s" % [normalized, field_name])
+			return
+	
 	var current: Variant = struct_value.get(field_name, 0)
 	if typeof(current) == TYPE_INT and int(current) == normalized:
 		return

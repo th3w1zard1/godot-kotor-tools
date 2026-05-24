@@ -200,6 +200,14 @@ func set_locstring_text(name: String, text: String, language_id: int = 0) -> boo
 	return set_field(name, locstring)
 
 
+func validate_resref(text: String) -> String:
+	var trimmed := text.strip_edges()
+	const MAX_RESREF_LENGTH := 16
+	if trimmed.length() <= MAX_RESREF_LENGTH:
+		return trimmed
+	return trimmed.substr(0, MAX_RESREF_LENGTH)
+
+
 func get_type_label() -> String:
 	return TYPE_LABELS.get(file_type, "%s Resource" % file_type if not file_type.is_empty() else "GFF Resource")
 
