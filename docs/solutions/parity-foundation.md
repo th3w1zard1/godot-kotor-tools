@@ -17,4 +17,4 @@
 
 ## Verification
 
-Headless tests under `tests/editor/` cover host lifecycle (`test_plugin_workspace_host.gd`), documents/session (`test_workspace_documents.gd`), target context (`test_target_context.gd`), DLG pilot (`test_dlg_workspace_editor.gd`), text/table editors (`test_text_table_editors.gd`), entity GFF pilot (`test_gff_workspace_editor.gd`), and mutation safety (`test_mutation_service.gd`, `test_safe_transaction_acceptance.gd`).
+Headless tests under `tests/editor/` cover host lifecycle (`test_plugin_workspace_host.gd`), documents/session (`test_workspace_documents.gd`), target context (`test_target_context.gd`), DLG pilot (`test_dlg_workspace_editor.gd`), text/table editors (`test_text_table_editors.gd`), entity GFF pilot (`test_gff_workspace_editor.gd`), dock workspace routing (`test_dock_workspace_routing.gd`), and mutation safety (`test_mutation_service.gd`, `test_safe_transaction_acceptance.gd`).
