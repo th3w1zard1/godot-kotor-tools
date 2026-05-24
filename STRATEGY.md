@@ -26,6 +26,16 @@ We commit to a Godot-native, install-aware workspace where parser/importer/edito
 
 ## Tracks
 
+### Phase 2 Capability Expansion
+
+**Status:** Active (Q1–Q5 shipped, Q6+ deferred)
+
+Deliver vertical capability slices that combine editor ergonomics, mutation safety, and native Godot integration. Each slice lands parser/importer/editor/write-back parity for a format family or major editing surface.
+
+_Why it serves the approach:_ Vertical slices reduce fragmentation and preserve coherent mutation semantics across the workspace.
+
+Execution queue: [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md)
+
 ### Parity expansion
 
 Close remaining format and write-back/editor parity gaps so modders can run full round-trip workflows in one workspace.
@@ -52,7 +62,32 @@ _Why it serves the approach:_ Coherent planning input reduces drift and preserve
 
 Execution queue reference: [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md)
 
-## Not working on
+## Completed Tracks
+
+**Q1–Q5 Phase 2 Capability Expansion:**
+
+- Q1: Undo/redo command boundaries wired for GFF/DLG/2DA/TLK document mutations with shared entry points.
+- Q2: Targeted reindex and refresh behavior for install/restore workflows eliminating stale-state windows.
+- Q3: Inspector-guided typed GFF editors for locstrings, references, and enum-like fields with validation preservation.
+- Q4: Full archive write-back parity for ERF/RIM/MOD families via serializers and ResourceFormatSaver integration.
+- Q5: Context-action expansion making compare/install/export accessible from browser, tabs, and area surfaces.
+
+## Next Waves
+
+Future capability work is organized by family. Slices map to Q6+, with dependencies and readiness criteria tracked in the execution queue.
+
+**Editor Ergonomics:**
+- Q7: GFF struct/array editing (add/remove/reorder + locstring hierarchies)
+- Q8: Typed field picker UIs (resref browsers, enum combos from gamefs)
+
+**Data Mutation Safety:**
+- Advanced rollback strategies (preview before commit, multi-slice transactions)
+- Installation verification and pre-flight checks
+
+**Workspace Integration:**
+- Q6: DLG struct/array mutation UI (dialogue container editing)
+- Script authoring and validation improvements
+- Area model visualization and linking
 
 - Replacing the plugin with a generic reverse-engineering platform.
 - Large schedule-heavy roadmap management inside this strategy doc.

@@ -89,10 +89,24 @@ find . -name '*.gd' -print0 | xargs -0 -I{} godot --headless --quiet --check-onl
 - **Architecture and implementation orientation:** [docs/00-intent/godot-serialization-kb-intent.md](docs/00-intent/godot-serialization-kb-intent.md)
 - **Product direction and active tracks:** [STRATEGY.md](STRATEGY.md)
 - **Support coverage + implementation gaps:** [docs/30-gap-analysis/godot-support-gaps.md](docs/30-gap-analysis/godot-support-gaps.md)
+- **Prioritized capability execution queue (Phase 2 shipped + deferred slices):** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md)
 - **Next implementation-wave requirements (brainstorm):** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md)
-- **Prioritized capability execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md)
 - **Godot API source references used by this repo:** [docs/90-meta/godot-doc-source-map.md](docs/90-meta/godot-doc-source-map.md)
 - **Implementation playbook for contributors:** [docs/50-execution/godot-kotor-implementation-playbook.md](docs/50-execution/godot-kotor-implementation-playbook.md)
+
+---
+
+## Contributing and Planning Next Work
+
+**For contributors selecting next-wave work:**
+
+The execution queue ([docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md)) tracks both **shipped slices (Q1–Q5)** and **deferred next slices (Q6–Q8)** with readiness criteria and dependencies. Start there to understand:
+
+- What's already shipped and working
+- What deferred work is ready to plan when criteria are met
+- How the next slice depends on priors
+
+Then reference [STRATEGY.md](STRATEGY.md) for the broader capability families and multi-year direction, and [docs/30-gap-analysis/godot-support-gaps.md](docs/30-gap-analysis/godot-support-gaps.md) for gap coverage mapping.
 
 ---
 

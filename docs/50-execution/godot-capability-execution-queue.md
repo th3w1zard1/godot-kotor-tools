@@ -10,15 +10,27 @@ Use this document to answer:
 2. What must be true before starting?
 3. What outcome marks the slice as shipped?
 
-## Queue
+## Shipped Slices
 
-| Order | Capability slice | Why now | Start readiness criteria | Shipped outcome |
+Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered the following completed capabilities:
+
+| Order | Capability slice | Shipped outcome |
+| --- | --- | --- |
+| Q1 | Undo/redo command boundaries for document mutations | Users can undo/redo supported document edits (GFF/DLG/2DA/TLK) without losing changed/validation consistency. |
+| Q2 | Targeted post-mutation refresh/reindex behavior | Install/restore actions produce deterministic install-aware state without manual re-open/reload workarounds. |
+| Q3 | Inspector-guided typed GFF editing helpers | Common structured fields (locstrings, refs, enum-like fields) are editable with guided controls while validation constraints hold. |
+| Q4 | Archive write-back parity (ERF/RIM/MOD) | ERF, RIM, and MOD archives support parser→edit→write-back parity through pipeline-owned flows. |
+| Q5 | Context-action expansion for compare/install/export | Compare/install/export actions are available from resource browser, document tabs, and area tools surfaces. |
+
+## Next Slices (Deferred)
+
+These items are planned for Phase 2+ waves pending completion of prior dependencies and readiness validation. No detailed requirements are active yet.
+
+| Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q1 | Undo/redo command boundaries for document mutations | Highest leverage safety improvement for frequent editing workflows. | Shared document mutation entry points are identified for GFF/DLG/2DA/TLK editors. | Users can undo/redo supported document edits without losing changed/validation consistency. |
-| Q2 | Targeted post-mutation refresh/reindex behavior | Prevents stale winners/variants after install or restore actions. | Mutation pipeline refresh points are mapped with current failure paths documented. | Install/restore actions produce deterministic install-aware state without manual re-open/reload workarounds. |
-| Q3 | Inspector-guided typed GFF editing helpers | Reduces manual errors in high-frequency structured fields. | Candidate typed field groups (locstrings, refs, enum-like selectors) are finalized. | Common structured fields are editable with guided controls while existing validation constraints hold. |
-| Q4 | Archive write-back parity (ERF/RIM/MOD) | Unlocks true round-trip packaging workflows. | Serializer boundaries and saver integration points are defined for archive families. | At least one archive family supports parser→edit→write-back parity through pipeline-owned flows. |
-| Q5 | Context-action expansion for compare/install/export | Shortens repetitive navigation effort in workspace flows. | Existing action surfaces are inventoried; no duplicate write logic paths introduced. | Compare/install/export actions are available from more relevant surfaces with unchanged pipeline semantics. |
+| Q6 | DLG struct/array mutation UI | Extend mutation surface for dialogue-specific container editing (speaker-action arrays, links, reply conditions). | Q1 (undo/redo) complete, DLG document surface design validated. | Priority deferred pending validation of struct/array editing patterns from Q7 (GFF). |
+| Q7 | GFF struct/array editing | Add array add/remove/reorder controls and struct-field mutation for locstring trees and complex field hierarchies. | Q3 (typed helpers) patterns validated, struct editing interaction design sketched. | Foundation for Q6 DLG and Q8 typed field picker expansion. |
+| Q8 | Typed field picker UIs | Add inspector-backed editors for resref file browsers and enum combos sourced from gamefs registry. | Q7 (struct/array patterns) validated, gamefs API stability confirmed. | Builds on Q3 typed helpers; depends on consistent struct/array surface from Q7. |
 
 ## Queue Governance
 
