@@ -625,17 +625,17 @@ func _add_dlg_string_editor(struct_value: Dictionary, field_name: String, value:
 		edit.custom_minimum_size = Vector2(0, 84)
 		edit.text = value
 		edit.focus_exited.connect(func() -> void:
-			_dlg_document.set_struct_field(struct_value, field_name, edit.text)
+			_apply_string_edit(struct_value, field_name, edit.text)
 		)
 		container.add_child(edit)
 	else:
 		var edit := LineEdit.new()
 		edit.text = value
 		edit.text_submitted.connect(func(new_text: String) -> void:
-			_dlg_document.set_struct_field(struct_value, field_name, new_text)
+			_apply_string_edit(struct_value, field_name, new_text)
 		)
 		edit.focus_exited.connect(func() -> void:
-			_dlg_document.set_struct_field(struct_value, field_name, edit.text)
+			_apply_string_edit(struct_value, field_name, edit.text)
 		)
 		container.add_child(edit)
 
@@ -653,7 +653,7 @@ func _add_dlg_locstring_editor(struct_value: Dictionary, field_name: String, val
 	edit.text = _dlg_locstring_text(value)
 	edit.placeholder_text = _dlg_resolved_locstring_text(value)
 	edit.focus_exited.connect(func() -> void:
-		_dlg_document.set_struct_locstring_text(struct_value, field_name, edit.text)
+		_apply_locstring_edit(struct_value, field_name, edit.text)
 	)
 	container.add_child(edit)
 
@@ -670,7 +670,7 @@ func _add_dlg_bool_editor(struct_value: Dictionary, field_name: String, value: b
 	check.text = field_name
 	check.button_pressed = value
 	check.toggled.connect(func(pressed: bool) -> void:
-		_dlg_document.set_struct_field(struct_value, field_name, pressed)
+		_apply_bool_edit(struct_value, field_name, pressed)
 	)
 	_dlg_details.add_child(check)
 
@@ -691,8 +691,7 @@ func _add_dlg_number_editor(struct_value: Dictionary, field_name: String, value:
 	spin.value = value
 	spin.rounded = integer
 	spin.value_changed.connect(func(new_value: float) -> void:
-		var normalized = int(new_value) if integer else new_value
-		_dlg_document.set_struct_field(struct_value, field_name, normalized)
+		_apply_int_edit(struct_value, field_name, new_value)
 	)
 	row.add_child(spin)
 
@@ -1049,3 +1048,99 @@ func _remove_previous_controller_document(previous_key: String) -> void:
 	if controller == null or previous_key.is_empty() or previous_key == _document_key or not controller.has_method("remove_document"):
 		return
 	controller.call("remove_document", previous_key)
+
+
+func _get_undo_redo() -> EditorUndoRedoManager:
+	if not Engine.is_editor_hint():
+		return null
+	return EditorInterface.get_editor_undo_redo()
+
+
+func _apply_string_edit(struct_value: Dictionary, field_name: String, new_text: String) -> void:
+	if _dlg_document == null or struct_value.is_empty():
+		return
+	var current: Variant = struct_value.get(field_name, "")
+	if String(current) == new_text:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit DLG string field", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_string_edit", struct_value, field_name, new_text)
+		ur.add_undo_method(self, "_exec_string_edit", struct_value, field_name, current)
+		ur.commit_action()
+	else:
+		_exec_string_edit(struct_value, field_name, new_text)
+
+
+func _exec_string_edit(struct_value: Dictionary, field_name: String, value: String) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.set_struct_field(struct_value, field_name, value)
+
+
+func _apply_locstring_edit(struct_value: Dictionary, field_name: String, new_text: String) -> void:
+	if _dlg_document == null or struct_value.is_empty():
+		return
+	var current_locstring = struct_value.get(field_name, {})
+	var current_text := _dlg_locstring_text(current_locstring)
+	if current_text == new_text:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit DLG locstring field", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_locstring_edit", struct_value, field_name, new_text)
+		ur.add_undo_method(self, "_exec_locstring_edit", struct_value, field_name, current_text)
+		ur.commit_action()
+	else:
+		_exec_locstring_edit(struct_value, field_name, new_text)
+
+
+func _exec_locstring_edit(struct_value: Dictionary, field_name: String, value: String) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.set_struct_locstring_text(struct_value, field_name, value)
+
+
+func _apply_bool_edit(struct_value: Dictionary, field_name: String, pressed: bool) -> void:
+	if _dlg_document == null or struct_value.is_empty():
+		return
+	var current: Variant = struct_value.get(field_name, false)
+	if typeof(current) == TYPE_BOOL and bool(current) == pressed:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit DLG bool field", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_bool_edit", struct_value, field_name, pressed)
+		ur.add_undo_method(self, "_exec_bool_edit", struct_value, field_name, current if typeof(current) == TYPE_BOOL else not pressed)
+		ur.commit_action()
+	else:
+		_exec_bool_edit(struct_value, field_name, pressed)
+
+
+func _exec_bool_edit(struct_value: Dictionary, field_name: String, value: bool) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.set_struct_field(struct_value, field_name, value)
+
+
+func _apply_int_edit(struct_value: Dictionary, field_name: String, new_value: float) -> void:
+	if _dlg_document == null or struct_value.is_empty():
+		return
+	var normalized := int(new_value)
+	var current: Variant = struct_value.get(field_name, 0)
+	if typeof(current) == TYPE_INT and int(current) == normalized:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit DLG int field", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_int_edit", struct_value, field_name, normalized)
+		ur.add_undo_method(self, "_exec_int_edit", struct_value, field_name, current if typeof(current) == TYPE_INT else 0)
+		ur.commit_action()
+	else:
+		_exec_int_edit(struct_value, field_name, normalized)
+
+
+func _exec_int_edit(struct_value: Dictionary, field_name: String, value: int) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.set_struct_field(struct_value, field_name, value)

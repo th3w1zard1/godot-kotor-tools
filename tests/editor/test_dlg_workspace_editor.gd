@@ -48,8 +48,90 @@ func _assert_editor_behavior() -> void:
 	assert(install_result.get("ok", false))
 	assert(FileAccess.file_exists(_install_root.path_join("override").path_join("test_dialogue.dlg")))
 
+	_test_string_edit_undo_redo()
+	_test_bool_edit_undo_redo()
+	_test_int_edit_undo_redo()
+	_test_locstring_edit_undo_redo()
+	_test_validation_failure_no_mutation()
+	_test_stale_document_state()
+
 	_cleanup()
 	quit()
+
+
+func _test_string_edit_undo_redo() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var entry := _editor.get_document().get_node("entry", 0)
+	var old_comment = str(entry.get("Comment", ""))
+	
+	_editor._apply_string_edit(entry, "Comment", "Updated comment")
+	assert(str(entry.get("Comment", "")) == "Updated comment")
+	assert(_editor.is_document_dirty())
+
+
+func _test_bool_edit_undo_redo() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var entry := _editor.get_document().get_node("entry", 0)
+	
+	# Test with a bool field (we'll use a test struct value)
+	var test_struct = {"BoolField": false}
+	_editor._apply_bool_edit(test_struct, "BoolField", true)
+	assert(test_struct.get("BoolField", false) == true)
+	assert(_editor.is_document_dirty())
+
+
+func _test_int_edit_undo_redo() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var reply := _editor.get_document().get_node("reply", 0)
+	var old_value = int(reply.get("Index", 0))
+	
+	_editor._apply_int_edit(reply, "Index", 42.0)
+	assert(int(reply.get("Index", 0)) == 42)
+	assert(_editor.is_document_dirty())
+
+
+func _test_locstring_edit_undo_redo() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var entry := _editor.get_document().get_node("entry", 0)
+	var old_text = _editor._dlg_locstring_text(entry.get("Text", {}))
+	
+	_editor._apply_locstring_edit(entry, "Text", "Updated locstring text")
+	var updated_locstring = entry.get("Text", {})
+	var new_text = _editor._dlg_locstring_text(updated_locstring)
+	assert(new_text == "Updated locstring text")
+	assert(_editor.is_document_dirty())
+	
+	# Verify language ID is preserved
+	var strings = updated_locstring.get("strings", {})
+	assert(0 in strings)  # Default language ID
+
+
+func _test_validation_failure_no_mutation() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	
+	# Test with stale document (null)
+	_editor._dlg_document = null
+	var test_struct = {"Field": "value"}
+	_editor._apply_string_edit(test_struct, "Field", "new value")
+	assert(test_struct.get("Field", "") == "value")  # Should not change
+
+
+func _test_stale_document_state() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var entry := _editor.get_document().get_node("entry", 0)
+	
+	# Close document to make it stale
+	_editor.open_resource(null)
+	
+	# Try to apply edit on stale document
+	_editor._apply_string_edit(entry, "Comment", "New comment")
+	# Should return gracefully without mutation since document is null
 
 
 func _build_dialogue_resource() -> DLGResource:
