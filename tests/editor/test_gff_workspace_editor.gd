@@ -5,20 +5,28 @@ const KotorGFFWorkspaceEditor := preload("../../ui/workspace/editors/gff_workspa
 const KotorWorkspaceController := preload("../../editor/workspace/kotor_workspace_controller.gd")
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const UTCResource := preload("../../resources/typed/utc_resource.gd")
+const AREResource := preload("../../resources/typed/are_resource.gd")
 const GFFParser := preload("../../formats/gff_parser.gd")
 
 var _install_root := ""
-var _saved_path := ""
+var _utc_saved_path := ""
+var _are_saved_path := ""
 
 
 func _initialize() -> void:
 	_install_root = ProjectSettings.globalize_path("user://gff_workspace_editor_test_install")
-	_saved_path = _install_root.path_join("test_creature.utc")
+	_utc_saved_path = _install_root.path_join("test_creature.utc")
+	_are_saved_path = _install_root.path_join("test_area.are")
 	DirAccess.make_dir_recursive_absolute(_install_root.path_join("override"))
 	call_deferred("_assert_editor_behavior")
 
 
 func _assert_editor_behavior() -> void:
+	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("utc"))
+	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("are"))
+	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("ifo"))
+	assert(not KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("dlg"))
+
 	var editor_state := KotorEditorState.new()
 	editor_state.game_path = _install_root
 	editor_state.refresh_gamefs()
@@ -29,30 +37,54 @@ func _assert_editor_behavior() -> void:
 	editor.setup(editor_state, controller)
 	root.add_child(editor)
 
-	var resource := _build_utc_resource()
-	editor.open_resource(resource, "", "test_creature.utc")
+	_exercise_utc_round_trip(editor, controller)
+	_exercise_are_round_trip(editor, controller)
+
+	_cleanup()
+	quit()
+
+
+func _exercise_utc_round_trip(editor: KotorGFFWorkspaceEditor, controller: KotorWorkspaceController) -> void:
+	editor.open_resource(_build_utc_resource(), "", "test_creature.utc")
 	assert(editor.has_document())
 	assert(editor.get_document().get_tag() == "workspace_creature")
 
 	editor.get_document().set_string("Tag", "edited_creature")
 	assert(editor.is_document_dirty())
 
-	var save_result := editor.save_document_to_path(_saved_path)
+	var save_result := editor.save_document_to_path(_utc_saved_path)
 	assert(save_result.get("ok", false))
-	assert(FileAccess.file_exists(_saved_path))
+	assert(FileAccess.file_exists(_utc_saved_path))
 	assert(not editor.is_document_dirty())
 
 	var install_result := editor.install_document_to_override()
 	assert(install_result.get("ok", false))
 	assert(FileAccess.file_exists(_install_root.path_join("override").path_join("test_creature.utc")))
 
-	var documents: Array[Dictionary] = controller.document_registry.list_documents()
-	assert(documents.size() == 1)
-	assert(str(documents[0].get("editor_kind", "")) == "gff")
-	assert(controller.document_registry.get_document_entry("gff:%s" % _saved_path).get("dirty", false) == false)
+	assert(str(controller.document_registry.list_documents()[0].get("editor_kind", "")) == "gff")
+	assert(controller.document_registry.get_document_entry("gff:%s" % _utc_saved_path).get("dirty", false) == false)
 
-	_cleanup()
-	quit()
+
+func _exercise_are_round_trip(editor: KotorGFFWorkspaceEditor, controller: KotorWorkspaceController) -> void:
+	editor.open_resource(_build_are_resource(), "", "test_area.are")
+	assert(editor.has_document())
+	assert(editor.get_document().get_tag() == "workspace_area")
+
+	editor.get_document().set_string("Tag", "edited_area")
+	assert(editor.is_document_dirty())
+
+	var save_result := editor.save_document_to_path(_are_saved_path)
+	assert(save_result.get("ok", false))
+	assert(FileAccess.file_exists(_are_saved_path))
+	assert(not editor.is_document_dirty())
+
+	var install_result := editor.install_document_to_override()
+	assert(install_result.get("ok", false))
+	assert(FileAccess.file_exists(_install_root.path_join("override").path_join("test_area.are")))
+
+	var documents: Array[Dictionary] = controller.document_registry.list_documents()
+	assert(documents.size() == 2)
+	assert(controller.document_registry.get_document_entry("gff:%s" % _are_saved_path).get("dirty", false) == false)
 
 
 func _build_utc_resource() -> UTCResource:
@@ -74,10 +106,34 @@ func _build_utc_resource() -> UTCResource:
 	return resource
 
 
+func _build_are_resource() -> AREResource:
+	var resource := AREResource.new()
+	resource.setup_from_parser_result({
+		"file_type": "ARE",
+		"root": {
+			"Tag": "workspace_area",
+			"Name": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Test Area"},
+			},
+		},
+		"schema": {
+			"struct_type": 0xFFFFFFFF,
+			"fields": [
+				{"name": "Tag", "type": GFFParser.FIELD_CEXOSTRING},
+				{"name": "Name", "type": GFFParser.FIELD_CEXOLOCSTR},
+			],
+		},
+	})
+	return resource
+
+
 func _cleanup() -> void:
 	for path in [
-		_saved_path,
+		_utc_saved_path,
+		_are_saved_path,
 		_install_root.path_join("override").path_join("test_creature.utc"),
+		_install_root.path_join("override").path_join("test_area.are"),
 	]:
 		if FileAccess.file_exists(path):
 			DirAccess.remove_absolute(path)

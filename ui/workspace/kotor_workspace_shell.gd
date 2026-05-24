@@ -252,7 +252,7 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 		_script_editor.call("open_script_bytes", script_label, script_bytes, extension, source_path)
 		_tabs.current_tab = _script_editor.get_index()
 		return
-	if KotorGFFWorkspaceEditor.entity_extension_allowed(extension):
+	if KotorGFFWorkspaceEditor.workspace_gff_extension_allowed(extension):
 		var gff_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
 		var gff_label := "%s [%s]" % [
 			"%s.%s" % [entry.get("resref", ""), entry.get("extension", "")],

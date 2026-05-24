@@ -4,10 +4,10 @@ class_name GFFTreePopulator
 
 
 static func populate(parent: TreeItem, data: Dictionary) -> void:
-	for key: String in data:
-		var val = data[key]
+	for key_variant in data.keys():
+		var val = data[key_variant]
 		var item := parent.get_tree().create_item(parent)
-		item.set_text(0, key)
+		item.set_text(0, str(key_variant))
 		match typeof(val):
 			TYPE_DICTIONARY:
 				item.set_text(1, "<struct>")

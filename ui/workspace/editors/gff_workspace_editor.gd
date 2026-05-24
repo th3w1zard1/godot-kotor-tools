@@ -12,9 +12,12 @@ const KotorValidationPanel := preload("../panels/validation_panel.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const GFFTreePopulator := preload("../gff_tree_populator.gd")
 
-const ENTITY_EXTENSIONS := [
+const WORKSPACE_GFF_EXTENSIONS := [
 	"utc", "utp", "uti", "utd", "ute", "utm", "uts", "utt", "utw",
+	"are", "git", "ifo",
 ]
+
+const ENTITY_EXTENSIONS := WORKSPACE_GFF_EXTENSIONS
 
 var _toolbar: HBoxContainer
 var _path_label: Label
@@ -169,7 +172,11 @@ func install_document_to_override() -> Dictionary:
 
 
 static func entity_extension_allowed(extension: String) -> bool:
-	return extension.strip_edges().to_lower() in ENTITY_EXTENSIONS
+	return workspace_gff_extension_allowed(extension)
+
+
+static func workspace_gff_extension_allowed(extension: String) -> bool:
+	return extension.strip_edges().to_lower() in WORKSPACE_GFF_EXTENSIONS
 
 
 func _apply_export_now(target_path: String) -> Dictionary:
@@ -347,11 +354,14 @@ func _refresh_status() -> void:
 
 
 func _open_gff() -> void:
-	var filter := "*.utc,*.utp,*.uti,*.utd,*.ute,*.utm,*.uts,*.utt,*.utw ; KotOR Blueprint GFF"
+	var filter := (
+		"*.utc,*.utp,*.uti,*.utd,*.ute,*.utm,*.uts,*.utt,*.utw,"
+		+ "*.are,*.git,*.ifo ; KotOR GFF"
+	)
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
 		PackedStringArray([filter]),
-		"Open KotOR Blueprint GFF"
+		"Open KotOR GFF"
 	)
 	dialog.file_selected.connect(func(path: String) -> void:
 		open_gff_file(path)

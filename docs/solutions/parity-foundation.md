@@ -11,7 +11,7 @@
 ## Limits (v1 foundation)
 
 - Legacy `ui/kotor_dock.gd` remains for area tools and migration-era routes; new cross-editor orchestration belongs in workspace modules.
-- Entity GFF blueprints (UTC, UTP, and related extensions) open in `ui/workspace/editors/gff_workspace_editor.gd` with document registration and preflight mutations; full field-tree editing and module GFF (ARE/GIT/IFO) remain deferred.
+- Entity and module GFF files (UTC/UTP/… blueprint extensions plus ARE/GIT/IFO) open in `ui/workspace/editors/gff_workspace_editor.gd` with document registration and preflight mutations; full field-tree editing remains deferred.
 - Profile management and packaging/share workflows are deferred.
 
 ## Verification
