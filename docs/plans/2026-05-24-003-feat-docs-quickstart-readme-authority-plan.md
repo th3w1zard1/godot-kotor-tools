@@ -62,7 +62,7 @@ Current docs are useful but fragmented: onboarding instructions are broad, quick
 
 **Requirements:** R1, R4
 
-**Dependencies:** None
+**Dependencies:** U2
 
 **Files:**
 - `README.md`
@@ -85,7 +85,7 @@ Current docs are useful but fragmented: onboarding instructions are broad, quick
 **Verification:**
 - README presents a coherent setup flow with no contradictory commands or architecture claims.
 
-### U2. Add a focused quickstart guide
+### U2. Add or refresh a focused quickstart guide
 
 **Goal:** Provide a short, user-facing quickstart that gets users from install to first successful use.
 
@@ -98,7 +98,7 @@ Current docs are useful but fragmented: onboarding instructions are broad, quick
 - `README.md`
 
 **Approach:**
-- Create a compact guide with prerequisites, install, plugin enablement, first workspace open, and common pitfalls.
+- Create or refresh a compact guide with prerequisites, install, plugin enablement, first workspace open, and common pitfalls.
 - Include minimal validation guidance so users can confirm plugin scripts parse in their environment.
 - Link back to README and architecture docs for deeper context.
 
@@ -123,6 +123,8 @@ Current docs are useful but fragmented: onboarding instructions are broad, quick
 **Dependencies:** U1, U2
 
 **Files:**
+- `README.md`
+- `docs/QUICKSTART.md`
 - `docs/00-intent/godot-serialization-kb-intent.md`
 - `docs/90-meta/godot-doc-source-map.md`
 
@@ -139,7 +141,11 @@ Current docs are useful but fragmented: onboarding instructions are broad, quick
 - Integration: all cross-links between README, quickstart, and knowledgebase docs are bidirectional where useful.
 
 **Verification:**
-- Documentation hierarchy is explicit and reduces ambiguity about authoritative sources.
+- Verification checklist:
+  - `README.md` links to `docs/QUICKSTART.md`, `docs/00-intent/godot-serialization-kb-intent.md`, and `docs/90-meta/godot-doc-source-map.md`.
+  - `docs/QUICKSTART.md` links back to `README.md` and both knowledgebase docs.
+  - `docs/00-intent/godot-serialization-kb-intent.md` contains explicit authority cues for setup vs architecture vs source map.
+  - `docs/90-meta/godot-doc-source-map.md` states external-source-map role and references repo-local canonical docs.
 
 ---
 
@@ -163,4 +169,3 @@ Current docs are useful but fragmented: onboarding instructions are broad, quick
 
 - If future releases add major UI flows, add screenshots in a follow-up documentation slice.
 - Consider adding a docs check script in a separate effort if link drift becomes frequent.
-

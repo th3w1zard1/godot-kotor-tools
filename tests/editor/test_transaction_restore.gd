@@ -2,6 +2,7 @@
 extends SceneTree
 
 const KotorMutationService := preload("../../editor/transactions/kotor_mutation_service.gd")
+const KotorTransactionStore := preload("../../editor/transactions/kotor_transaction_store.gd")
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const KotorModdingPipeline := preload("../../editor/modding/kotor_modding_pipeline.gd")
 
@@ -57,6 +58,37 @@ func _assert_restore() -> void:
 		assert(tx_meta.has("file_name"))
 		assert(not tx_meta.has("before_bytes"))
 		assert(not tx_meta.has("after_bytes"))
+
+	var editor_settings := EditorInterface.get_editor_settings()
+	if Engine.is_editor_hint() and editor_settings != null:
+		# History should be readable on a new store instance without requiring a new write first.
+		editor_settings.set_setting(
+			KotorTransactionStore.TRANSACTIONS_SETTINGS_KEY,
+			JSON.stringify([
+				{
+					"id": "tx-0100",
+					"kind": "install",
+					"action": "overwrite",
+					"target_path": _target_path,
+					"file_name": "restore_script.nss",
+					"rollback_available": true,
+					"rollback_mode": "restore_bytes",
+					"status": "applied",
+					"restore_eligible": true,
+					"timestamp": 123456,
+				},
+			])
+		)
+		var persisted_store := KotorTransactionStore.new()
+		assert(not persisted_store.get_transaction("tx-0100").is_empty())
+		assert(persisted_store.list_transactions().size() == 1)
+
+		# Clearing history should persist so stale transactions do not reappear.
+		persisted_store.clear_transactions()
+		var persisted_value := String(editor_settings.get_setting(KotorTransactionStore.TRANSACTIONS_SETTINGS_KEY))
+		var parsed = JSON.parse_string(persisted_value)
+		assert(parsed is Array)
+		assert((parsed as Array).is_empty())
 
 	_cleanup()
 	quit()

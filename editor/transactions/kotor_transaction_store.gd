@@ -6,13 +6,11 @@ const TRANSACTIONS_SETTINGS_KEY := "kotor_tools/workspace/transaction_history"
 
 var _transactions: Array[Dictionary] = []
 var _next_id := 1
-var _persisted := false
+var _loaded := false
 
 
 func record_transaction(entry: Dictionary) -> Dictionary:
-	if not _persisted:
-		_load_persisted_transactions()
-		_persisted = true
+	_ensure_loaded()
 	var stored := entry.duplicate(true)
 	if str(stored.get("id", "")).is_empty():
 		stored["id"] = "tx-%04d" % _next_id
@@ -29,6 +27,7 @@ func record_transaction(entry: Dictionary) -> Dictionary:
 
 
 func get_transaction(transaction_id: String) -> Dictionary:
+	_ensure_loaded()
 	for entry in _transactions:
 		if str(entry.get("id", "")) == transaction_id:
 			return entry.duplicate(true)
@@ -36,6 +35,7 @@ func get_transaction(transaction_id: String) -> Dictionary:
 
 
 func list_transactions() -> Array[Dictionary]:
+	_ensure_loaded()
 	var results: Array[Dictionary] = []
 	for entry in _transactions:
 		results.append(entry.duplicate(true))
@@ -43,6 +43,7 @@ func list_transactions() -> Array[Dictionary]:
 
 
 func get_transactions_for_session() -> Array[Dictionary]:
+	_ensure_loaded()
 	var results: Array[Dictionary] = []
 	for entry in _transactions:
 		var metadata := {
@@ -62,8 +63,17 @@ func get_transactions_for_session() -> Array[Dictionary]:
 
 
 func clear_transactions() -> void:
+	_ensure_loaded()
 	_transactions.clear()
 	_next_id = 1
+	_persist_transactions()
+
+
+func _ensure_loaded() -> void:
+	if _loaded:
+		return
+	_load_persisted_transactions()
+	_loaded = true
 
 
 func _persist_transactions() -> void:
