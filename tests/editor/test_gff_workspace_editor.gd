@@ -53,6 +53,9 @@ func _exercise_utc_round_trip(editor: KotorGFFWorkspaceEditor, controller: Kotor
 	editor.apply_tree_field_edit(["TemplateResRef"], "edited_template")
 	assert(editor.get_document().get_resref("TemplateResRef") == "edited_template")
 
+	editor.apply_tree_field_edit(["TestList", 0, "Text"], "gamma")
+	assert(editor.get_document().get_field_at_path(["TestList", 0, "Text"]) == "gamma")
+
 	editor.get_document().set_string("Tag", "edited_creature")
 	assert(editor.is_document_dirty())
 
@@ -68,7 +71,9 @@ func _exercise_utc_round_trip(editor: KotorGFFWorkspaceEditor, controller: Kotor
 	var utc_saved_bytes := FileAccess.get_file_as_bytes(_utc_saved_path)
 	var utc_reparsed := GFFParser.parse_bytes(utc_saved_bytes)
 	var utc_saved := GFFResourceFactory.create_from_parser_result(utc_reparsed)
-	assert(utc_saved.create_document().get_resref("TemplateResRef") == "edited_template")
+	var utc_saved_document := utc_saved.create_document()
+	assert(utc_saved_document.get_resref("TemplateResRef") == "edited_template")
+	assert(utc_saved_document.get_field_at_path(["TestList", 0, "Text"]) == "gamma")
 
 	assert(str(controller.document_registry.list_documents()[0].get("editor_kind", "")) == "gff")
 	assert(controller.document_registry.get_document_entry("gff:%s" % _utc_saved_path).get("dirty", false) == false)
@@ -113,12 +118,28 @@ func _build_utc_resource() -> UTCResource:
 		"root": {
 			"Tag": "workspace_creature",
 			"TemplateResRef": "nw_crea_human",
+			"TestList": [
+				{"Text": "alpha"},
+				{"Text": "beta"},
+			],
 		},
 		"schema": {
 			"struct_type": 0xFFFFFFFF,
 			"fields": [
 				{"name": "Tag", "type": GFFParser.FIELD_CEXOSTRING},
 				{"name": "TemplateResRef", "type": GFFParser.FIELD_CRESREF},
+				{
+					"name": "TestList",
+					"type": GFFParser.FIELD_LIST,
+					"items": [
+						{
+							"struct_type": 1,
+							"fields": [
+								{"name": "Text", "type": GFFParser.FIELD_CEXOSTRING},
+							],
+						},
+					],
+				},
 			],
 		},
 	})

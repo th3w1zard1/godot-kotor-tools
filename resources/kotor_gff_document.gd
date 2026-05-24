@@ -129,15 +129,25 @@ func set_field_at_path(path: Array, value: Variant) -> bool:
 	var parent_path: Array = path.slice(0, path.size() - 1)
 	var key: Variant = path[path.size() - 1]
 	var parent: Variant = _root if parent_path.is_empty() else get_field_at_path(parent_path)
-	if typeof(parent) != TYPE_DICTIONARY:
-		return false
-	if not parent.has(key):
-		return false
-	if parent.get(key) == value:
-		return false
-	parent[key] = value
-	_notify_changed()
-	return true
+	if typeof(parent) == TYPE_DICTIONARY:
+		if not parent.has(key):
+			return false
+		if parent.get(key) == value:
+			return false
+		parent[key] = value
+		_notify_changed()
+		return true
+	if typeof(parent) == TYPE_ARRAY and typeof(key) == TYPE_INT:
+		var list := parent as Array
+		var index := key as int
+		if index < 0 or index >= list.size():
+			return false
+		if list[index] == value:
+			return false
+		list[index] = value
+		_notify_changed()
+		return true
+	return false
 
 
 func coerce_scalar_edit_text(text: String, current: Variant) -> Variant:
