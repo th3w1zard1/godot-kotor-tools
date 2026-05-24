@@ -1,5 +1,12 @@
 # Godot Serialization Knowledgebase Intent
 
+## Start Here (Authoritative Paths)
+
+- **End-user setup and first run:** `README.md` and `docs/QUICKSTART.md`
+- **Architecture + implementation orientation (this audience):** `docs/00-intent/godot-serialization-kb-intent.md`
+- **Official external API source references:** `docs/90-meta/godot-doc-source-map.md`
+- **Contributor implementation checklist:** `docs/50-execution/godot-kotor-implementation-playbook.md`
+
 ## Problem Frame
 
 `godot-kotor-tools` already implements custom importers, savers, and editor workflows for Aurora formats, but we need a durable Godot API knowledgebase to guide future serializer/deserializer work without re-researching engine docs every time.

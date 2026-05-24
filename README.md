@@ -6,6 +6,28 @@ Fully implemented static parsers for all major Aurora Engine binary formats. Plu
 
 ---
 
+## What this plugin does
+
+KotOR Tools gives you an install-aware modding workspace directly in the Godot editor. You can browse indexed game resources, open structured editors for supported file types, compare/export/install changes to override, and restore through transaction history.
+
+Use this plugin when you want a Godot-native workflow for reading and editing KotOR/Jade Empire content without writing custom extraction scripts.
+
+---
+
+## Quick start (first run)
+
+For a full guided setup, use **[docs/QUICKSTART.md](docs/QUICKSTART.md)**.
+
+Fast path:
+
+1. Install the plugin (Asset Library or manual clone under `addons/kotor_tools`).
+2. Enable **Project Settings -> Plugins -> KotOR Tools**.
+3. Open KotOR Tools and set your game install path.
+4. Let indexing complete, then open a resource (for example a DLG, 2DA, or TLK entry).
+5. Make a safe change and use compare/install actions through the workspace.
+
+---
+
 ## Features
 
 | Format | Parser | Importer | Resource wrapper | Write-back |
@@ -40,6 +62,33 @@ cd your_project/addons
 git clone https://github.com/OpenKotOR/godot-kotor-tools.git kotor_tools
 ```
 Then **Project → Project Settings → Plugins → KotOR Tools → Enable**.
+
+---
+
+## Validation and development checks
+
+This repository uses Godot script validation as the baseline verification workflow.
+
+### Validate one script
+
+```bash
+godot --headless --quiet --check-only --script path/to/file.gd
+```
+
+### Validate all GDScript files in the repository
+
+```bash
+find . -name '*.gd' -print0 | xargs -0 -I{} godot --headless --quiet --check-only --script '{}'
+```
+
+---
+
+## Documentation map
+
+- **Setup and first run:** [docs/QUICKSTART.md](docs/QUICKSTART.md)
+- **Architecture and implementation orientation:** [docs/00-intent/godot-serialization-kb-intent.md](docs/00-intent/godot-serialization-kb-intent.md)
+- **Godot API source references used by this repo:** [docs/90-meta/godot-doc-source-map.md](docs/90-meta/godot-doc-source-map.md)
+- **Implementation playbook for contributors:** [docs/50-execution/godot-kotor-implementation-playbook.md](docs/50-execution/godot-kotor-implementation-playbook.md)
 
 ---
 

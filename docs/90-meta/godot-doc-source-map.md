@@ -1,5 +1,14 @@
 # Godot Documentation Source Map (Research Snapshot)
 
+## Scope and Authority
+
+- This file is the **external source map** for official Godot docs used by this repository.
+- It supports (but does not replace) repo-local guidance in:
+  - `README.md` for user-facing setup and plugin usage
+  - `docs/QUICKSTART.md` for first-run instructions
+  - `docs/00-intent/godot-serialization-kb-intent.md` for knowledgebase orientation
+  - `docs/50-execution/godot-kotor-implementation-playbook.md` for contributor execution workflow
+
 ## Version + Source Notes
 
 - Project target: Godot **4.6** (`README.md`).
