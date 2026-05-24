@@ -4,6 +4,7 @@ class_name KotorModdingPipeline
 
 const KotorGameFS := preload("../../gamefs/kotor_gamefs.gd")
 const ERFParser := preload("../../formats/erf_parser.gd")
+const ERFWriter := preload("../../formats/erf_writer.gd")
 const TwoDaParser := preload("../../formats/twoda_parser.gd")
 const TLKParser := preload("../../formats/tlk_parser.gd")
 const TwoDaWriter := preload("../../formats/twoda_writer.gd")
@@ -179,6 +180,20 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"type": "bytes",
 					"payload": gff_bytes,
 					"size": gff_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+		"erf", "rim", "mod", "sav":
+			if payload is Dictionary and payload.has("entries") and payload.has("file_type"):
+				var file_type := str(payload.get("file_type", "ERF "))
+				var entries: Array = payload.get("entries", [])
+				var erf_bytes := ERFWriter.repack(file_type, entries)
+				if erf_bytes.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": erf_bytes,
+					"size": erf_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
 	return _result(false, "invalid", "Unsupported payload for %s" % file_name.get_file())
