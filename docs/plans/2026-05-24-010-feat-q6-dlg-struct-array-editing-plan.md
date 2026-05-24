@@ -2,7 +2,7 @@
 created: 2026-05-24
 updated: 2026-05-24
 type: feat
-status: active
+status: completed
 origin: docs/brainstorms/2026-05-24-010-q6-dlg-struct-array-editing-requirements.md
 phase: Q6
 track: DLG editing & dialogue authoring
