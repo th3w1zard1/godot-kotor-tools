@@ -79,3 +79,36 @@ static func validate_resref(text: String) -> String:
 static func get_resref_validation_hint() -> String:
 	return "Max %d characters" % MAX_RESREF_LENGTH
 
+
+# Hybrid Validation Helpers for Q6 DLG Array Mutations
+
+static func is_required_field(field_name: String) -> bool:
+	# Fields that must have valid values to prevent broken dialogues
+	var lower_field := field_name.strip_edges().to_lower()
+	return lower_field == "index"
+
+
+static func validate_required_field(field_name: String, value: Variant, entry_list_size: int = -1) -> bool:
+	var lower_field := field_name.strip_edges().to_lower()
+	
+	if lower_field == "index":
+		# Index field: must be 0 <= index < entry_list_size
+		# If entry_list_size is -1, we can't validate yet (permissive)
+		if entry_list_size < 0:
+			return true  # Can't validate yet, allow it
+		var index_value := int(value) if typeof(value) == TYPE_INT else -1
+		return index_value >= 0 and index_value < entry_list_size
+	
+	return true
+
+
+static func get_validation_warning(field_name: String, value: Variant) -> String:
+	var lower_field := field_name.strip_edges().to_lower()
+	var str_value := String(value).strip_edges()
+	
+	# Optional field warnings
+	if lower_field in ["comment", "active"]:
+		if str_value.is_empty():
+			return "Field is empty (optional)"
+	
+	return ""

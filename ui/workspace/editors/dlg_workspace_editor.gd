@@ -1154,6 +1154,20 @@ func _apply_string_edit(struct_value: Dictionary, field_name: String, new_text: 
 	if TypedFieldHelpers.is_resref_field(field_name):
 		validated_text = _dlg_document.validate_resref(new_text)
 	
+	# Check for required field validation (blocking)
+	if TypedFieldHelpers.is_required_field(field_name):
+		# For Index field, we need to know the target list size
+		# This is a simplified check; full validation happens at save time
+		var entry_list_size := _dlg_document.get_struct_list("EntryList").size()
+		if not TypedFieldHelpers.validate_required_field(field_name, validated_text, entry_list_size):
+			push_error("Required field '%s' has invalid value '%s'. Must be 0-%d." % [field_name, validated_text, entry_list_size - 1])
+			return
+	
+	# Check for optional field warnings
+	var warning := TypedFieldHelpers.get_validation_warning(field_name, validated_text)
+	if not warning.is_empty():
+		push_warning("Field '%s': %s" % [field_name, warning])
+	
 	if String(current) == validated_text:
 		return
 	var ur := _get_undo_redo()
@@ -1225,6 +1239,13 @@ func _apply_int_edit(struct_value: Dictionary, field_name: String, new_value: fl
 	if TypedFieldHelpers.has_enum_hints(field_name):
 		if not TypedFieldHelpers.validate_enum_value(field_name, normalized):
 			push_warning("Invalid enum value %d for field %s" % [normalized, field_name])
+			return
+	
+	# Check for required field validation (blocking)
+	if TypedFieldHelpers.is_required_field(field_name):
+		var entry_list_size := _dlg_document.get_struct_list("EntryList").size()
+		if not TypedFieldHelpers.validate_required_field(field_name, normalized, entry_list_size):
+			push_error("Required field '%s' must be 0-%d, got %d" % [field_name, entry_list_size - 1, normalized])
 			return
 	
 	var current: Variant = struct_value.get(field_name, 0)
