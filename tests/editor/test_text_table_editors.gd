@@ -34,14 +34,17 @@ func _assert_text_table_editors() -> void:
 	var controller := KotorWorkspaceController.new(editor_state)
 
 	var twoda_editor := KotorTwoDaWorkspaceEditor.new()
+	twoda_editor._skip_preflight_for_testing = true
 	twoda_editor.setup(editor_state, controller)
 	root.add_child(twoda_editor)
 
 	var tlk_editor := KotorTLKWorkspaceEditor.new()
+	tlk_editor._skip_preflight_for_testing = true
 	tlk_editor.setup(editor_state, controller)
 	root.add_child(tlk_editor)
 
 	var script_editor := KotorScriptWorkspaceEditor.new()
+	script_editor._skip_preflight_for_testing = true
 	script_editor.setup(editor_state, controller)
 	root.add_child(script_editor)
 

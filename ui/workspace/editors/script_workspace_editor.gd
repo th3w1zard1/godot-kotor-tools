@@ -6,6 +6,7 @@ const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorScriptDocument := preload("../../../resources/documents/kotor_script_document.gd")
 const KotorValidationPanel := preload("../panels/validation_panel.gd")
+const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 
 const SCRIPT_EXTENSIONS := {
 	"nss": true,
@@ -17,6 +18,7 @@ var _path_label: Label
 var _summary_label: Label
 var _text_edit: TextEdit
 var _validation_panel: KotorValidationPanel
+var _preflight_dialog: KotorPreflightDialog
 
 var _mutation_service: RefCounted
 var _document: KotorScriptDocument
@@ -29,6 +31,12 @@ var _pending_label := ""
 var _pending_bytes := PackedByteArray()
 var _pending_extension := ""
 var _pending_source_path := ""
+
+# Preflight state for deferred apply
+var _preflight_pending_path := ""
+var _preflight_pending_preview: Dictionary = {}
+var _preflight_pending_kind := ""  # "export" or "install"
+var _skip_preflight_for_testing := false
 
 
 func _on_workspace_setup() -> void:
@@ -92,21 +100,39 @@ func save_document_to_path(path: String) -> Dictionary:
 	if _document == null or _document.get_extension() != "nss":
 		return {}
 	var target_path := _ensure_extension(path, "nss")
-	var previous_key := _document_key
-	var result: Dictionary = _mutation_service.apply_export_to_path(target_path, _document.get_text())
-	_status_text = _mutation_message(result)
-	if result.get("applied", false):
-		var bytes := _document.get_text().to_ascii_buffer()
-		_loading = true
-		_document = KotorScriptDocument.new().setup(target_path, bytes, get_editor_state(), "nss", target_path)
-		_loading = false
-		_connect_document_signal()
-		_dirty = false
-		_register_controller_document()
-		_remove_previous_controller_document(previous_key)
-	_update_controller_dirty_state()
-	_refresh_view()
-	return result
+	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, _document.get_text())
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Export failed")
+		_refresh_view()
+		return preview
+	
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "File is already up to date")
+		_refresh_view()
+		return preview
+	
+	if _skip_preflight_for_testing:
+		var previous_key := _document_key
+		var result: Dictionary = _mutation_service.apply_export_to_path(target_path, _document.get_text(), true)
+		_status_text = _mutation_message(result)
+		if result.get("applied", false):
+			var bytes := _document.get_text().to_ascii_buffer()
+			_loading = true
+			_document = KotorScriptDocument.new().setup(target_path, bytes, get_editor_state(), "nss", target_path)
+			_loading = false
+			_connect_document_signal()
+			_dirty = false
+			_register_controller_document()
+			_remove_previous_controller_document(previous_key)
+		_update_controller_dirty_state()
+		_refresh_view()
+		return result
+	
+	_preflight_pending_path = target_path
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "export"
+	_show_preflight_dialog(preview)
+	return {}
 
 
 func install_document_to_override() -> Dictionary:
@@ -121,14 +147,99 @@ func install_document_to_override() -> Dictionary:
 		_status_text = "Resolve script validation issues before installing to override."
 		_refresh_view()
 		return {"ok": false, "message": _status_text, "issues": issues}
-	var result: Dictionary = _mutation_service.apply_install_to_override(_resolve_gamefs(), _document.get_file_name(), _document.get_text())
+	
+	var preview: Dictionary = _mutation_service.preview_install_to_override(_resolve_gamefs(), _document.get_file_name(), _document.get_text())
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Install failed")
+		_refresh_view()
+		return preview
+	
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "File is already up to date")
+		_refresh_view()
+		return preview
+	
+	if _skip_preflight_for_testing:
+		var result: Dictionary = _mutation_service.apply_install_to_override(_resolve_gamefs(), _document.get_file_name(), _document.get_text(), true)
+		_status_text = _mutation_message(result)
+		if result.get("applied", false):
+			_dirty = false
+			_refresh_gamefs()
+		_update_controller_dirty_state()
+		_refresh_view()
+		return result
+	
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "install"
+	_show_preflight_dialog(preview)
+	return {}
+
+
+func _show_preflight_dialog(preview: Dictionary) -> void:
+	if _preflight_dialog == null:
+		_preflight_dialog = KotorPreflightDialog.new()
+		_preflight_dialog.preflight_proceed.connect(_on_preflight_proceed)
+		_preflight_dialog.preflight_cancel.connect(_on_preflight_cancel)
+		add_child(_preflight_dialog)
+	_preflight_dialog.show_preflight(preview)
+
+
+func _on_preflight_proceed() -> void:
+	if _preflight_pending_kind == "export":
+		_apply_export_mutation()
+	elif _preflight_pending_kind == "install":
+		_apply_install_mutation()
+	_preflight_pending_kind = ""
+	_preflight_pending_path = ""
+	_preflight_pending_preview = {}
+
+
+func _on_preflight_cancel() -> void:
+	_status_text = "Operation cancelled."
+	_refresh_view()
+	_preflight_pending_kind = ""
+	_preflight_pending_path = ""
+	_preflight_pending_preview = {}
+
+
+func _apply_export_mutation() -> void:
+	if _preflight_pending_preview.is_empty():
+		return
+	var previous_key := _document_key
+	var result: Dictionary = _mutation_service.apply_export_to_path(
+		_preflight_pending_path,
+		_document.get_text(),
+		true
+	)
+	_status_text = _mutation_message(result)
+	if result.get("applied", false):
+		var bytes := _document.get_text().to_ascii_buffer()
+		_loading = true
+		_document = KotorScriptDocument.new().setup(_preflight_pending_path, bytes, get_editor_state(), "nss", _preflight_pending_path)
+		_loading = false
+		_connect_document_signal()
+		_dirty = false
+		_register_controller_document()
+		_remove_previous_controller_document(previous_key)
+	_update_controller_dirty_state()
+	_refresh_view()
+
+
+func _apply_install_mutation() -> void:
+	if _preflight_pending_preview.is_empty():
+		return
+	var result: Dictionary = _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		_document.get_file_name(),
+		_document.get_text(),
+		true
+	)
 	_status_text = _mutation_message(result)
 	if result.get("applied", false):
 		_dirty = false
 		_refresh_gamefs()
 	_update_controller_dirty_state()
 	_refresh_view()
-	return result
 
 
 func _build_ui() -> void:

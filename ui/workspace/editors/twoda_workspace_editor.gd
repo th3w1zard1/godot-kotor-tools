@@ -8,12 +8,14 @@ const KotorTwoDaDocument := preload("../../../resources/documents/kotor_twoda_do
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorValidationPanel := preload("../panels/validation_panel.gd")
+const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 
 var _toolbar: HBoxContainer
 var _path_label: Label
 var _tree: Tree
 var _summary_label: Label
 var _validation_panel: KotorValidationPanel
+var _preflight_dialog: KotorPreflightDialog
 
 var _mutation_service: RefCounted
 var _resource: TwoDaResource
@@ -27,6 +29,12 @@ var _document_key := ""
 var _pending_resource: TwoDaResource
 var _pending_source_path := ""
 var _pending_file_name := ""
+
+# Preflight state for deferred apply
+var _preflight_pending_path := ""
+var _preflight_pending_preview: Dictionary = {}
+var _preflight_pending_kind := ""  # "export" or "install"
+var _skip_preflight_for_testing := false
 
 
 func _on_workspace_setup() -> void:
@@ -105,18 +113,36 @@ func save_document_to_path(path: String) -> Dictionary:
 	if _resource == null:
 		return {}
 	var target_path := _ensure_extension(path, "2da")
-	var previous_key := _document_key
-	var result: Dictionary = _mutation_service.apply_export_to_path(target_path, _resource)
-	_status_text = _mutation_message(result)
-	if result.get("applied", false):
-		_source_path = target_path
-		_file_name = target_path.get_file()
-		_dirty = false
-		_register_controller_document()
-		_remove_previous_controller_document(previous_key)
-	_update_controller_dirty_state()
-	_refresh_status()
-	return result
+	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, _resource)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Export failed")
+		_refresh_status()
+		return preview
+	
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "File is already up to date")
+		_refresh_status()
+		return preview
+	
+	if _skip_preflight_for_testing:
+		var previous_key := _document_key
+		var result: Dictionary = _mutation_service.apply_export_to_path(target_path, _resource, true)
+		_status_text = _mutation_message(result)
+		if result.get("applied", false):
+			_source_path = target_path
+			_file_name = target_path.get_file()
+			_dirty = false
+			_register_controller_document()
+			_remove_previous_controller_document(previous_key)
+		_update_controller_dirty_state()
+		_refresh_status()
+		return result
+	
+	_preflight_pending_path = target_path
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "export"
+	_show_preflight_dialog(preview)
+	return {}
 
 
 func install_document_to_override() -> Dictionary:
@@ -133,14 +159,97 @@ func install_document_to_override() -> Dictionary:
 		_refresh_validation()
 		_refresh_status()
 		return blocked
-	var result: Dictionary = _mutation_service.apply_install_to_override(_resolve_gamefs(), _current_file_name(), _resource)
+	
+	var preview: Dictionary = _mutation_service.preview_install_to_override(_resolve_gamefs(), _current_file_name(), _resource)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Install failed")
+		_refresh_validation()
+		_refresh_status()
+		return preview
+	
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "File is already up to date")
+		_refresh_status()
+		return preview
+	
+	if _skip_preflight_for_testing:
+		var result: Dictionary = _mutation_service.apply_install_to_override(_resolve_gamefs(), _current_file_name(), _resource, true)
+		_status_text = _mutation_message(result)
+		if result.get("applied", false):
+			_dirty = false
+			_refresh_gamefs()
+		_update_controller_dirty_state()
+		_refresh_status()
+		return result
+	
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "install"
+	_show_preflight_dialog(preview)
+	return {}
+
+
+func _show_preflight_dialog(preview: Dictionary) -> void:
+	if _preflight_dialog == null:
+		_preflight_dialog = KotorPreflightDialog.new()
+		_preflight_dialog.preflight_proceed.connect(_on_preflight_proceed)
+		_preflight_dialog.preflight_cancel.connect(_on_preflight_cancel)
+		add_child(_preflight_dialog)
+	_preflight_dialog.show_preflight(preview)
+
+
+func _on_preflight_proceed() -> void:
+	if _preflight_pending_kind == "export":
+		_apply_export_mutation()
+	elif _preflight_pending_kind == "install":
+		_apply_install_mutation()
+	_preflight_pending_kind = ""
+	_preflight_pending_path = ""
+	_preflight_pending_preview = {}
+
+
+func _on_preflight_cancel() -> void:
+	_status_text = "Operation cancelled."
+	_refresh_status()
+	_preflight_pending_kind = ""
+	_preflight_pending_path = ""
+	_preflight_pending_preview = {}
+
+
+func _apply_export_mutation() -> void:
+	if _preflight_pending_preview.is_empty():
+		return
+	var previous_key := _document_key
+	var result: Dictionary = _mutation_service.apply_export_to_path(
+		_preflight_pending_path,
+		_resource,
+		true
+	)
+	_status_text = _mutation_message(result)
+	if result.get("applied", false):
+		_source_path = _preflight_pending_path
+		_file_name = _preflight_pending_path.get_file()
+		_dirty = false
+		_register_controller_document()
+		_remove_previous_controller_document(previous_key)
+	_update_controller_dirty_state()
+	_refresh_status()
+
+
+func _apply_install_mutation() -> void:
+	if _preflight_pending_preview.is_empty():
+		return
+	var result: Dictionary = _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		_current_file_name(),
+		_resource,
+		true
+	)
 	_status_text = _mutation_message(result)
 	if result.get("applied", false):
 		_dirty = false
 		_refresh_gamefs()
 	_update_controller_dirty_state()
 	_refresh_status()
-	return result
 
 
 func _build_ui() -> void:

@@ -21,6 +21,7 @@ func _initialize() -> void:
 	_editor_state.game_path = _install_root
 	_editor_state.refresh_gamefs()
 	_editor = KotorDLGWorkspaceEditor.new()
+	_editor._skip_preflight_for_testing = true
 	_editor.setup(_editor_state)
 	root.add_child(_editor)
 	call_deferred("_assert_editor_behavior")

@@ -10,12 +10,14 @@ const KotorTwoDaWorkspaceEditor := preload("./editors/twoda_workspace_editor.gd"
 const KotorTLKWorkspaceEditor := preload("./editors/tlk_workspace_editor.gd")
 const KotorScriptWorkspaceEditor := preload("./editors/script_workspace_editor.gd")
 const KotorResourceBrowserPanel := preload("./panels/resource_browser_panel.gd")
+const KotorTransactionHistoryPanel := preload("./panels/transaction_history_panel.gd")
 
 var _controller: RefCounted
 var _tabs: TabContainer
 var _target_context: RefCounted
 var _mutation_service: RefCounted
 var _resource_browser: Control
+var _transaction_history: Control
 var _shell: Control
 var _dlg_editor: Control
 var _twoda_editor: Control
@@ -64,6 +66,13 @@ func _ensure_shell() -> void:
 	_resource_browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_resource_browser.resource_requested.connect(_open_workspace_entry)
 	_tabs.add_child(_resource_browser)
+
+	_transaction_history = KotorTransactionHistoryPanel.new()
+	_transaction_history.name = "Transactions"
+	_transaction_history.setup(_controller)
+	_transaction_history.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_transaction_history.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_transaction_history)
 
 	_shell = KotorEditorShell.new()
 	_shell.name = "Legacy Workspace"
@@ -122,6 +131,10 @@ func get_dlg_workspace_editor() -> Control:
 
 func get_resource_browser() -> Control:
 	return _resource_browser
+
+
+func get_transaction_history_panel() -> Control:
+	return _transaction_history
 
 
 func get_mutation_service() -> RefCounted:
