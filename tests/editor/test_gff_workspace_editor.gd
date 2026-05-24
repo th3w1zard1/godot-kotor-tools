@@ -7,6 +7,7 @@ const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const UTCResource := preload("../../resources/typed/utc_resource.gd")
 const AREResource := preload("../../resources/typed/are_resource.gd")
 const GFFParser := preload("../../formats/gff_parser.gd")
+const GFFResourceFactory := preload("../../resources/gff_resource_factory.gd")
 
 var _install_root := ""
 var _utc_saved_path := ""
@@ -70,6 +71,9 @@ func _exercise_are_round_trip(editor: KotorGFFWorkspaceEditor, controller: Kotor
 	assert(editor.has_document())
 	assert(editor.get_document().get_tag() == "workspace_area")
 
+	editor.apply_display_name_edit("Edited Area Name")
+	assert(editor.get_document().get_locstring_text("Name") == "Edited Area Name")
+
 	editor.get_document().set_string("Tag", "edited_area")
 	assert(editor.is_document_dirty())
 
@@ -81,6 +85,13 @@ func _exercise_are_round_trip(editor: KotorGFFWorkspaceEditor, controller: Kotor
 	var install_result := editor.install_document_to_override()
 	assert(install_result.get("ok", false))
 	assert(FileAccess.file_exists(_install_root.path_join("override").path_join("test_area.are")))
+
+	var saved_bytes := FileAccess.get_file_as_bytes(_are_saved_path)
+	var reparsed := GFFParser.parse_bytes(saved_bytes)
+	var saved_resource := GFFResourceFactory.create_from_parser_result(reparsed)
+	var saved_document := saved_resource.create_document()
+	assert(saved_document.get_locstring_text("Name") == "Edited Area Name")
+	assert(saved_document.get_string("Tag") == "edited_area")
 
 	var documents: Array[Dictionary] = controller.document_registry.list_documents()
 	assert(documents.size() == 2)

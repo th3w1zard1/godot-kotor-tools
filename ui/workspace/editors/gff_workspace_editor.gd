@@ -23,6 +23,8 @@ var _toolbar: HBoxContainer
 var _path_label: Label
 var _summary_label: Label
 var _tag_edit: LineEdit
+var _display_name_row: HBoxContainer
+var _display_name_edit: LineEdit
 var _tree: Tree
 var _validation_panel: KotorValidationPanel
 var _preflight_dialog: KotorPreflightDialog
@@ -279,6 +281,18 @@ func _build_ui() -> void:
 	_tag_edit.focus_exited.connect(_on_tag_focus_exited)
 	tag_row.add_child(_tag_edit)
 
+	_display_name_row = HBoxContainer.new()
+	add_child(_display_name_row)
+	var display_name_label := Label.new()
+	display_name_label.text = "Display name:"
+	_display_name_row.add_child(display_name_label)
+	_display_name_edit = LineEdit.new()
+	_display_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_display_name_edit.text_submitted.connect(_on_display_name_submitted)
+	_display_name_edit.focus_exited.connect(_on_display_name_focus_exited)
+	_display_name_row.add_child(_display_name_edit)
+	_display_name_row.visible = false
+
 	_summary_label = Label.new()
 	_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_summary_label)
@@ -301,6 +315,7 @@ func _build_ui() -> void:
 func _refresh_view() -> void:
 	_refresh_tree()
 	_refresh_tag_edit()
+	_refresh_display_name_edit()
 	_refresh_summary()
 	_refresh_validation()
 	_refresh_status()
@@ -323,6 +338,27 @@ func _refresh_tag_edit() -> void:
 	_tag_edit.text = _document.get_string("Tag")
 
 
+func _display_name_field() -> String:
+	if _document == null:
+		return ""
+	if _document.has_field("LocName"):
+		return "LocName"
+	if _document.has_field("Name"):
+		return "Name"
+	return ""
+
+
+func _refresh_display_name_edit() -> void:
+	if _display_name_row == null or _display_name_edit == null:
+		return
+	var field := _display_name_field()
+	_display_name_row.visible = not field.is_empty()
+	if field.is_empty():
+		_display_name_edit.text = ""
+		return
+	_display_name_edit.text = _document.get_locstring_text(field)
+
+
 func _refresh_summary() -> void:
 	if _summary_label == null or _resource == null:
 		return
@@ -337,7 +373,7 @@ func _refresh_validation() -> void:
 		return
 	_validation_panel.set_success("GFF validation passed.", [
 		"Blueprint data is loaded.",
-		"Tag edits round-trip through the mutation service.",
+		"Tag and display-name edits round-trip through the mutation service.",
 	])
 
 
@@ -423,6 +459,35 @@ func _apply_tag_edit(new_text: String) -> void:
 	_refresh_status()
 
 
+func apply_display_name_edit(new_text: String) -> void:
+	_apply_display_name_edit(new_text)
+
+
+func _on_display_name_submitted(new_text: String) -> void:
+	_apply_display_name_edit(new_text)
+
+
+func _on_display_name_focus_exited() -> void:
+	if _display_name_edit == null:
+		return
+	_apply_display_name_edit(_display_name_edit.text)
+
+
+func _apply_display_name_edit(new_text: String) -> void:
+	if _document == null:
+		return
+	var field := _display_name_field()
+	if field.is_empty():
+		return
+	if _document.set_locstring_text(field, new_text.strip_edges()):
+		_dirty = true
+		_update_controller_dirty_state()
+	_refresh_display_name_edit()
+	_refresh_tree()
+	_refresh_summary()
+	_refresh_status()
+
+
 func _connect_document_signal() -> void:
 	if _document == null:
 		return
@@ -441,6 +506,8 @@ func _disconnect_document_signal() -> void:
 
 func _on_document_changed() -> void:
 	_dirty = true
+	_refresh_display_name_edit()
+	_refresh_tree()
 	_refresh_summary()
 	_update_controller_dirty_state()
 	_refresh_status()
@@ -461,6 +528,10 @@ func _clear_document_state(message: String) -> void:
 		_summary_label.text = ""
 	if _tag_edit != null:
 		_tag_edit.text = ""
+	if _display_name_row != null:
+		_display_name_row.visible = false
+	if _display_name_edit != null:
+		_display_name_edit.text = ""
 	_refresh_validation()
 	_refresh_status()
 
