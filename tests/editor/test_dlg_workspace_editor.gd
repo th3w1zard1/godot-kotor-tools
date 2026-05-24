@@ -5,6 +5,7 @@ const KotorDLGWorkspaceEditor := preload("../../ui/workspace/editors/dlg_workspa
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const DLGResource := preload("../../resources/typed/dlg_resource.gd")
 const GFFParser := preload("../../formats/gff_parser.gd")
+const TypedFieldHelpers := preload("../../ui/workspace/typed_field_helpers.gd")
 
 var _editor: KotorDLGWorkspaceEditor
 var _editor_state: KotorEditorState
@@ -60,9 +61,16 @@ func _assert_editor_behavior() -> void:
 	_test_changed_signal_emissions()
 	_test_validation_state_after_undo()
 	_test_multi_entry_edits_and_undo()
-
-	_cleanup()
-	quit()
+	
+	# Q6 Array mutation tests
+	_test_array_insert_basic()
+	_test_array_remove_basic()
+	_test_array_reorder_basic()
+	_test_array_insert_empty_list()
+	_test_array_remove_last_item()
+	_test_array_undo_redo_round_trip()
+	_test_array_validation_required_field()
+	_test_array_validation_optional_field()
 
 
 func _test_string_edit_undo_redo() -> void:
@@ -411,6 +419,152 @@ func _build_dialogue_resource() -> DLGResource:
 		},
 	})
 	return resource
+
+
+# Q6 Array Mutation Tests
+
+func _test_array_insert_basic() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var entry_list = doc.get_struct_list("EntryList")
+	assert(entry_list.size() == 1, "Should start with 1 entry")
+	
+	var reply_list = doc.get_struct_list("ReplyList")
+	var initial_size = reply_list.size()
+	
+	var new_reply = {"Index": 0, "Comment": "Test reply", "Active": "", "IsChild": 0}
+	var success = doc.insert_struct_at_array("ReplyList", initial_size, new_reply)
+	assert(success, "Insert should succeed")
+	assert(reply_list.size() == initial_size + 1, "ReplyList should grow by 1")
+	assert(reply_list[initial_size] == new_reply, "New reply should be at inserted index")
+	assert(_editor.is_document_dirty(), "Document should be dirty after insert")
+
+
+func _test_array_remove_basic() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var reply_list = doc.get_struct_list("ReplyList")
+	
+	var initial_size = reply_list.size()
+	if initial_size == 0:
+		# Add one to remove
+		var new_reply = {"Index": 0, "Comment": "Test", "Active": "", "IsChild": 0}
+		doc.insert_struct_at_array("ReplyList", 0, new_reply)
+	
+	var success = doc.remove_struct_from_array("ReplyList", 0)
+	assert(success, "Remove should succeed")
+	assert(reply_list.size() == initial_size, "ReplyList should return to initial size")
+	assert(_editor.is_document_dirty(), "Document should be dirty after remove")
+
+
+func _test_array_reorder_basic() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var reply_list = doc.get_struct_list("ReplyList")
+	
+	# Add two replies to reorder
+	var reply1 = {"Index": 0, "Comment": "Reply 1", "Active": "", "IsChild": 0}
+	var reply2 = {"Index": 0, "Comment": "Reply 2", "Active": "", "IsChild": 0}
+	doc.insert_struct_at_array("ReplyList", 0, reply1)
+	doc.insert_struct_at_array("ReplyList", 1, reply2)
+	
+	assert(reply_list[0]["Comment"] == "Reply 1", "First item should be Reply 1")
+	assert(reply_list[1]["Comment"] == "Reply 2", "Second item should be Reply 2")
+	
+	var success = doc.reorder_array_item("ReplyList", 0, 1)
+	assert(success, "Reorder should succeed")
+	assert(reply_list[0]["Comment"] == "Reply 2", "After reorder, first should be Reply 2")
+	assert(reply_list[1]["Comment"] == "Reply 1", "After reorder, second should be Reply 1")
+
+
+func _test_array_insert_empty_list() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var entry_list = doc.get_struct_list("EntryList")
+	var first_entry = entry_list[0] if entry_list.size() > 0 else {}
+	
+	if not first_entry.is_empty() and first_entry.has("RepliesList"):
+		var replies = first_entry.get("RepliesList", [])
+		var initial_size = (replies as Array).size() if typeof(replies) == TYPE_ARRAY else 0
+		
+		var new_reply = {"Index": 0, "Comment": "", "Active": "", "IsChild": 0}
+		# Access via path instead of just array name (this tests the base class method works)
+		var entry_root = doc.get_root()
+		var test_list = entry_root.get("StartingList", [])
+		if typeof(test_list) == TYPE_ARRAY:
+			var success = doc.insert_struct_at_array("StartingList", (test_list as Array).size(), new_reply)
+			assert(success, "Insert to empty/partial list should succeed")
+
+
+func _test_array_remove_last_item() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var reply_list = doc.get_struct_list("ReplyList")
+	
+	# Add a reply if list is empty
+	if reply_list.size() == 0:
+		var new_reply = {"Index": 0, "Comment": "Only reply", "Active": "", "IsChild": 0}
+		doc.insert_struct_at_array("ReplyList", 0, new_reply)
+	
+	var final_size = reply_list.size() - 1
+	var success = doc.remove_struct_from_array("ReplyList", reply_list.size() - 1)
+	assert(success, "Remove last item should succeed")
+	assert(reply_list.size() == final_size, "List size should decrease")
+	assert(_editor.is_document_dirty(), "Document should be dirty")
+
+
+func _test_array_undo_redo_round_trip() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var reply_list = doc.get_struct_list("ReplyList")
+	var initial_size = reply_list.size()
+	
+	_editor._apply_array_insert("ReplyList", 0, {"Index": 0, "Comment": "Undo test", "Active": "", "IsChild": 0})
+	assert(reply_list.size() == initial_size + 1, "Insert should increase size")
+	
+	var ur := _editor._get_undo_redo()
+	if ur != null:
+		ur.undo()
+		assert(reply_list.size() == initial_size, "Undo should restore size")
+		ur.redo()
+		assert(reply_list.size() == initial_size + 1, "Redo should restore inserted state")
+
+
+func _test_array_validation_required_field() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var entry_list = doc.get_struct_list("EntryList")
+	var test_struct = {"Index": entry_list.size(), "Comment": "", "Active": "", "IsChild": 0}
+	
+	# This Index is out of bounds (>= entry_list.size())
+	# The validation should detect this and block the edit
+	var is_required = TypedFieldHelpers.is_required_field("Index")
+	assert(is_required, "Index should be required field")
+	
+	var is_valid = TypedFieldHelpers.validate_required_field("Index", entry_list.size(), entry_list.size())
+	assert(not is_valid, "Out-of-bounds Index should be invalid")
+
+
+func _test_array_validation_optional_field() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	
+	# Test that optional fields don't block operations
+	var is_required_comment = TypedFieldHelpers.is_required_field("Comment")
+	assert(not is_required_comment, "Comment should not be required field")
+	
+	var warning = TypedFieldHelpers.get_validation_warning("Comment", "")
+	assert(not warning.is_empty(), "Empty comment should generate warning")
+	
+	var warning_active = TypedFieldHelpers.get_validation_warning("Active", "")
+	assert(not warning_active.is_empty(), "Empty active should generate warning")
 
 
 func _cleanup() -> void:
