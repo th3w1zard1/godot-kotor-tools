@@ -1,6 +1,6 @@
 ---
 title: "feat: Expand Godot support implementation backlog"
-status: "active"
+status: "completed"
 created: "2026-05-24"
 owner: "copilot"
 ---
@@ -135,4 +135,3 @@ The current gap analysis identifies priority areas but remains high-level. Contr
 ## Deferred to Implementation
 
 - Final selection of which backlog item ships first should be decided in a follow-up execution plan based on current branch priorities.
-
