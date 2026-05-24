@@ -1,6 +1,6 @@
 ---
 title: "feat: Establish product strategy baseline"
-status: "active"
+status: "completed"
 created: "2026-05-24"
 owner: "copilot"
 ---
@@ -110,4 +110,3 @@ The repository now has strong implementation and gap-analysis docs, but lacks a 
 ## Deferred to Implementation
 
 - Strategy iteration cadence and owner assignment can be refined in future updates after more execution cycles land.
-
