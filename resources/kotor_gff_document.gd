@@ -106,6 +106,59 @@ func set_field(name: String, value: Variant) -> bool:
 	return true
 
 
+func get_field_at_path(path: Array) -> Variant:
+	var current: Variant = _root
+	for segment in path:
+		if typeof(current) == TYPE_DICTIONARY:
+			if not current.has(segment):
+				return null
+			current = current[segment]
+		elif typeof(current) == TYPE_ARRAY and typeof(segment) == TYPE_INT:
+			var list := current as Array
+			if segment < 0 or segment >= list.size():
+				return null
+			current = list[segment]
+		else:
+			return null
+	return current
+
+
+func set_field_at_path(path: Array, value: Variant) -> bool:
+	if path.is_empty():
+		return false
+	var parent_path: Array = path.slice(0, path.size() - 1)
+	var key: Variant = path[path.size() - 1]
+	var parent: Variant = _root if parent_path.is_empty() else get_field_at_path(parent_path)
+	if typeof(parent) != TYPE_DICTIONARY:
+		return false
+	if not parent.has(key):
+		return false
+	if parent.get(key) == value:
+		return false
+	parent[key] = value
+	_notify_changed()
+	return true
+
+
+func coerce_scalar_edit_text(text: String, current: Variant) -> Variant:
+	match typeof(current):
+		TYPE_INT:
+			var stripped := text.strip_edges()
+			return int(stripped) if stripped.is_valid_int() else current
+		TYPE_FLOAT:
+			var stripped_float := text.strip_edges()
+			return float(stripped_float) if stripped_float.is_valid_float() else current
+		TYPE_BOOL:
+			var normalized := text.strip_edges().to_lower()
+			if normalized in ["true", "1", "yes"]:
+				return true
+			if normalized in ["false", "0", "no"]:
+				return false
+			return current
+		_:
+			return text.strip_edges()
+
+
 func set_string(name: String, value: String) -> bool:
 	return set_field(name, value)
 
@@ -230,3 +283,5 @@ func _notify_changed() -> void:
 	var owner: Resource = _owner_resource_ref.get_ref()
 	if owner != null:
 		owner.emit_changed()
+
+

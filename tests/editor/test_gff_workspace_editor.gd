@@ -50,6 +50,9 @@ func _exercise_utc_round_trip(editor: KotorGFFWorkspaceEditor, controller: Kotor
 	assert(editor.has_document())
 	assert(editor.get_document().get_tag() == "workspace_creature")
 
+	editor.apply_tree_field_edit(["TemplateResRef"], "edited_template")
+	assert(editor.get_document().get_resref("TemplateResRef") == "edited_template")
+
 	editor.get_document().set_string("Tag", "edited_creature")
 	assert(editor.is_document_dirty())
 
@@ -61,6 +64,11 @@ func _exercise_utc_round_trip(editor: KotorGFFWorkspaceEditor, controller: Kotor
 	var install_result := editor.install_document_to_override()
 	assert(install_result.get("ok", false))
 	assert(FileAccess.file_exists(_install_root.path_join("override").path_join("test_creature.utc")))
+
+	var utc_saved_bytes := FileAccess.get_file_as_bytes(_utc_saved_path)
+	var utc_reparsed := GFFParser.parse_bytes(utc_saved_bytes)
+	var utc_saved := GFFResourceFactory.create_from_parser_result(utc_reparsed)
+	assert(utc_saved.create_document().get_resref("TemplateResRef") == "edited_template")
 
 	assert(str(controller.document_registry.list_documents()[0].get("editor_kind", "")) == "gff")
 	assert(controller.document_registry.get_document_entry("gff:%s" % _utc_saved_path).get("dirty", false) == false)

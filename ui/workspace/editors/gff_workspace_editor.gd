@@ -304,6 +304,7 @@ func _build_ui() -> void:
 	_tree.set_column_title(0, "Field")
 	_tree.set_column_title(1, "Value")
 	_tree.column_titles_visible = true
+	_tree.item_edited.connect(_on_tree_item_edited)
 	add_child(_tree)
 
 	_validation_panel = KotorValidationPanel.new()
@@ -373,7 +374,7 @@ func _refresh_validation() -> void:
 		return
 	_validation_panel.set_success("GFF validation passed.", [
 		"Blueprint data is loaded.",
-		"Tag and display-name edits round-trip through the mutation service.",
+		"Tag, display-name, and scalar tree edits round-trip through the mutation service.",
 	])
 
 
@@ -463,6 +464,10 @@ func apply_display_name_edit(new_text: String) -> void:
 	_apply_display_name_edit(new_text)
 
 
+func apply_tree_field_edit(path: Array, text: String) -> void:
+	_apply_tree_field_edit(path, text)
+
+
 func _on_display_name_submitted(new_text: String) -> void:
 	_apply_display_name_edit(new_text)
 
@@ -484,6 +489,35 @@ func _apply_display_name_edit(new_text: String) -> void:
 		_update_controller_dirty_state()
 	_refresh_display_name_edit()
 	_refresh_tree()
+	_refresh_summary()
+	_refresh_status()
+
+
+func _on_tree_item_edited() -> void:
+	if _tree == null:
+		return
+	var item: TreeItem = _tree.get_edited()
+	if item == null:
+		return
+	var path: Variant = item.get_metadata(1)
+	if typeof(path) != TYPE_ARRAY:
+		return
+	_apply_tree_field_edit(path, item.get_text(1))
+
+
+func _apply_tree_field_edit(path: Array, text: String) -> void:
+	if _document == null or path.is_empty():
+		return
+	var current: Variant = _document.get_field_at_path(path)
+	if current == null and text.strip_edges().is_empty():
+		return
+	var coerced: Variant = _document.coerce_scalar_edit_text(text, current)
+	if _document.set_field_at_path(path, coerced):
+		_dirty = true
+		_update_controller_dirty_state()
+	_refresh_tree()
+	_refresh_tag_edit()
+	_refresh_display_name_edit()
 	_refresh_summary()
 	_refresh_status()
 
