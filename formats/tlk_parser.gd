@@ -40,6 +40,8 @@ class TLKEntry:
 	var strref:         int
 	var flags:          int
 	var sound_resref:   String
+	var volume_variance: int
+	var pitch_variance: int
 	var offset:         int
 	var size:           int
 	var sound_length:   float
@@ -79,7 +81,8 @@ static func parse_bytes(data: PackedByteArray) -> Dictionary:
 		e.strref        = i
 		e.flags         = _u32(data, ebase + 0x00)
 		e.sound_resref  = _read_text(data, ebase + 0x04, 16)
-		# 0x14 VolumeVariance, 0x18 PitchVariance — not stored, unused
+		e.volume_variance = _u32(data, ebase + 0x14)
+		e.pitch_variance = _u32(data, ebase + 0x18)
 		e.offset        = _u32(data, ebase + 0x1C)
 		e.size          = _u32(data, ebase + 0x20)
 		e.sound_length  = _u32_to_f32(_u32(data, ebase + 0x24))

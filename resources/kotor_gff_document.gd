@@ -24,13 +24,13 @@ const TYPE_LABELS := {
 
 var file_type: String = ""
 var _root: Dictionary = {}
-var _owner_resource: Resource
+var _owner_resource_ref: WeakRef
 
 
 func setup(new_file_type: String, root: Dictionary, owner_resource: Resource = null) -> KotorGFFDocument:
 	file_type = new_file_type.strip_edges().to_upper()
 	_root = root if root != null else {}
-	_owner_resource = owner_resource
+	_owner_resource_ref = weakref(owner_resource) if owner_resource != null else null
 	return self
 
 
@@ -225,5 +225,8 @@ func _summary_value_text(value: Variant) -> String:
 
 func _notify_changed() -> void:
 	changed.emit()
-	if _owner_resource != null:
-		_owner_resource.emit_changed()
+	if _owner_resource_ref == null:
+		return
+	var owner: Resource = _owner_resource_ref.get_ref()
+	if owner != null:
+		owner.emit_changed()

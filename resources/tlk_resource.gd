@@ -25,6 +25,8 @@ func apply_parser_result(parsed: Dictionary) -> void:
 			"strref": entry.strref,
 			"flags": entry.flags,
 			"sound_resref": entry.sound_resref,
+			"volume_variance": entry.volume_variance,
+			"pitch_variance": entry.pitch_variance,
 			"offset": entry.offset,
 			"size": entry.size,
 			"sound_length": entry.sound_length,

@@ -60,6 +60,8 @@ func _assert_text_table_editors() -> void:
 		"language_id": 0,
 		"entries": [_make_tlk_entry(0, "Hello there.")],
 	})
+	assert(int(tlk_resource.get_entry(0).get("volume_variance", -1)) == 12)
+	assert(int(tlk_resource.get_entry(0).get("pitch_variance", -1)) == 34)
 	tlk_editor.open_resource(tlk_resource, "", "dialog.tlk")
 	assert(tlk_editor.get_document().set_entry_text(0, "General Kenobi."))
 	assert(tlk_editor.is_document_dirty())
@@ -91,6 +93,8 @@ func _make_tlk_entry(strref: int, text: String) -> TLKParser.TLKEntry:
 	entry.strref = strref
 	entry.flags = 1
 	entry.sound_resref = ""
+	entry.volume_variance = 12
+	entry.pitch_variance = 34
 	entry.offset = 0
 	entry.size = text.length()
 	entry.sound_length = 0.0
