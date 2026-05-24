@@ -1,6 +1,6 @@
 ---
 title: "feat: Add Godot support gap analysis"
-status: "active"
+status: "completed"
 created: "2026-05-24"
 owner: "copilot"
 ---
@@ -130,4 +130,3 @@ The repository has strong format and editor tooling coverage, but there is no si
 ## Deferred Implementation Notes
 
 - After adoption, convert high-priority gaps into dedicated feature plans with scoped implementation units.
-
