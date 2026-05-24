@@ -50,7 +50,9 @@ func _assert_editor_behavior() -> void:
 
 	_test_string_edit_undo_redo()
 	_test_bool_edit_undo_redo()
+	_test_bool_edit_non_bool_original_value()
 	_test_int_edit_undo_redo()
+	_test_int_edit_non_int_original_value()
 	_test_locstring_edit_undo_redo()
 	_test_validation_failure_no_mutation()
 	_test_stale_document_state()
@@ -70,8 +72,16 @@ func _test_string_edit_undo_redo() -> void:
 	var old_comment = str(entry.get("Comment", ""))
 	
 	_editor._apply_string_edit(entry, "Comment", "Updated comment")
-	assert(str(entry.get("Comment", "")) == "Updated comment")
-	assert(_editor.is_document_dirty())
+	assert(str(entry.get("Comment", "")) == "Updated comment", "String edit should apply new value")
+	assert(_editor.is_document_dirty(), "Document should be dirty after string edit")
+	
+	# Verify undo/redo action was created properly by checking the undo state
+	var ur := _editor._get_undo_redo()
+	if ur != null:
+		ur.undo()
+		assert(str(entry.get("Comment", "")) == old_comment, "Undo should restore original value")
+		ur.redo()
+		assert(str(entry.get("Comment", "")) == "Updated comment", "Redo should restore new value")
 
 
 func _test_bool_edit_undo_redo() -> void:
@@ -82,8 +92,35 @@ func _test_bool_edit_undo_redo() -> void:
 	# Test with a bool field (we'll use a test struct value)
 	var test_struct = {"BoolField": false}
 	_editor._apply_bool_edit(test_struct, "BoolField", true)
-	assert(test_struct.get("BoolField", false) == true)
-	assert(_editor.is_document_dirty())
+	assert(test_struct.get("BoolField", false) == true, "Bool edit should apply new value")
+	assert(_editor.is_document_dirty(), "Document should be dirty after bool edit")
+	
+	# Verify undo/redo restores the original value
+	var ur := _editor._get_undo_redo()
+	if ur != null:
+		ur.undo()
+		assert(test_struct.get("BoolField", false) == false, "Undo should restore original bool value")
+		ur.redo()
+		assert(test_struct.get("BoolField", false) == true, "Redo should restore new bool value")
+
+
+func _test_bool_edit_non_bool_original_value() -> void:
+	# Test edge case: bool edit on a field with non-bool original value
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	
+	# Create struct with non-bool original value
+	var test_struct = {"Field": 42}  # Original value is int, not bool
+	_editor._apply_bool_edit(test_struct, "Field", true)
+	assert(test_struct.get("Field") == true, "Bool edit should apply new bool value")
+	
+	# Verify undo restores the non-bool original value (critical: not bool(42) = true)
+	var ur := _editor._get_undo_redo()
+	if ur != null:
+		ur.undo()
+		assert(test_struct.get("Field") == 42, "Undo should restore non-bool original value (42), not bool(42)")
+		ur.redo()
+		assert(test_struct.get("Field") == true, "Redo should restore new bool value")
 
 
 func _test_int_edit_undo_redo() -> void:
@@ -93,8 +130,35 @@ func _test_int_edit_undo_redo() -> void:
 	var old_value = int(reply.get("Index", 0))
 	
 	_editor._apply_int_edit(reply, "Index", 42.0)
-	assert(int(reply.get("Index", 0)) == 42)
-	assert(_editor.is_document_dirty())
+	assert(int(reply.get("Index", 0)) == 42, "Int edit should apply new value")
+	assert(_editor.is_document_dirty(), "Document should be dirty after int edit")
+	
+	# Verify undo/redo restores the original value
+	var ur := _editor._get_undo_redo()
+	if ur != null:
+		ur.undo()
+		assert(int(reply.get("Index", 0)) == old_value, "Undo should restore original int value")
+		ur.redo()
+		assert(int(reply.get("Index", 0)) == 42, "Redo should restore new int value")
+
+
+func _test_int_edit_non_int_original_value() -> void:
+	# Test edge case: int edit on a field with non-int original value
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	
+	# Create struct with non-int original value (e.g., float or missing)
+	var test_struct = {"Field": 3.14}  # Original value is float
+	_editor._apply_int_edit(test_struct, "Field", 42.0)
+	assert(test_struct.get("Field") == 42, "Int edit should apply new int value")
+	
+	# Verify undo restores the non-int original value (critical: not 0)
+	var ur := _editor._get_undo_redo()
+	if ur != null:
+		ur.undo()
+		assert(test_struct.get("Field") == 3.14, "Undo should restore non-int original value (3.14), not 0")
+		ur.redo()
+		assert(test_struct.get("Field") == 42, "Redo should restore new int value")
 
 
 func _test_locstring_edit_undo_redo() -> void:

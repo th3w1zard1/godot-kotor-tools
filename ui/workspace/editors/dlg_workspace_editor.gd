@@ -1117,13 +1117,13 @@ func _apply_bool_edit(struct_value: Dictionary, field_name: String, pressed: boo
 	if ur != null:
 		ur.create_action("Edit DLG bool field", UndoRedo.MERGE_DISABLE, self)
 		ur.add_do_method(self, "_exec_bool_edit", struct_value, field_name, pressed)
-		ur.add_undo_method(self, "_exec_bool_edit", struct_value, field_name, current if typeof(current) == TYPE_BOOL else not pressed)
+		ur.add_undo_method(self, "_exec_bool_edit", struct_value, field_name, current)
 		ur.commit_action()
 	else:
 		_exec_bool_edit(struct_value, field_name, pressed)
 
 
-func _exec_bool_edit(struct_value: Dictionary, field_name: String, value: bool) -> void:
+func _exec_bool_edit(struct_value: Dictionary, field_name: String, value: Variant) -> void:
 	if _dlg_document == null:
 		return
 	_dlg_document.set_struct_field(struct_value, field_name, value)
@@ -1146,13 +1146,13 @@ func _apply_int_edit(struct_value: Dictionary, field_name: String, new_value: fl
 	if ur != null:
 		ur.create_action("Edit DLG int field", UndoRedo.MERGE_DISABLE, self)
 		ur.add_do_method(self, "_exec_int_edit", struct_value, field_name, normalized)
-		ur.add_undo_method(self, "_exec_int_edit", struct_value, field_name, current if typeof(current) == TYPE_INT else 0)
+		ur.add_undo_method(self, "_exec_int_edit", struct_value, field_name, current)
 		ur.commit_action()
 	else:
 		_exec_int_edit(struct_value, field_name, normalized)
 
 
-func _exec_int_edit(struct_value: Dictionary, field_name: String, value: int) -> void:
+func _exec_int_edit(struct_value: Dictionary, field_name: String, value: Variant) -> void:
 	if _dlg_document == null:
 		return
 	_dlg_document.set_struct_field(struct_value, field_name, value)
