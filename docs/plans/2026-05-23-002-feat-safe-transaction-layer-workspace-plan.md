@@ -1,8 +1,9 @@
 ---
 title: feat: Implement the safe transaction layer workspace workflow
 type: feat
-status: active
+status: complete
 date: 2026-05-23
+completed: 2026-05-23
 ---
 
 ## Progress (2026-05-23)
@@ -12,8 +13,10 @@ date: 2026-05-23
 | U1 | Landed (`b5daddb`) |
 | U2 | Landed (`d503b7c`) — preflight dialogs in workspace editors |
 | U3 | Landed (`d503b7c`) — transaction history panel |
-| U4 | Landed — legacy dock install/export → shared mutation contract |
-| U5 | Landed — acceptance matrix tests + backup-capture guard |
+| U4 | Landed (`45fdb8c`) — legacy dock install/export → shared mutation contract |
+| U5 | Landed (`a7564af`) — acceptance matrix tests + backup-capture guard |
+
+All implementation units for this plan are landed on `feat/main-screen-workspace-foundation`. Follow-up work (dock preflight UI, rich diff preflight) is out of v1 scope per plan boundaries.
 
 # feat: Implement the safe transaction layer workspace workflow
 
