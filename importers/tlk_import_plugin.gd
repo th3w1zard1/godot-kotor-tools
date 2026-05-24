@@ -64,17 +64,5 @@ func _import(
 		return ERR_PARSE_ERROR
 
 	var res := TLKResource.new()
-	res.version = parsed.get("version", "")
-	res.language_id = parsed.get("language_id", 0)
-	for entry: TLKParser.TLKEntry in parsed.get("entries", []):
-		res.entries.append({
-			"strref": entry.strref,
-			"flags": entry.flags,
-			"sound_resref": entry.sound_resref,
-			"offset": entry.offset,
-			"size": entry.size,
-			"sound_length": entry.sound_length,
-			"text": entry.text,
-		})
-
+	res.apply_parser_result(parsed)
 	return ResourceSaver.save(res as Resource, "%s.%s" % [save_path, _get_save_extension()])

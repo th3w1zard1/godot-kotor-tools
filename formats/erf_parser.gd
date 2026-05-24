@@ -162,6 +162,55 @@ static func parse_file(path: String) -> Dictionary:
 	return parse_bytes(data)
 
 
+## Parse only the ERF/RIM header, key list, and resource list from disk.
+## Entry data is not loaded into memory; returned ERFEntry values contain offsets/sizes only.
+static func parse_header_file(path: String) -> Dictionary:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		push_error("ERFParser: cannot open '%s'" % path)
+		return {}
+	if file.get_length() < 160:
+		push_error("ERFParser: data too small (%d bytes)" % file.get_length())
+		file.close()
+		return {}
+
+	var header := file.get_buffer(160)
+	var file_type := _read_text(header, 0, 4)
+	var version := _read_text(header, 4, 4)
+	if version != "V1.0":
+		push_error("ERFParser: unsupported version '%s'" % version)
+		file.close()
+		return {}
+
+	var entry_count := _u32(header, 0x10)
+	var offset_to_keys := _u32(header, 0x18)
+	var offset_to_resources := _u32(header, 0x1C)
+	var tables_end := maxi(offset_to_keys + entry_count * 24, offset_to_resources + entry_count * 8)
+	file.seek(0)
+	var table_bytes := file.get_buffer(tables_end)
+	file.close()
+
+	var entries: Array[ERFEntry] = []
+	for i in entry_count:
+		var e := ERFEntry.new()
+		var kbase := offset_to_keys + i * 24
+		var rbase := offset_to_resources + i * 8
+
+		e.resref = _read_text(table_bytes, kbase, 16)
+		e.resource_id = _u32(table_bytes, kbase + 16)
+		e.resource_type = _u16(table_bytes, kbase + 20)
+		e.extension = RES_TYPES.get(e.resource_type, "bin")
+		e.offset = _u32(table_bytes, rbase)
+		e.size = _u32(table_bytes, rbase + 4)
+		entries.append(e)
+
+	return {
+		"file_type": file_type,
+		"version": version,
+		"entries": entries,
+	}
+
+
 ## Find an entry by resref name (case-insensitive).
 static func find_entry(result: Dictionary, resref: String) -> ERFEntry:
 	var lower := resref.to_lower()

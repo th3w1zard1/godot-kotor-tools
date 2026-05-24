@@ -39,3 +39,8 @@ func _ensure_dock() -> void:
 	_dock.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_dock.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_dock)
+
+
+func open_gamefs_entry(entry: Dictionary) -> void:
+	if _dock != null and _dock.has_method("open_gamefs_entry"):
+		_dock.call("open_gamefs_entry", entry)

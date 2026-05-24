@@ -1,7 +1,7 @@
 ## importers/gff_import_plugin.gd
 ## EditorImportPlugin for KotOR GFF-based files.
 ##
-## Imports the following extensions as a GFFResource (Dictionary stored in a .tres):
+## Imports the following extensions as typed GFF resources backed by shared document wrappers.
 ##   .utc  Creature blueprint
 ##   .utd  Door blueprint
 ##   .ute  Encounter table
@@ -21,7 +21,7 @@
 extends EditorImportPlugin
 
 const GFFParser := preload("../formats/gff_parser.gd")
-const GFFResource := preload("../resources/gff_resource.gd")
+const GFFResourceFactory := preload("../resources/gff_resource_factory.gd")
 
 func _get_importer_name() -> String:
 	return "kotor.gff"
@@ -76,8 +76,6 @@ func _import(
 	if parsed.is_empty():
 		return ERR_PARSE_ERROR
 
-	var res := GFFResource.new()
-	res.file_type = parsed.get("file_type", "")
-	res.gff_data  = parsed.get("root", {})
+	var res := GFFResourceFactory.create_from_parser_result(parsed)
 
 	return ResourceSaver.save(res, "%s.%s" % [save_path, _get_save_extension()])

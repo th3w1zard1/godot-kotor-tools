@@ -133,11 +133,18 @@ static func parse_bytes(data: PackedByteArray) -> Dictionary:
 		struct_off, field_off, fdata_off, findices_off, lindices_off,
 		labels
 	)
+	var schema := _parse_struct_schema(
+		data, 0,
+		struct_off, field_off, findices_off, lindices_off,
+		labels,
+		true
+	)
 
 	return {
 		"file_type": file_type.strip_edges(),
 		"version": version,
 		"root": root,
+		"schema": schema,
 	}
 
 
@@ -163,13 +170,11 @@ static func _parse_struct(
 		findices_off: int, lindices_off: int,
 		labels: Array[String]
 ) -> Dictionary:
-	var base  := struct_off + struct_idx * 12
+	var base := struct_off + struct_idx * 12
 	# var stype := _u32(data, base + 0)  # type tag; 0xFFFFFFFF = top-level
 	var data_or_off := _u32(data, base + 4)
 	var field_count := _u32(data, base + 8)
-
 	var result := {}
-
 	if field_count == 0:
 		return result
 
@@ -182,19 +187,104 @@ static func _parse_struct(
 			field_indices.append(_u32(data, findices_off + data_or_off + k * 4))
 
 	for fi in field_indices:
-		var fbase      := field_off + fi * 12
-		var ftype      := _u32(data, fbase + 0)
-		var label_idx  := _u32(data, fbase + 4)
-		var f_data_val := _u32(data, fbase + 8)   # raw dword — meaning depends on ftype
-		var label      := labels[label_idx] if label_idx < labels.size() else ("field_%d" % fi)
-
+		var fbase := field_off + fi * 12
+		var ftype := _u32(data, fbase + 0)
+		var label_idx := _u32(data, fbase + 4)
+		var f_data_val := _u32(data, fbase + 8)  # raw dword — meaning depends on ftype
+		var label := labels[label_idx] if label_idx < labels.size() else ("field_%d" % fi)
 		var value = _decode_field(
 			data, ftype, f_data_val, fdata_off, findices_off, lindices_off,
 			struct_off, field_off, labels
 		)
 		result[label] = value
-
 	return result
+
+
+static func _parse_struct_schema(
+		data: PackedByteArray,
+		struct_idx: int,
+		struct_off: int, field_off: int,
+		findices_off: int, lindices_off: int,
+		labels: Array[String],
+		is_root: bool = false
+) -> Dictionary:
+	var base := struct_off + struct_idx * 12
+	var struct_type := _u32(data, base + 0)
+	var data_or_off := _u32(data, base + 4)
+	var field_count := _u32(data, base + 8)
+
+	var schema := {
+		"struct_type": 0xFFFFFFFF if is_root else struct_type,
+		"fields": [],
+	}
+	if field_count == 0:
+		return schema
+
+	var field_indices: Array[int] = []
+	if field_count == 1:
+		field_indices = [data_or_off]
+	else:
+		for k in field_count:
+			field_indices.append(_u32(data, findices_off + data_or_off + k * 4))
+
+	var fields: Array = schema.get("fields", [])
+	for fi in field_indices:
+		var fbase := field_off + fi * 12
+		var ftype := _u32(data, fbase + 0)
+		var label_idx := _u32(data, fbase + 4)
+		var f_data_val := _u32(data, fbase + 8)
+		var label := labels[label_idx] if label_idx < labels.size() else ("field_%d" % fi)
+		var field_schema := {
+			"name": label,
+			"type": ftype,
+		}
+		match ftype:
+			FIELD_STRUCT:
+				field_schema["schema"] = _parse_struct_schema(
+					data,
+					f_data_val,
+					struct_off,
+					field_off,
+					findices_off,
+					lindices_off,
+					labels
+				)
+			FIELD_LIST:
+				field_schema["items"] = _parse_list_schema(
+					data,
+					f_data_val,
+					struct_off,
+					field_off,
+					findices_off,
+					lindices_off,
+					labels
+				)
+		fields.append(field_schema)
+	schema["fields"] = fields
+	return schema
+
+static func _parse_list_schema(
+	data: PackedByteArray,
+	raw_val: int,
+	struct_off: int, field_off: int,
+	findices_off: int, lindices_off: int,
+	labels: Array[String]
+) -> Array[Dictionary]:
+	var off := lindices_off + raw_val
+	var lcount := _u32(data, off)
+	var list: Array[Dictionary] = []
+	for li in lcount:
+		var struct_index := _u32(data, off + 4 + li * 4)
+		list.append(_parse_struct_schema(
+			data,
+			struct_index,
+			struct_off,
+			field_off,
+			findices_off,
+			lindices_off,
+			labels
+		))
+	return list
 
 
 static func _decode_field(

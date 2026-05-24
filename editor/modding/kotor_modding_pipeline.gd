@@ -1,0 +1,448 @@
+@tool
+extends RefCounted
+class_name KotorModdingPipeline
+
+const KotorGameFS := preload("../../gamefs/kotor_gamefs.gd")
+const ERFParser := preload("../../formats/erf_parser.gd")
+const TwoDaParser := preload("../../formats/twoda_parser.gd")
+const TLKParser := preload("../../formats/tlk_parser.gd")
+const TwoDaWriter := preload("../../formats/twoda_writer.gd")
+const TLKWriter := preload("../../formats/tlk_writer.gd")
+const GFFWriter := preload("../../formats/gff_writer.gd")
+const TwoDaResource := preload("../../resources/twoda_resource.gd")
+const TLKResource := preload("../../resources/tlk_resource.gd")
+const GFFResource := preload("../../resources/gff_resource.gd")
+
+const SOURCE_OVERRIDE := "override"
+const DETAIL_SAMPLE_LIMIT := 5
+
+
+static func export_gamefs_entry(gamefs: RefCounted, entry: Dictionary, target_path: String) -> Dictionary:
+	if gamefs == null or entry.is_empty():
+		return _result(false, "invalid", "No GameFS resource is selected")
+	return export_payload_to_path(target_path, gamefs.load_resource_entry_bytes(entry), _entry_file_name(entry))
+
+
+static func export_erf_entry(entry: ERFParser.ERFEntry, target_path: String) -> Dictionary:
+	if entry == null:
+		return _result(false, "invalid", "No archive entry is selected")
+	return export_payload_to_path(target_path, entry.read_data(), "%s.%s" % [entry.resref, entry.extension])
+
+
+static func export_payload_to_path(target_path: String, payload: Variant, fallback_name: String = "") -> Dictionary:
+	if target_path.is_empty():
+		return _result(false, "invalid", "Choose a destination file path")
+	var serialized := _serialize_payload(target_path if not target_path.is_empty() else fallback_name, payload)
+	if not serialized.get("ok", false):
+		return serialized
+	return _write_serialized_payload(target_path, serialized, false)
+
+
+static func serialize_payload(file_name: String, payload: Variant) -> Dictionary:
+	return _serialize_payload(file_name, payload)
+
+
+static func install_gamefs_entry_to_override(gamefs: RefCounted, entry: Dictionary) -> Dictionary:
+	if gamefs == null or entry.is_empty():
+		return _result(false, "invalid", "No GameFS resource is selected")
+	return install_payload_to_override(gamefs, _entry_file_name(entry), gamefs.load_resource_entry_bytes(entry))
+
+
+static func install_erf_entry_to_override(gamefs: RefCounted, entry: ERFParser.ERFEntry) -> Dictionary:
+	if entry == null:
+		return _result(false, "invalid", "No archive entry is selected")
+	return install_payload_to_override(gamefs, "%s.%s" % [entry.resref, entry.extension], entry.read_data())
+
+
+static func install_payload_to_override(gamefs: RefCounted, file_name: String, payload: Variant) -> Dictionary:
+	if gamefs == null:
+		return _result(false, "invalid", "Game install is not available")
+	file_name = file_name.get_file()
+	if file_name.is_empty():
+		return _result(false, "invalid", "A target file name is required")
+	var serialized := _serialize_payload(file_name, payload)
+	if not serialized.get("ok", false):
+		return serialized
+	var override_dir: String = gamefs.ensure_override_path()
+	if override_dir.is_empty():
+		return _result(false, "invalid", "Could not create the override directory")
+	return _write_serialized_payload(override_dir.path_join(file_name), serialized, true)
+
+
+static func compare_gamefs_resource(gamefs: RefCounted, resref: String, resource_type: Variant) -> Dictionary:
+	if gamefs == null:
+		return _result(false, "invalid", "Game install is not available")
+	var override_entry: Dictionary = gamefs.resolve_resource_from_source(resref, resource_type, SOURCE_OVERRIDE)
+	var core_entry: Dictionary = _first_non_override_variant(gamefs.list_resource_variants(resref, resource_type))
+	if override_entry.is_empty() and core_entry.is_empty():
+		return _result(false, "missing", "No matching install resource was found")
+	if override_entry.is_empty():
+		return _result(true, "no_override", "No override copy exists for %s.%s" % [
+			resref,
+			core_entry.get("extension", ""),
+		], {
+			"resref": resref,
+			"extension": core_entry.get("extension", ""),
+			"core_entry": core_entry,
+		})
+	if core_entry.is_empty():
+		return _result(true, "override_only", "Override exists for %s.%s but no core source was indexed" % [
+			resref,
+			override_entry.get("extension", ""),
+		], {
+			"resref": resref,
+			"extension": override_entry.get("extension", ""),
+			"override_entry": override_entry,
+		})
+
+	var override_bytes: PackedByteArray = gamefs.load_resource_entry_bytes(override_entry)
+	var core_bytes: PackedByteArray = gamefs.load_resource_entry_bytes(core_entry)
+	if _packed_bytes_equal(core_bytes, override_bytes):
+		return _result(true, "identical", "Override matches core for %s.%s" % [
+			resref,
+			override_entry.get("extension", ""),
+		], {
+			"resref": resref,
+			"extension": override_entry.get("extension", ""),
+			"core_entry": core_entry,
+			"override_entry": override_entry,
+			"core_size": core_bytes.size(),
+			"override_size": override_bytes.size(),
+			"details": "Binary-identical (%d bytes)." % core_bytes.size(),
+		})
+
+	var extension := str(override_entry.get("extension", core_entry.get("extension", ""))).to_lower()
+	var detail_report := _build_difference_report(extension, core_bytes, override_bytes)
+	return _result(true, "different", "Override differs from core for %s.%s" % [resref, extension], {
+		"resref": resref,
+		"extension": extension,
+		"core_entry": core_entry,
+		"override_entry": override_entry,
+		"core_size": core_bytes.size(),
+		"override_size": override_bytes.size(),
+		"details": detail_report,
+	})
+
+
+static func _entry_file_name(entry: Dictionary) -> String:
+	return "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+
+
+static func _serialize_payload(file_name: String, payload: Variant) -> Dictionary:
+	if payload is PackedByteArray:
+		return {
+			"ok": true,
+			"type": "bytes",
+			"payload": payload,
+			"size": (payload as PackedByteArray).size(),
+			"file_name": file_name.get_file(),
+		}
+	if payload is String:
+		var text_bytes := String(payload).to_ascii_buffer()
+		return {
+			"ok": true,
+			"type": "bytes",
+			"payload": text_bytes,
+			"size": text_bytes.size(),
+			"file_name": file_name.get_file(),
+		}
+
+	var extension := file_name.get_extension().to_lower()
+	match extension:
+		"2da":
+			if payload is TwoDaResource:
+				var twoda_bytes := TwoDaWriter.serialize(payload as TwoDaResource).to_ascii_buffer()
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": twoda_bytes,
+					"size": twoda_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+		"tlk":
+			if payload is TLKResource:
+				var tlk_bytes := TLKWriter.serialize(payload as TLKResource)
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": tlk_bytes,
+					"size": tlk_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+		"are", "dlg", "gff", "git", "ifo", "jrl", "utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw":
+			if payload is GFFResource:
+				var gff_bytes := GFFWriter.serialize(payload as GFFResource)
+				if gff_bytes.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": gff_bytes,
+					"size": gff_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+	return _result(false, "invalid", "Unsupported payload for %s" % file_name.get_file())
+
+
+static func _write_serialized_payload(target_path: String, serialized: Dictionary, create_backup: bool) -> Dictionary:
+	var absolute_target := target_path
+	if absolute_target.is_empty() or not absolute_target.is_absolute_path():
+		return _result(false, "invalid", "Target path must be absolute")
+	var parent_dir := absolute_target.get_base_dir()
+	var dir_err := DirAccess.make_dir_recursive_absolute(parent_dir)
+	if dir_err != OK and not DirAccess.dir_exists_absolute(parent_dir):
+		return _result(false, "io_error", "Could not create %s" % parent_dir, {
+			"error": dir_err,
+			"target_path": absolute_target,
+		})
+
+	var payload: PackedByteArray = serialized.get("payload", PackedByteArray())
+	var backup_path := ""
+	if FileAccess.file_exists(absolute_target):
+		var existing := _read_file_bytes(absolute_target)
+		if _packed_bytes_equal(existing, payload):
+			return _result(true, "unchanged", "%s is already up to date" % absolute_target.get_file(), {
+				"target_path": absolute_target,
+				"backup_path": "",
+				"written_bytes": payload.size(),
+			})
+		if create_backup:
+			backup_path = absolute_target + ".bak"
+			var backup_err := _store_bytes(backup_path, existing)
+			if backup_err != OK:
+				return _result(false, "io_error", "Failed to back up %s" % absolute_target.get_file(), {
+					"error": backup_err,
+					"target_path": absolute_target,
+					"backup_path": backup_path,
+				})
+
+	var write_err := _store_bytes(absolute_target, payload)
+	if write_err != OK:
+		return _result(false, "io_error", "Failed to write %s" % absolute_target.get_file(), {
+			"error": write_err,
+			"target_path": absolute_target,
+			"backup_path": backup_path,
+		})
+	return _result(true, "written", "Wrote %s" % absolute_target.get_file(), {
+		"target_path": absolute_target,
+		"backup_path": backup_path,
+		"written_bytes": payload.size(),
+	})
+
+
+static func _store_bytes(path: String, bytes: PackedByteArray) -> Error:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return FileAccess.get_open_error()
+	file.store_buffer(bytes)
+	var err := file.get_error()
+	file.close()
+	return OK if err == OK or err == ERR_FILE_EOF else err
+
+
+static func _read_file_bytes(path: String) -> PackedByteArray:
+	if not FileAccess.file_exists(path):
+		return PackedByteArray()
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return PackedByteArray()
+	var bytes := file.get_buffer(file.get_length())
+	file.close()
+	return bytes
+
+
+static func read_file_bytes(path: String) -> PackedByteArray:
+	return _read_file_bytes(path)
+
+
+static func _packed_bytes_equal(a: PackedByteArray, b: PackedByteArray) -> bool:
+	if a.size() != b.size():
+		return false
+	for index in a.size():
+		if a[index] != b[index]:
+			return false
+	return true
+
+
+static func bytes_equal(a: PackedByteArray, b: PackedByteArray) -> bool:
+	return _packed_bytes_equal(a, b)
+
+
+static func write_bytes(path: String, bytes: PackedByteArray) -> Error:
+	return _store_bytes(path, bytes)
+
+
+static func _first_non_override_variant(variants: Array[Dictionary]) -> Dictionary:
+	for entry: Dictionary in variants:
+		if str(entry.get("source", "")).to_lower() != SOURCE_OVERRIDE:
+			return entry.duplicate(true)
+	return {}
+
+
+static func _build_difference_report(extension: String, base_bytes: PackedByteArray, mod_bytes: PackedByteArray) -> String:
+	match extension:
+		"2da":
+			return _build_2da_difference_report(base_bytes, mod_bytes)
+		"tlk":
+			return _build_tlk_difference_report(base_bytes, mod_bytes)
+		_:
+			return _build_binary_difference_report(base_bytes, mod_bytes)
+
+
+static func _build_binary_difference_report(base_bytes: PackedByteArray, mod_bytes: PackedByteArray) -> String:
+	var first_diff := -1
+	var limit := mini(base_bytes.size(), mod_bytes.size())
+	for index in range(limit):
+		if base_bytes[index] != mod_bytes[index]:
+			first_diff = index
+			break
+	if first_diff < 0 and base_bytes.size() != mod_bytes.size():
+		first_diff = limit
+	return "Binary differs: core %d B, override %d B, first differing byte @ 0x%X." % [
+		base_bytes.size(),
+		mod_bytes.size(),
+		maxi(first_diff, 0),
+	]
+
+
+static func _build_2da_difference_report(base_bytes: PackedByteArray, mod_bytes: PackedByteArray) -> String:
+	var base := TwoDaParser.parse_bytes(base_bytes)
+	var mod := TwoDaParser.parse_bytes(mod_bytes)
+	if base.is_empty() or mod.is_empty():
+		return _build_binary_difference_report(base_bytes, mod_bytes)
+
+	var base_columns: Array = []
+	for column in base.get("columns", PackedStringArray()):
+		base_columns.append(str(column))
+	var mod_columns: Array = []
+	for column in mod.get("columns", PackedStringArray()):
+		mod_columns.append(str(column))
+	var added_columns := _string_difference(mod_columns, base_columns)
+	var removed_columns := _string_difference(base_columns, mod_columns)
+	var union_columns := _merge_strings(base_columns, mod_columns)
+	var base_rows: Array = base.get("rows", [])
+	var mod_rows: Array = mod.get("rows", [])
+	var added_rows := 0
+	var removed_rows := 0
+	var changed_cells := 0
+	var samples: Array[String] = []
+
+	for row_index in range(maxi(base_rows.size(), mod_rows.size())):
+		if row_index >= base_rows.size():
+			added_rows += 1
+			if samples.size() < DETAIL_SAMPLE_LIMIT:
+				samples.append("row %d added" % row_index)
+			continue
+		if row_index >= mod_rows.size():
+			removed_rows += 1
+			if samples.size() < DETAIL_SAMPLE_LIMIT:
+				samples.append("row %d removed" % row_index)
+			continue
+
+		var base_row: Dictionary = base_rows[row_index]
+		var mod_row: Dictionary = mod_rows[row_index]
+		for column in union_columns:
+			var base_value := _value_text(base_row.get(column, null))
+			var mod_value := _value_text(mod_row.get(column, null))
+			if base_value == mod_value:
+				continue
+			changed_cells += 1
+			if samples.size() < DETAIL_SAMPLE_LIMIT:
+				samples.append("row %d %s: %s -> %s" % [row_index, column, base_value, mod_value])
+
+	var parts: Array[String] = []
+	parts.append("2DA differs")
+	parts.append("%d changed cells" % changed_cells)
+	if added_rows > 0:
+		parts.append("%d added rows" % added_rows)
+	if removed_rows > 0:
+		parts.append("%d removed rows" % removed_rows)
+	if not added_columns.is_empty():
+		parts.append("added cols: %s" % ", ".join(added_columns))
+	if not removed_columns.is_empty():
+		parts.append("removed cols: %s" % ", ".join(removed_columns))
+	if samples.is_empty():
+		return "%s." % ", ".join(parts)
+	return "%s.\nExamples:\n- %s" % [", ".join(parts), "\n- ".join(samples)]
+
+
+static func _build_tlk_difference_report(base_bytes: PackedByteArray, mod_bytes: PackedByteArray) -> String:
+	var base := TLKParser.parse_bytes(base_bytes)
+	var mod := TLKParser.parse_bytes(mod_bytes)
+	if base.is_empty() or mod.is_empty():
+		return _build_binary_difference_report(base_bytes, mod_bytes)
+
+	var base_entries: Array = base.get("entries", [])
+	var mod_entries: Array = mod.get("entries", [])
+	var added_entries := maxi(mod_entries.size() - base_entries.size(), 0)
+	var removed_entries := maxi(base_entries.size() - mod_entries.size(), 0)
+	var changed_text := 0
+	var changed_meta := 0
+	var samples: Array[String] = []
+
+	for strref in range(mini(base_entries.size(), mod_entries.size())):
+		var base_entry = base_entries[strref]
+		var mod_entry = mod_entries[strref]
+		var base_text := String(base_entry.text)
+		var mod_text := String(mod_entry.text)
+		if base_text != mod_text:
+			changed_text += 1
+			if samples.size() < DETAIL_SAMPLE_LIMIT:
+				samples.append("StrRef %d text changed" % strref)
+		elif int(base_entry.flags) != int(mod_entry.flags) or String(base_entry.sound_resref) != String(mod_entry.sound_resref):
+			changed_meta += 1
+			if samples.size() < DETAIL_SAMPLE_LIMIT:
+				samples.append("StrRef %d metadata changed" % strref)
+
+	var parts: Array[String] = []
+	parts.append("TLK differs")
+	parts.append("%d changed strings" % changed_text)
+	if changed_meta > 0:
+		parts.append("%d metadata-only changes" % changed_meta)
+	if added_entries > 0:
+		parts.append("%d added entries" % added_entries)
+	if removed_entries > 0:
+		parts.append("%d removed entries" % removed_entries)
+	if samples.is_empty():
+		return "%s." % ", ".join(parts)
+	return "%s.\nExamples:\n- %s" % [", ".join(parts), "\n- ".join(samples)]
+
+
+static func _string_difference(left: Array, right: Array) -> Array[String]:
+	var right_lookup := {}
+	for value in right:
+		right_lookup[str(value)] = true
+	var results: Array[String] = []
+	for value in left:
+		var text := str(value)
+		if not right_lookup.has(text):
+			results.append(text)
+	return results
+
+
+static func _merge_strings(first: Array, second: Array) -> Array[String]:
+	var lookup := {}
+	var merged: Array[String] = []
+	for values in [first, second]:
+		for value in values:
+			var text := str(value)
+			if lookup.has(text):
+				continue
+			lookup[text] = true
+			merged.append(text)
+	return merged
+
+
+static func _value_text(value: Variant) -> String:
+	return "****" if value == null else str(value)
+
+
+static func _result(ok: bool, status: String, message: String, extra: Dictionary = {}) -> Dictionary:
+	var result := {
+		"ok": ok,
+		"status": status,
+		"message": message,
+	}
+	for key in extra.keys():
+		result[key] = extra[key]
+	return result

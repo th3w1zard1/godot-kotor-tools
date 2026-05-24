@@ -58,9 +58,6 @@ func _import(
 	if parsed.is_empty():
 		return ERR_PARSE_ERROR
 
-	var res          := TwoDaResource.new()
-	res.columns      = parsed.get("columns", PackedStringArray())
-	res.rows         = parsed.get("rows", [])
-	res.default_val  = parsed.get("default", "")
-
+	var res := TwoDaResource.new()
+	res.apply_parser_result(parsed)
 	return ResourceSaver.save(res, "%s.%s" % [save_path, _get_save_extension()])

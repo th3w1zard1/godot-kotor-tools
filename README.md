@@ -8,21 +8,23 @@ Fully implemented static parsers for all major Aurora Engine binary formats. Plu
 
 ## Features
 
-| Format | Parser | Importer | Resource wrapper |
-|---|---|---|---|
-| GFF (`.utc` `.dlg` `.gff` `.utp` .utt …) | `GffParser` | ✅ | `GFFResource` |
-| ERF / RIM / MOD archives | `ErfParser` | ✅ | `ErfResource` |
-| 2DA spreadsheets | `TwoDaParser` | ✅ | `TwoDaResource` |
-| TLK string tables | `TlkParser` | ✅ | `TLKResource` |
-| TPC textures | `TpcReader` | ✅ | — (native `ImageTexture`) |
-| KEY / BIF archives | `KeyBifParser` | — | — |
+| Format | Parser | Importer | Resource wrapper | Write-back |
+|---|---|---|---|---|
+| GFF (`.utc` `.dlg` `.gff` `.utp` .utt …) | `GffParser` | ✅ | `GFFResource` + typed GFF docs/resources | ✅ typed GFF serializer + DLG editing |
+| ERF / RIM / MOD archives | `ErfParser` | ✅ | `ErfResource` | — |
+| 2DA spreadsheets | `TwoDaParser` | ✅ | `TwoDaResource` | ✅ `.2da` serializer + dock editing |
+| TLK string tables | `TlkParser` | ✅ | `TLKResource` | ✅ `.tlk` serializer + dock text editing |
+| TPC textures | `TpcReader` | ✅ | — (native `ImageTexture`) | — |
+| KEY / BIF archives | `KeyBifParser` | — | — | — |
 
-Editor dock: **KotOR Tools** panel with 5 tabs:
-- Game path picker (points to K1/K2/JE install folder)
-- ERF browser (list and extract archive contents)
-- GFF inspector (tree view of any GFF file)
-- 2DA viewer (spreadsheet grid)
-- TLK search (string ID → text lookup)
+Editor dock: **KotOR Tools** now opens as a workspace shell:
+- Game path picker + install status for the active K1/K2/JE workspace
+- Left install-aware resource browser with search, grouped resource tree, and open/export/install/compare actions
+- Central tool area that routes resources into the existing GameFS, ERF, GFF, DLG, script, Area Tools, 2DA, and TLK tabs
+- Dialogue editor with tree/form editing for DLG nodes, link validation, and override install/save support
+- Script editor with NSS text editing/validation, NCS inspection, and counterpart lookup
+- Area Tools tab with indexed module ARE discovery, linked GIT/IFO/LYT inspection, and room-model presence checks (MDL/MDX/WOK)
+- Bottom activity log for modding writes, compare output, and editor actions
 
 ---
 
@@ -141,13 +143,21 @@ var bytes: PackedByteArray = erf.get_resource("k_ptar_inc", 0x03ED)
 ```gdscript
 var tlk: TLKResource = load("res://path/to/dialog.tlk")
 var text: String = tlk.get_string(1234)   # StrRef → text
+
+# Save modified entries back to a TLK file
+tlk.set_entry_text(1234, "Updated text")
+ResourceSaver.save(tlk, "/absolute/path/to/dialog.tlk")
 ```
 
 ### `TwoDaResource`
 ```gdscript
 var sheet: TwoDaResource = load("res://path/to/feat.2da")
 var val: String = sheet.get_cell(row_index: int, column_name: String) -> String
-var row: Dictionary = sheet.get_row(row_index: int) -> Dictionary
+var row: Dictionary = sheet.rows[row_index]
+
+# Update a cell and save back to a 2DA file
+sheet.set_cell(0, "label", "new_row")
+ResourceSaver.save(sheet, "/absolute/path/to/feat.2da")
 ```
 
 ---
