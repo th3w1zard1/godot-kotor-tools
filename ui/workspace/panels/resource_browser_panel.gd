@@ -3,6 +3,9 @@ extends VBoxContainer
 class_name KotorResourceBrowserPanel
 
 signal resource_requested(entry: Dictionary)
+signal install_requested(entry: Dictionary)
+signal compare_requested(entry: Dictionary)
+signal export_requested(entry: Dictionary)
 
 const KotorResourceLocator := preload("../../../editor/navigation/kotor_resource_locator.gd")
 
@@ -47,6 +50,45 @@ func _build_ui() -> void:
 	refresh_btn.text = "Refresh"
 	refresh_btn.pressed.connect(_refresh_view)
 	toolbar.add_child(refresh_btn)
+
+	var actions_row := HBoxContainer.new()
+	add_child(actions_row)
+
+	var open_btn := Button.new()
+	open_btn.text = "Open"
+	open_btn.pressed.connect(func() -> void:
+		var entry := get_selected_entry()
+		if not entry.is_empty():
+			resource_requested.emit(entry)
+	)
+	actions_row.add_child(open_btn)
+
+	var install_btn := Button.new()
+	install_btn.text = "Install → Override"
+	install_btn.pressed.connect(func() -> void:
+		var entry := get_selected_entry()
+		if not entry.is_empty():
+			install_requested.emit(entry)
+	)
+	actions_row.add_child(install_btn)
+
+	var compare_btn := Button.new()
+	compare_btn.text = "Compare"
+	compare_btn.pressed.connect(func() -> void:
+		var entry := get_selected_entry()
+		if not entry.is_empty():
+			compare_requested.emit(entry)
+	)
+	actions_row.add_child(compare_btn)
+
+	var export_btn := Button.new()
+	export_btn.text = "Export…"
+	export_btn.pressed.connect(func() -> void:
+		var entry := get_selected_entry()
+		if not entry.is_empty():
+			export_requested.emit(entry)
+	)
+	actions_row.add_child(export_btn)
 
 	var search_row := HBoxContainer.new()
 	add_child(search_row)
@@ -148,3 +190,8 @@ func _open_selected_entry() -> void:
 	if entry.is_empty():
 		return
 	resource_requested.emit(entry)
+
+
+func _set_detail_text(text: String) -> void:
+	if _detail != null:
+		_detail.text = text

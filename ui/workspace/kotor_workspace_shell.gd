@@ -5,6 +5,7 @@ const KotorEditorShell := preload("../../editor/shell/kotor_editor_shell.gd")
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const KotorTargetContext := preload("../../editor/workspace/kotor_target_context.gd")
 const KotorMutationService := preload("../../editor/transactions/kotor_mutation_service.gd")
+const KotorModdingPipeline := preload("../../editor/modding/kotor_modding_pipeline.gd")
 const KotorDLGWorkspaceEditor := preload("./editors/dlg_workspace_editor.gd")
 const KotorTwoDaWorkspaceEditor := preload("./editors/twoda_workspace_editor.gd")
 const KotorTLKWorkspaceEditor := preload("./editors/tlk_workspace_editor.gd")
@@ -67,6 +68,9 @@ func _ensure_shell() -> void:
 	_resource_browser.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_resource_browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_resource_browser.resource_requested.connect(_open_workspace_entry)
+	_resource_browser.install_requested.connect(_on_resource_browser_install)
+	_resource_browser.compare_requested.connect(_on_resource_browser_compare)
+	_resource_browser.export_requested.connect(_on_resource_browser_export)
 	_tabs.add_child(_resource_browser)
 
 	_transaction_history = KotorTransactionHistoryPanel.new()
@@ -282,4 +286,59 @@ func _on_restore_completed(result: Dictionary) -> void:
 	var editor_state := _resolve_editor_state()
 	if editor_state != null and editor_state.has_method("refresh_gamefs"):
 		editor_state.call("refresh_gamefs")
+
+
+func _on_resource_browser_install(entry: Dictionary) -> void:
+	if _mutation_service == null or entry.is_empty():
+		return
+	var editor_state := _resolve_editor_state()
+	if editor_state == null:
+		return
+	var gamefs = editor_state.get("gamefs")
+	if gamefs == null:
+		return
+	var file_name := "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+	var payload: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+	var result: Dictionary = _mutation_service.apply_install_to_override(gamefs, file_name, payload, true)
+	if result.get("ok", false):
+		editor_state.call("refresh_gamefs")
+	_resource_browser.call("_set_detail_text", result.get("message", "Install failed"))
+
+
+func _on_resource_browser_compare(entry: Dictionary) -> void:
+	if entry.is_empty():
+		return
+	var editor_state := _resolve_editor_state()
+	if editor_state == null:
+		return
+	var gamefs = editor_state.get("gamefs")
+	if gamefs == null:
+		return
+	var result: Dictionary = KotorModdingPipeline.compare_gamefs_resource(
+		gamefs,
+		str(entry.get("resref", "")),
+		int(entry.get("resource_type", -1))
+	)
+	var detail: String = str(result.get("message", "Compare unavailable"))
+	if result.has("details"):
+		detail += "\n" + str(result.get("details", ""))
+	_resource_browser.call("_set_detail_text", detail)
+
+
+func _on_resource_browser_export(entry: Dictionary) -> void:
+	if entry.is_empty() or not Engine.is_editor_hint():
+		return
+	var file_name := "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.title = "Export %s" % file_name
+	dialog.current_file = file_name
+	dialog.file_selected.connect(func(path: String) -> void:
+		var payload: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		KotorModdingPipeline.export_payload_to_path(path, payload, file_name)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
 
