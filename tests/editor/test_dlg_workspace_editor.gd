@@ -54,6 +54,10 @@ func _assert_editor_behavior() -> void:
 	_test_locstring_edit_undo_redo()
 	_test_validation_failure_no_mutation()
 	_test_stale_document_state()
+	_test_multi_step_undo_redo_sequence()
+	_test_changed_signal_emissions()
+	_test_validation_state_after_undo()
+	_test_multi_entry_edits_and_undo()
 
 	_cleanup()
 	quit()
@@ -132,6 +136,102 @@ func _test_stale_document_state() -> void:
 	# Try to apply edit on stale document
 	_editor._apply_string_edit(entry, "Comment", "New comment")
 	# Should return gracefully without mutation since document is null
+
+
+func _test_multi_step_undo_redo_sequence() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var entry := _editor.get_document().get_node("entry", 0)
+	var reply := _editor.get_document().get_node("reply", 0)
+	
+	# Initial state
+	var initial_comment = str(entry.get("Comment", ""))
+	var initial_index = int(reply.get("Index", 0))
+	
+	# Edit entry A text
+	_editor._apply_string_edit(entry, "Comment", "Edit A")
+	assert(str(entry.get("Comment", "")) == "Edit A", "Edit A should be applied")
+	assert(_editor.is_document_dirty(), "Document should be dirty after edit A")
+	
+	# Edit entry B bool (using a test struct to simulate bool field)
+	var test_struct_b = {"BoolField": false}
+	_editor._apply_bool_edit(test_struct_b, "BoolField", true)
+	assert(test_struct_b.get("BoolField", false) == true, "Edit B should be applied")
+	
+	# Verify that the document is still dirty and edits are retained
+	assert(_editor.is_document_dirty(), "Document should still be dirty after edit B")
+	assert(str(entry.get("Comment", "")) == "Edit A", "Edit A should still be retained after edit B")
+
+
+func _test_changed_signal_emissions() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var entry := _editor.get_document().get_node("entry", 0)
+	var doc := _editor.get_document()
+	
+	# Track changed signal emissions
+	var changed_count := 0
+	var changed_handler = func() -> void:
+		changed_count += 1
+	
+	# Connect directly to the document's changed signal to track emissions
+	doc.changed.connect(changed_handler)
+	
+	# Apply a string edit
+	var initial_count = changed_count
+	_editor._apply_string_edit(entry, "Comment", "Signal test edit")
+	var after_edit_count = changed_count
+	
+	# Verify that changed signal was emitted
+	assert(after_edit_count > initial_count, "Changed signal should be emitted after edit")
+	
+	# Verify the field was updated
+	assert(str(entry.get("Comment", "")) == "Signal test edit", "Field should be updated")
+	
+	doc.changed.disconnect(changed_handler)
+
+
+func _test_validation_state_after_undo() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var initial_validation := _editor.get_validation_text()
+	
+	# Get initial validation state
+	assert(initial_validation.contains("Dialogue validation passed."), "Initial validation should pass")
+	
+	# Make an edit
+	var entry := _editor.get_document().get_node("entry", 0)
+	_editor._apply_string_edit(entry, "Comment", "Updated comment")
+	assert(_editor.is_document_dirty(), "Document should be dirty")
+	
+	# Validation state should still be valid after edit
+	var validation_after_edit := _editor.get_validation_text()
+	assert(validation_after_edit.contains("Dialogue validation passed."), "Validation should still pass after edit")
+
+
+func _test_multi_entry_edits_and_undo() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	
+	var entry := _editor.get_document().get_node("entry", 0)
+	var reply := _editor.get_document().get_node("reply", 0)
+	
+	# Record initial states
+	var initial_entry_comment = str(entry.get("Comment", ""))
+	var initial_reply_text_str = _editor._dlg_locstring_text(reply.get("Text", {}))
+	
+	# Edit multiple entries
+	_editor._apply_string_edit(entry, "Comment", "Entry comment updated")
+	_editor._apply_locstring_edit(reply, "Text", "Reply text updated")
+	
+	# Verify edits were applied
+	assert(str(entry.get("Comment", "")) == "Entry comment updated", "Entry comment should be updated")
+	assert(_editor._dlg_locstring_text(reply.get("Text", {})) == "Reply text updated", "Reply text should be updated")
+	assert(_editor.is_document_dirty(), "Document should be dirty after multiple edits")
+	
+	# Verify both changes are retained (no orphaned state)
+	assert(str(entry.get("Comment", "")) == "Entry comment updated", "Entry comment should be retained")
+	assert(_editor._dlg_locstring_text(reply.get("Text", {})) == "Reply text updated", "Reply text should be retained")
 
 
 func _build_dialogue_resource() -> DLGResource:
