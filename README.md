@@ -88,6 +88,7 @@ find . -name '*.gd' -print0 | xargs -0 -I{} godot --headless --quiet --check-onl
 - **Setup and first run:** [docs/QUICKSTART.md](docs/QUICKSTART.md)
 - **Architecture and implementation orientation:** [docs/00-intent/godot-serialization-kb-intent.md](docs/00-intent/godot-serialization-kb-intent.md)
 - **Support coverage + implementation gaps:** [docs/30-gap-analysis/godot-support-gaps.md](docs/30-gap-analysis/godot-support-gaps.md)
+- **Next implementation-wave requirements (brainstorm):** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md)
 - **Godot API source references used by this repo:** [docs/90-meta/godot-doc-source-map.md](docs/90-meta/godot-doc-source-map.md)
 - **Implementation playbook for contributors:** [docs/50-execution/godot-kotor-implementation-playbook.md](docs/50-execution/godot-kotor-implementation-playbook.md)
 

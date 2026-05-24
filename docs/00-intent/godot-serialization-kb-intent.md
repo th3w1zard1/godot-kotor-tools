@@ -5,6 +5,7 @@
 - **End-user setup and first run:** `README.md` and `docs/QUICKSTART.md`
 - **Architecture + implementation orientation (this audience):** `docs/00-intent/godot-serialization-kb-intent.md`
 - **Support coverage + implementation gaps:** `docs/30-gap-analysis/godot-support-gaps.md`
+- **Next implementation-wave requirements:** `docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md`
 - **Official external API source references:** `docs/90-meta/godot-doc-source-map.md`
 - **Contributor implementation checklist:** `docs/50-execution/godot-kotor-implementation-playbook.md`
 

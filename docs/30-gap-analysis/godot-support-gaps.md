@@ -25,10 +25,10 @@ Project target: **Godot 4.6**.
 
 | Priority | Gap | Why it matters | Suggested implementation slice |
 | --- | --- | --- | --- |
-| P1 | Archive write-back parity (ERF/RIM/MOD workflows) | Limits full round-trip mod packaging workflows. | Add serializer + saver parity plan for archive families using existing saver patterns. |
-| P1 | Cross-format dependency tooling expansion | Current helpers cover selected contexts; broader dependency-edit support improves reliability. | Expand dependency-list and rename utilities to additional typed document flows. |
-| P1 | Stronger reload/consistency scenarios | Prevents subtle state drift after install/restore/edit loops. | Add targeted cache/reload behavior tests around mutation pipeline and workspace documents. |
-| P2 | Authoring ergonomics for complex typed docs | Reduces manual error risk in larger content edits. | Add validation helpers and guided editing affordances in typed document wrappers. |
+| P1 | Archive write-back parity (ERF/RIM/MOD workflows) | Limits full round-trip mod packaging workflows. | Add serializer + saver parity plan for archive families using existing `ResourceFormatSaver` and pipeline write/export flows. |
+| P1 | Cross-format dependency tooling expansion | Current helpers cover selected contexts; broader dependency-edit support improves reliability. | Expand dependency-list and rename utilities to additional typed document flows with shared document mutation primitives. |
+| P1 | Stronger reload/consistency scenarios | Prevents subtle state drift after install/restore/edit loops. | Add targeted cache/reload behavior tests around mutation pipeline, session restore, and install-aware reindex boundaries. |
+| P2 | Authoring ergonomics for complex typed docs | Reduces manual error risk in larger content edits. | Add typed validation helpers plus EditorInspector-backed editors for common GFF structs/locstrings. |
 | P2 | Contributor-facing parity matrix maintenance process | Keeps roadmap clear as format support grows. | Maintain this document and plan links whenever a new format/editor capability lands. |
 
 ## What Else Godot Supports (Relevant Next Opportunities)
@@ -40,6 +40,21 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 3. More explicit custom resource loading strategies where runtime/editor behavior diverges.
 4. Stronger end-to-end editor mutation validation via script-driven tests and deterministic fixtures.
 
+## Implementation-Ready Godot Capability Opportunities
+
+| Godot capability | Repository fit | Candidate implementation area |
+| --- | --- | --- |
+| `EditorUndoRedoManager` integration | Workspace editors already centralize mutation paths through documents. | Add explicit undo/redo command framing for GFF/DLG/2DA/TLK document edits and ensure transaction history interop stays coherent. |
+| `EditorInspectorPlugin` + custom property editors | Typed resources/documents already expose structured fields and validation hooks. | Build inspector-assisted editing widgets for common GFF patterns (locstrings, ResRef references, enum-like integer fields). |
+| `EditorFileSystem` and rescan hooks | Install/export actions already modify files and refresh GameFS state. | Trigger targeted reindex/rescan pathways after install/restore actions to reduce stale-surface windows. |
+| `EditorContextMenuPlugin` / dock action integration | Resource browser and workspace actions are already command-oriented. | Add context actions for compare/install/export from more surfaces without duplicating pipeline logic. |
+| `SubViewport` + scene preview workflows | Area tools already surface module relationships and model checks. | Add lightweight area/entity preview panes for supported model resources, gated behind explicit "preview" actions. |
+| `EditorSettings` profile-backed preferences | Plugin already has install-path and workspace settings concerns. | Add per-project and global preference boundaries for game-install profiles, recent modules, and editor ergonomics. |
+
+## Next Planning Seeds
+
+- Use `docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md` as the direct requirement source for the next implementation wave.
+
 ## Refresh Triggers
 
 Refresh this analysis when:
@@ -47,4 +62,3 @@ Refresh this analysis when:
 - Godot target version changes.
 - New format parser/importer/saver capabilities ship.
 - Workspace/editor surfaces gain or remove major behavior.
-
