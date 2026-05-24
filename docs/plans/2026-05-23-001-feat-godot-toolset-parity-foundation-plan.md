@@ -1,9 +1,23 @@
 ---
 title: feat: Build the Godot-native toolset parity foundation
 type: feat
-status: active
+status: complete
 date: 2026-05-23
+completed: 2026-05-23
 ---
+
+## Progress (2026-05-23)
+
+| Unit | Status |
+|------|--------|
+| U1 | Landed (`d08e796`) — main-screen host + workspace shell |
+| U5 | Landed (`d08e796`, `3f62ff5`) — workspace editor contract + DLG pilot |
+| U2 | Landed (`3f62ff5`) — document registry, session, stale-state |
+| U3 | Landed (`3f62ff5`) — target context + browsing |
+| U4 | Landed (`b5daddb`–`a7564af`) — shared mutation/transaction substrate (see also plan 002) |
+| U6 | Landed (`3f62ff5`) — 2DA/TLK/script workspace editors |
+
+Foundation scope for this plan is complete on `feat/main-screen-workspace-foundation`. Entity/module editors and specialist tooling remain follow-up work per plan boundaries.
 
 # feat: Build the Godot-native toolset parity foundation
 

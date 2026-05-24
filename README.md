@@ -17,14 +17,15 @@ Fully implemented static parsers for all major Aurora Engine binary formats. Plu
 | TPC textures | `TpcReader` | ✅ | — (native `ImageTexture`) | — |
 | KEY / BIF archives | `KeyBifParser` | — | — | — |
 
-Editor dock: **KotOR Tools** now opens as a workspace shell:
+**KotOR Tools** workspace (main editor screen + optional bottom dock during migration):
 - Game path picker + install status for the active K1/K2/JE workspace
-- Left install-aware resource browser with search, grouped resource tree, and open/export/install/compare actions
-- Central tool area that routes resources into the existing GameFS, ERF, GFF, DLG, script, Area Tools, 2DA, and TLK tabs
-- Dialogue editor with tree/form editing for DLG nodes, link validation, and override install/save support
+- Install-aware resource browser with search, grouped resource tree, and open/export/install/compare actions
+- Document-style editors for DLG, 2DA, TLK, and NSS with shared dirty/session/stale handling
+- Preflight before install/export/remove mutations, transaction history, and in-product restore
+- Dialogue editor with tree/form editing, link validation, and override install/save support
 - Script editor with NSS text editing/validation, NCS inspection, and counterpart lookup
-- Area Tools tab with indexed module ARE discovery, linked GIT/IFO/LYT inspection, and room-model presence checks (MDL/MDX/WOK)
-- Bottom activity log for modding writes, compare output, and editor actions
+- Area Tools with indexed module ARE discovery, linked GIT/IFO/LYT inspection, and room-model checks (MDL/MDX/WOK)
+- Activity log for modding writes, compare output, and editor actions
 
 ---
 
