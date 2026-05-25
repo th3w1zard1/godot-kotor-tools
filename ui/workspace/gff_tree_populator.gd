@@ -22,6 +22,8 @@ const EDITABLE_STRUCT_ARRAY_FIELDS := {
 	"itemList": true,
 	"Inventory": true,
 	"EquippedInventory": true,
+	"SkillList": true,
+	"FeatList": true,
 	# UTP (Placeable) arrays
 	"Scripts": true,
 	"UTCInstanceList": true,

@@ -1010,6 +1010,14 @@ func _create_default_struct(array_field: String) -> Dictionary:
 				"Infinite": 0,
 				"Recharge": 0,
 			}
+		"SkillList":
+			return {
+				"Rank": 0,
+			}
+		"FeatList":
+			return {
+				"Feat": 65535,
+			}
 		"Scripts":
 			return {
 				"Script": "",

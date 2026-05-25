@@ -209,10 +209,10 @@ static func validate_required_field(field_name: String, value: Variant, entry_li
 
 static func get_validation_warning(field_name: String, value: Variant) -> String:
 	var lower_field := field_name.strip_edges().to_lower()
-	var str_value := String(value).strip_edges()
 	
 	# DLG optional field warnings
 	if lower_field in ["comment", "active"]:
+		var str_value := str(value).strip_edges()
 		if str_value.is_empty():
 			return "Field is empty (optional)"
 	
@@ -238,9 +238,24 @@ static func get_validation_warning(field_name: String, value: Variant) -> String
 			return "ActionID is -1 (no action linked); modder must set this"
 	
 	if lower_field == "inventoryres":
-		if str_value.is_empty():
+		var inventory_res := str(value).strip_edges()
+		if inventory_res.is_empty():
 			return "InventoryRes is empty; assign a UTI template via Browse Item"
-		if str_value.length() > MAX_RESREF_LENGTH:
+		if inventory_res.length() > MAX_RESREF_LENGTH:
 			return "InventoryRes exceeds %d characters" % MAX_RESREF_LENGTH
+	
+	if lower_field == "rank":
+		var rank_value := int(value) if typeof(value) in [TYPE_INT, TYPE_FLOAT] else -1
+		if rank_value < 0:
+			return "Rank is negative; skill ranks should be 0 or higher"
+		if rank_value > 127:
+			return "Rank exceeds 127; verify this is intended for the target game rules"
+	
+	if lower_field == "feat":
+		var feat_value := int(value) if typeof(value) in [TYPE_INT, TYPE_FLOAT] else -1
+		if feat_value < 0:
+			return "Feat index is negative; use a valid feat.2da row index"
+		if feat_value == 65535:
+			return "Feat is 65535 (unset sentinel); assign a feat.2da index"
 	
 	return ""

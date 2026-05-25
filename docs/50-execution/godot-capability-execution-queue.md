@@ -25,18 +25,21 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q7 | GFF struct/array editing | GFF struct-array mutations and inline struct field editing with validation and undo/redo. |
 | Q8 | Typed field picker UIs | Install-aware ResRef browsers, enum combos, and locstring/strref assist in workspace editors. |
 | Q9 | Dynamic enum registry + inventory pickers | Install-aware 2DA enum labels, UTI item picker, GFF itemList integration. |
+| Q10 | GFF inventory array editing | Inventory/EquippedInventory/itemList editable with shared item struct defaults. |
+| Q11 | GFF skill/feat array editing | SkillList/FeatList editable with Rank/Feat defaults and hybrid validation. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| _None_ | — | — | — | Q10 shipped; re-evaluate next slice from gap analysis. |
+| _None_ | — | — | — | Q11 shipped; re-evaluate next slice from gap analysis. |
 
 ## Next Slices (Deferred)
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
 | Q10 | GFF inventory array editing | Add/remove/reorder `Inventory`, `EquippedInventory`, and proper `itemList` defaults. | Q9 item picker shipped. | **Shipped** — inventory arrays editable with shared item struct defaults. |
+| Q11 | GFF skill/feat array editing | Add/remove/reorder `SkillList` and `FeatList` with Rank/Feat defaults. | Q7 array machinery shipped. | **Shipped** — creature skill/feat lists editable in GFF tree. |
 
 ## Queue Governance
 
