@@ -21,16 +21,20 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q3 | Inspector-guided typed GFF editing helpers | Common structured fields (locstrings, refs, enum-like fields) are editable with guided controls while validation constraints hold. |
 | Q4 | Archive write-back parity (ERF/RIM/MOD) | ERF, RIM, and MOD archives support parser→edit→write-back parity through pipeline-owned flows. |
 | Q5 | Context-action expansion for compare/install/export | Compare/install/export actions are available from resource browser, document tabs, and area tools surfaces. |
+| Q6 | DLG struct/array mutation UI | Reply/entry container editing with add/remove/reorder, hybrid validation, and undo/redo support. |
+| Q7 | GFF struct/array editing | GFF struct-array mutations and inline struct field editing with validation and undo/redo. |
 
-## Next Slices (Deferred)
-
-These items are planned for Phase 2+ waves pending completion of prior dependencies and readiness validation. No detailed requirements are active yet.
+## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q6 | DLG struct/array mutation UI | Extend mutation surface for dialogue-specific container editing (speaker-action arrays, links, reply conditions). | Q1 (undo/redo) complete, DLG document surface design validated. | Priority deferred pending validation of struct/array editing patterns from Q7 (GFF). |
-| Q7 | GFF struct/array editing | Add array add/remove/reorder controls and struct-field mutation for locstring trees and complex field hierarchies. | Q3 (typed helpers) patterns validated, struct editing interaction design sketched. | Foundation for Q6 DLG and Q8 typed field picker expansion. |
-| Q8 | Typed field picker UIs | Add inspector-backed editors for resref file browsers and enum combos sourced from gamefs registry. | Q7 (struct/array patterns) validated, gamefs API stability confirmed. | Builds on Q3 typed helpers; depends on consistent struct/array surface from Q7. |
+| Q8 | Typed field picker UIs | Add install-aware ResRef browsers, enum combos, and locstring/strref assist in workspace editors. | Q7 struct/array patterns validated; gamefs browse API stable. | Builds on Q3 typed helpers and Q6/Q7 editor surfaces. |
+
+## Next Slices (Deferred)
+
+| Order | Capability slice | Goal | Readiness criteria | Notes |
+| --- | --- | --- | --- | --- |
+| Q9 | Dynamic enum registry + inventory pickers | Load enum labels from 2DA/gamefs and add item/inventory picker UX. | Q8 picker patterns validated. | Follow-up to Q8 static enum mapping. |
 
 ## Queue Governance
 

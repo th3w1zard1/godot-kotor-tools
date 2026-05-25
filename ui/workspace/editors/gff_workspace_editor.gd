@@ -12,6 +12,7 @@ const KotorValidationPanel := preload("../panels/validation_panel.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const GFFTreePopulator := preload("../gff_tree_populator.gd")
 const TypedFieldHelpers := preload("../typed_field_helpers.gd")
+const KotorResRefPickerDialog := preload("../dialogs/kotor_resref_picker_dialog.gd")
 
 const WORKSPACE_GFF_EXTENSIONS := [
 	"utc", "utp", "uti", "utd", "ute", "utm", "uts", "utt", "utw",
@@ -30,6 +31,7 @@ var _tree: Tree
 var _validation_panel: KotorValidationPanel
 var _preflight_dialog: KotorPreflightDialog
 var _array_context_menu: PopupMenu
+var _field_context_menu: PopupMenu
 
 var _mutation_service: RefCounted
 var _resource: GFFResource
@@ -43,6 +45,8 @@ var _document_key := ""
 # Context menu state (for struct array operations)
 var _context_array_field := ""
 var _context_array_index := -1
+var _context_field_path: Array = []
+var _context_field_name := ""
 
 var _pending_resource: GFFResource
 var _pending_source_path := ""
@@ -317,6 +321,10 @@ func _build_ui() -> void:
 	_array_context_menu = PopupMenu.new()
 	add_child(_array_context_menu)
 	_array_context_menu.id_pressed.connect(_on_array_context_menu_selected)
+
+	_field_context_menu = PopupMenu.new()
+	add_child(_field_context_menu)
+	_field_context_menu.id_pressed.connect(_on_field_context_menu_selected)
 
 	_validation_panel = KotorValidationPanel.new()
 	add_child(_validation_panel)
@@ -794,17 +802,102 @@ func _get_undo_redo() -> EditorUndoRedoManager:
 # === Struct Array Context Menu Handlers (U3) ===
 
 func _on_gff_item_mouse_selected(item: TreeItem, column: int, at_position: Vector2) -> void:
-	# Right-click (button 2) shows context menu for struct array items
+	# Right-click (button 2) shows context menu for struct array items or typed fields
 	var button_index = _tree.get_button_index_at_position(at_position)
 	if button_index != 2:
 		return
-	if item == null or not item.has_meta(GFFTreePopulator.META_IS_STRUCT_ARRAY_ITEM):
+	if item == null:
 		return
-	
-	_context_array_field = item.get_meta(GFFTreePopulator.META_ARRAY_FIELD)
-	_context_array_index = item.get_meta(GFFTreePopulator.META_ARRAY_INDEX)
-	
-	_show_array_context_menu(_context_array_field, _context_array_index, at_position)
+	if item.has_meta(GFFTreePopulator.META_IS_STRUCT_ARRAY_ITEM):
+		_context_array_field = item.get_meta(GFFTreePopulator.META_ARRAY_FIELD)
+		_context_array_index = item.get_meta(GFFTreePopulator.META_ARRAY_INDEX)
+		_show_array_context_menu(_context_array_field, _context_array_index, at_position)
+		return
+
+	var path: Variant = item.get_metadata(1)
+	if typeof(path) != TYPE_ARRAY:
+		return
+	_context_field_path = path
+	_context_field_name = str(path.back()) if not path.is_empty() else ""
+	var has_resref := item.has_meta("is_resref") and bool(item.get_meta("is_resref"))
+	var has_enum := item.has_meta("enum_field_name")
+	if not has_resref and not has_enum:
+		return
+	_show_field_context_menu(item, at_position, has_resref, has_enum)
+
+
+func _show_field_context_menu(item: TreeItem, position: Vector2, has_resref: bool, has_enum: bool) -> void:
+	if _field_context_menu == null:
+		return
+	_field_context_menu.clear()
+	if has_resref:
+		_field_context_menu.add_item("Browse ResRef…", 1)
+	if has_enum:
+		_field_context_menu.add_item("Pick Enum Value…", 2)
+	_field_context_menu.popup_rect(Rect2(position, Vector2.ZERO))
+
+
+func _on_field_context_menu_selected(menu_id: int) -> void:
+	if _context_field_path.is_empty():
+		return
+	var item := _tree.get_selected()
+	if item == null:
+		return
+	var field_name := _context_field_name
+	match menu_id:
+		1:
+			var current_value := item.get_text(1)
+			_open_gff_resref_picker(_context_field_path, field_name, current_value)
+		2:
+			var enum_field := str(item.get_meta("enum_field_name"))
+			var current_value := int(item.get_text(1)) if item.get_text(1).is_valid_int() else 0
+			_open_gff_enum_picker(_context_field_path, enum_field, current_value)
+	_context_field_path = []
+	_context_field_name = ""
+
+
+func _open_gff_resref_picker(path: Array, field_name: String, current_value: String) -> void:
+	var dialog := KotorResRefPickerDialog.new()
+	dialog.configure(
+		_editor_state,
+		TypedFieldHelpers.get_resref_type_hint(field_name),
+		current_value
+	)
+	add_child(dialog)
+	dialog.resref_selected.connect(func(selected: String) -> void:
+		if not selected.is_empty():
+			_apply_tree_field_edit(path, selected)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func() -> void:
+		dialog.queue_free()
+	)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _open_gff_enum_picker(path: Array, field_name: String, current_value: int) -> void:
+	var dialog := AcceptDialog.new()
+	dialog.title = "Pick %s" % field_name
+	dialog.ok_button_text = "Apply"
+	var option := OptionButton.new()
+	var options := TypedFieldHelpers.get_enum_options_as_array(field_name)
+	for option_text in options:
+		option.add_item(option_text)
+	var selected_index := TypedFieldHelpers.find_enum_option_index(field_name, current_value)
+	if selected_index >= 0:
+		option.select(selected_index)
+	dialog.add_child(option)
+	add_child(dialog)
+	dialog.confirmed.connect(func() -> void:
+		var parsed := TypedFieldHelpers.parse_enum_option_index(option.get_item_text(option.selected))
+		if parsed >= 0:
+			_apply_tree_field_edit(path, str(parsed))
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func() -> void:
+		dialog.queue_free()
+	)
+	dialog.popup_centered_ratio(0.35)
 
 
 func _show_array_context_menu(array_field: String, index: int, position: Vector2) -> void:

@@ -33,6 +33,17 @@ const ENUM_FIELD_MAPPING := {
 
 const MAX_RESREF_LENGTH := 16
 
+const RESREF_TYPE_HINTS := {
+	"Script": "nss",
+	"Sound": "wav",
+	"VO_ResRef": "wav",
+	"TemplateResRef": "utc",
+	"Conversation": "dlg",
+	"PortraitId": "tga",
+}
+
+const LOCSTRING_LANGUAGE_IDS := [0, 1, 2, 3, 4, 5]
+
 
 static func has_enum_hints(field_name: String) -> bool:
 	return ENUM_FIELD_MAPPING.has(field_name)
@@ -78,6 +89,37 @@ static func validate_resref(text: String) -> String:
 
 static func get_resref_validation_hint() -> String:
 	return "Max %d characters" % MAX_RESREF_LENGTH
+
+
+static func get_resref_type_hint(field_name: String) -> String:
+	var lower_field := field_name.strip_edges()
+	if RESREF_TYPE_HINTS.has(lower_field):
+		return RESREF_TYPE_HINTS[lower_field]
+	if lower_field.ends_with("Script"):
+		return "nss"
+	if lower_field.ends_with("Sound"):
+		return "wav"
+	return ""
+
+
+static func normalize_picker_selection(entry: Dictionary) -> String:
+	var resref := String(entry.get("resref", "")).strip_edges()
+	return validate_resref(resref)
+
+
+static func parse_enum_option_index(option_text: String) -> int:
+	var colon_index := option_text.find(": ")
+	if colon_index <= 0:
+		return int(option_text) if option_text.is_valid_int() else -1
+	return int(option_text.substr(0, colon_index))
+
+
+static func find_enum_option_index(field_name: String, value: int) -> int:
+	var options := get_enum_options_as_array(field_name)
+	for i in options.size():
+		if parse_enum_option_index(options[i]) == value:
+			return i
+	return -1
 
 
 # Hybrid Validation Helpers for Q6 DLG Array Mutations

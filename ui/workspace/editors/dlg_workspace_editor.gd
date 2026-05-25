@@ -13,6 +13,7 @@ const KotorValidationPanel := preload("../panels/validation_panel.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const TypedFieldHelpers := preload("../typed_field_helpers.gd")
 const GFFTreePopulator := preload("../gff_tree_populator.gd")
+const KotorResRefPickerDialog := preload("../dialogs/kotor_resref_picker_dialog.gd")
 
 var _toolbar: HBoxContainer
 var _path_label: Label
@@ -708,6 +709,14 @@ func _add_dlg_string_editor(struct_value: Dictionary, field_name: String, value:
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(label)
 
+	if TypedFieldHelpers.is_resref_field(field_name):
+		var browse_btn := Button.new()
+		browse_btn.text = "Browse…"
+		browse_btn.pressed.connect(func() -> void:
+			_open_resref_picker_for_field(struct_value, field_name, value)
+		)
+		header.add_child(browse_btn)
+
 	var multiline := field_name in ["Comment", "LinkComment"] or value.contains("\n") or value.length() > 72
 	if multiline:
 		var edit := TextEdit.new()
@@ -737,21 +746,71 @@ func _add_dlg_locstring_editor(struct_value: Dictionary, field_name: String, val
 	label.text = field_name
 	container.add_child(label)
 
+	var language_row := HBoxContainer.new()
+	container.add_child(language_row)
+
+	var language_label := Label.new()
+	language_label.text = "Language ID"
+	language_row.add_child(language_label)
+
+	var language_option := OptionButton.new()
+	for language_id in TypedFieldHelpers.LOCSTRING_LANGUAGE_IDS:
+		language_option.add_item("Language %d" % language_id, language_id)
+	language_row.add_child(language_option)
+
+	var strref_row := HBoxContainer.new()
+	container.add_child(strref_row)
+
+	var strref_label := Label.new()
+	strref_label.text = "StrRef"
+	strref_row.add_child(strref_label)
+
+	var strref_spin := SpinBox.new()
+	strref_spin.min_value = -1
+	strref_spin.max_value = 2147483647
+	strref_spin.value = int(value.get("strref", 0xFFFFFFFF))
+	strref_row.add_child(strref_spin)
+
 	var edit := TextEdit.new()
 	edit.custom_minimum_size = Vector2(0, 110)
-	edit.text = _dlg_locstring_text(value)
 	edit.placeholder_text = _dlg_resolved_locstring_text(value)
-	edit.focus_exited.connect(func() -> void:
-		_apply_locstring_edit(struct_value, field_name, edit.text)
-	)
 	container.add_child(edit)
 
-	var strref := int(value.get("strref", 0xFFFFFFFF))
-	if strref >= 0 and strref != 0xFFFFFFFF:
-		var info := Label.new()
-		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		info.text = "StrRef %d -> %s" % [strref, _dlg_resolved_locstring_text(value)]
-		container.add_child(info)
+	var info := Label.new()
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	container.add_child(info)
+
+	var refresh_locstring_ui := func() -> void:
+		var current_locstring = struct_value.get(field_name, value)
+		var language_id := language_option.get_selected_id()
+		var strings = current_locstring.get("strings", {})
+		if typeof(strings) != TYPE_DICTIONARY:
+			strings = {}
+		edit.text = String(strings.get(language_id, ""))
+		var strref := int(current_locstring.get("strref", 0xFFFFFFFF))
+		strref_spin.set_value_no_signal(float(strref))
+		if strref >= 0 and strref != 0xFFFFFFFF:
+			info.text = "StrRef %d -> %s" % [strref, _dlg_resolved_locstring_text(current_locstring)]
+		else:
+			info.text = "Language %d text edit" % language_id
+
+	refresh_locstring_ui.call()
+
+	language_option.item_selected.connect(func(_index: int) -> void:
+		refresh_locstring_ui.call()
+	)
+	edit.focus_exited.connect(func() -> void:
+		_apply_locstring_edit(
+			struct_value,
+			field_name,
+			edit.text,
+			language_option.get_selected_id()
+		)
+	)
+	strref_spin.value_changed.connect(func(new_value: float) -> void:
+		_apply_locstring_strref_edit(struct_value, field_name, int(new_value))
+		refresh_locstring_ui.call()
+	)
 
 
 func _add_dlg_bool_editor(struct_value: Dictionary, field_name: String, value: bool) -> void:
@@ -772,6 +831,24 @@ func _add_dlg_number_editor(struct_value: Dictionary, field_name: String, value:
 	label.text = field_name
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
+
+	if integer and TypedFieldHelpers.has_enum_hints(field_name):
+		var option := OptionButton.new()
+		var options := TypedFieldHelpers.get_enum_options_as_array(field_name)
+		for option_text in options:
+			option.add_item(option_text)
+		var selected_index := TypedFieldHelpers.find_enum_option_index(field_name, int(value))
+		if selected_index >= 0:
+			option.select(selected_index)
+		elif not TypedFieldHelpers.validate_enum_value(field_name, int(value)):
+			push_warning("Field '%s' has out-of-range enum value %d" % [field_name, int(value)])
+		option.item_selected.connect(func(index: int) -> void:
+			var parsed := TypedFieldHelpers.parse_enum_option_index(option.get_item_text(index))
+			if parsed >= 0:
+				_apply_int_edit(struct_value, field_name, parsed)
+		)
+		row.add_child(option)
+		return
 
 	var spin := SpinBox.new()
 	spin.min_value = -2147483648.0
@@ -1186,27 +1263,86 @@ func _exec_string_edit(struct_value: Dictionary, field_name: String, value: Stri
 	_dlg_document.set_struct_field(struct_value, field_name, value)
 
 
-func _apply_locstring_edit(struct_value: Dictionary, field_name: String, new_text: String) -> void:
+func _apply_locstring_edit(
+	struct_value: Dictionary,
+	field_name: String,
+	new_text: String,
+	language_id: int = 0
+) -> void:
 	if _dlg_document == null or struct_value.is_empty():
 		return
 	var current_locstring = struct_value.get(field_name, {})
-	var current_text := _dlg_locstring_text(current_locstring)
+	var strings = current_locstring.get("strings", {})
+	if typeof(strings) != TYPE_DICTIONARY:
+		strings = {}
+	var current_text := String(strings.get(language_id, ""))
 	if current_text == new_text:
 		return
 	var ur := _get_undo_redo()
 	if ur != null:
 		ur.create_action("Edit DLG locstring field", UndoRedo.MERGE_DISABLE, self)
-		ur.add_do_method(self, "_exec_locstring_edit", struct_value, field_name, new_text)
-		ur.add_undo_method(self, "_exec_locstring_edit", struct_value, field_name, current_text)
+		ur.add_do_method(self, "_exec_locstring_edit", struct_value, field_name, new_text, language_id)
+		ur.add_undo_method(self, "_exec_locstring_edit", struct_value, field_name, current_text, language_id)
 		ur.commit_action()
 	else:
-		_exec_locstring_edit(struct_value, field_name, new_text)
+		_exec_locstring_edit(struct_value, field_name, new_text, language_id)
 
 
-func _exec_locstring_edit(struct_value: Dictionary, field_name: String, value: String) -> void:
+func _exec_locstring_edit(
+	struct_value: Dictionary,
+	field_name: String,
+	value: String,
+	language_id: int = 0
+) -> void:
 	if _dlg_document == null:
 		return
-	_dlg_document.set_struct_locstring_text(struct_value, field_name, value)
+	_dlg_document.set_struct_locstring_text(struct_value, field_name, value, language_id)
+
+
+func _apply_locstring_strref_edit(struct_value: Dictionary, field_name: String, new_strref: int) -> void:
+	if _dlg_document == null or struct_value.is_empty():
+		return
+	var current_locstring = struct_value.get(field_name, {})
+	var current_strref := int(current_locstring.get("strref", 0xFFFFFFFF))
+	if current_strref == new_strref:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit DLG locstring strref", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_locstring_strref_edit", struct_value, field_name, new_strref)
+		ur.add_undo_method(self, "_exec_locstring_strref_edit", struct_value, field_name, current_strref)
+		ur.commit_action()
+	else:
+		_exec_locstring_strref_edit(struct_value, field_name, new_strref)
+
+
+func _exec_locstring_strref_edit(struct_value: Dictionary, field_name: String, strref: int) -> void:
+	if _dlg_document == null:
+		return
+	var locstring = struct_value.get(field_name, {})
+	if typeof(locstring) != TYPE_DICTIONARY:
+		return
+	locstring["strref"] = strref
+	_dlg_document.set_struct_field(struct_value, field_name, locstring)
+
+
+func _open_resref_picker_for_field(struct_value: Dictionary, field_name: String, current_value: String) -> void:
+	var dialog := KotorResRefPickerDialog.new()
+	dialog.configure(
+		_editor_state,
+		TypedFieldHelpers.get_resref_type_hint(field_name),
+		current_value
+	)
+	add_child(dialog)
+	dialog.resref_selected.connect(func(selected: String) -> void:
+		if not selected.is_empty():
+			_apply_string_edit(struct_value, field_name, selected)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func() -> void:
+		dialog.queue_free()
+	)
+	dialog.popup_centered_ratio(0.7)
 
 
 func _apply_bool_edit(struct_value: Dictionary, field_name: String, pressed: bool) -> void:
