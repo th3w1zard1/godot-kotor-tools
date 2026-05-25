@@ -1,7 +1,7 @@
 ---
 title: Q11 GFF SkillList and FeatList Array Editing
 type: feat
-status: active
+status: completed
 date: 2026-05-24
 origin: docs/plans/2026-05-24-014-feat-q10-gff-inventory-array-editing-plan.md
 phase: Q11

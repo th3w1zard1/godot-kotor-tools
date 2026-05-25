@@ -9,6 +9,7 @@ const FIELD_TO_2DA := {
 	"Gender": "gender",
 	"Race": "racialtypes",
 	"Appearance_Type": "appearance",
+	"Feat": "feat",
 }
 
 const LABEL_COLUMNS := ["label", "string", "name", "text"]
@@ -58,11 +59,36 @@ func _on_gamefs_reindexed(_status_text: String) -> void:
 	clear_cache()
 
 
+func get_skill_label(skill_index: int) -> String:
+	return get_table_row_label("skills", skill_index)
+
+
+func get_table_row_label(table_resref: String, row_index: int) -> String:
+	var values := _load_table_values(table_resref)
+	if values.has(row_index):
+		return str(values[row_index])
+	return ""
+
+
+func _load_table_values(table_resref: String) -> Dictionary:
+	var cache_key := "__table:%s" % table_resref
+	if _cache.has(cache_key):
+		return _cache[cache_key].get("values", {})
+	var from_2da := _load_rows_from_table(table_resref)
+	if from_2da.is_empty():
+		return {}
+	_cache[cache_key] = {"source": "2da", "values": from_2da}
+	return from_2da
+
+
 func _load_from_2da(field_name: String) -> Dictionary:
 	var table_resref := String(FIELD_TO_2DA.get(field_name, ""))
 	if table_resref.is_empty():
 		return {}
+	return _load_table_values(table_resref)
 
+
+func _load_rows_from_table(table_resref: String) -> Dictionary:
 	var gamefs := _resolve_gamefs()
 	if gamefs == null:
 		return {}

@@ -2,6 +2,7 @@
 extends SceneTree
 
 const UTCResource := preload("../../resources/typed/utc_resource.gd")
+const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const TypedFieldHelpers := preload("../../ui/workspace/typed_field_helpers.gd")
 const GFFTreePopulator := preload("../../ui/workspace/gff_tree_populator.gd")
 
@@ -18,6 +19,7 @@ func _run_tests() -> void:
 	_test_validation_warnings()
 	_test_skilllist_insert_remove()
 	_test_featlist_insert_reorder()
+	_test_feat_enum_hints_without_static_map()
 	print("✓ GFF skill/feat array tests passed")
 	quit()
 
@@ -63,6 +65,26 @@ func _test_featlist_insert_reorder() -> void:
 	var last := (document.get_field("FeatList") as Array).back() as Dictionary
 	assert(int(last.get("Feat", -1)) == 65535)
 	print("✓ FeatList reorder/insert passed")
+
+
+func _test_feat_enum_hints_without_static_map() -> void:
+	assert(TypedFieldHelpers.ENUM_FIELD_MAPPING.get("Feat", {}).is_empty())
+	var install_path := ProjectSettings.globalize_path("user://skill_feat_enum_install")
+	var override_dir := install_path.path_join("override")
+	DirAccess.make_dir_recursive_absolute(override_dir)
+	var feat_path := override_dir.path_join("feat.2da")
+	var feat_file := FileAccess.open(feat_path, FileAccess.WRITE)
+	assert(feat_file != null)
+	feat_file.store_string("2DA V2.0\n\nlabel\n0 Flurry\n")
+	feat_file.close()
+	var state := KotorEditorState.new()
+	state.game_path = install_path
+	state.refresh_gamefs()
+	var registry = state.enum_registry
+	registry.clear_cache()
+	assert(TypedFieldHelpers.has_enum_hints("Feat", registry))
+	DirAccess.remove_absolute(feat_path)
+	print("✓ Feat enum hints from 2DA passed")
 
 
 func _build_creature_with_skills() -> UTCResource:

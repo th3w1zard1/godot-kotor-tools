@@ -350,7 +350,7 @@ func _refresh_tree() -> void:
 	var type_label := _resource.file_type if not _resource.file_type.is_empty() else "?"
 	root_item.set_text(0, type_label)
 	root_item.set_text(1, _resource.get_type_label())
-	GFFTreePopulator.populate(root_item, _resource.gff_data)
+	GFFTreePopulator.populate(root_item, _resource.gff_data, [], _get_enum_registry())
 
 
 func _refresh_tag_edit() -> void:

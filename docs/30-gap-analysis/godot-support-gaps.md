@@ -28,7 +28,7 @@ Project target: **Godot 4.6**.
 | P1 | Archive write-back parity (ERF/RIM/MOD workflows) | Shipped (Q4) | Unlocks full round-trip mod packaging workflows. | Serializer + saver parity plan for archive families using existing `ResourceFormatSaver` and pipeline write/export flows. |
 | P1 | Cross-format dependency tooling expansion | Shipped (Q1–Q5) | Current helpers cover selected contexts; broader dependency-edit support improves reliability. | Expand dependency-list and rename utilities to additional typed document flows with shared document mutation primitives. |
 | P1 | Stronger reload/consistency scenarios | Shipped (Q2) | Prevents subtle state drift after install/restore/edit loops. | Add targeted cache/reload behavior tests around mutation pipeline, session restore, and install-aware reindex boundaries. |
-| P2 | Authoring ergonomics for complex typed docs | Shipped (Q6–Q11) | Reduces manual error risk in larger content edits. | Struct/array editing, typed pickers, enum registry, inventory/skill/feat arrays. |
+| P2 | Authoring ergonomics for complex typed docs | Shipped (Q6–Q12) | Reduces manual error risk in larger content edits. | Struct/array editing, typed pickers, enum registry, inventory/skill/feat arrays, feat/skill 2DA labels. |
 | P2 | Contributor-facing parity matrix maintenance process | Shipped (Q1–Q5) | Keeps roadmap clear as format support grows. | Maintain this document and plan links whenever a new format/editor capability lands. |
 
 For detailed readiness criteria and dependencies, see [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md).
@@ -57,7 +57,7 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 
 For Phase 2 and beyond, use these reference documents in order:
 
-1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices (Q1–Q11) and deferred next slices with readiness criteria and dependencies.
+1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices (Q1–Q12) and deferred next slices with readiness criteria and dependencies.
 2. **Requirement source:** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md) — Detailed requirement grounding for the next implementation wave (when Q6+ readiness criteria are met).
 3. **This document:** Gap inventory and Godot capability opportunities for strategic context.
 
