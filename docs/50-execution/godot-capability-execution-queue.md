@@ -24,18 +24,19 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q6 | DLG struct/array mutation UI | Reply/entry container editing with add/remove/reorder, hybrid validation, and undo/redo support. |
 | Q7 | GFF struct/array editing | GFF struct-array mutations and inline struct field editing with validation and undo/redo. |
 | Q8 | Typed field picker UIs | Install-aware ResRef browsers, enum combos, and locstring/strref assist in workspace editors. |
+| Q9 | Dynamic enum registry + inventory pickers | Install-aware 2DA enum labels, UTI item picker, GFF itemList integration. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| _None_ | — | — | — | Q9 shipped; re-evaluate next slice from gap analysis. |
+| _None_ | — | — | — | Q10 shipped; re-evaluate next slice from gap analysis. |
 
 ## Next Slices (Deferred)
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q9 | Dynamic enum registry + inventory pickers | Load enum labels from 2DA/gamefs and add item/inventory picker UX. | Q8 picker patterns validated. | **Shipped** — install-aware 2DA enum registry, UTI item picker, GFF itemList integration. |
+| Q10 | GFF inventory array editing | Add/remove/reorder `Inventory`, `EquippedInventory`, and proper `itemList` defaults. | Q9 item picker shipped. | **Shipped** — inventory arrays editable with shared item struct defaults. |
 
 ## Queue Governance
 

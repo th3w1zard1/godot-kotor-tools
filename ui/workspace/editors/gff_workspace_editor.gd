@@ -1003,6 +1003,13 @@ func _create_default_struct(array_field: String) -> Dictionary:
 				"Comment": "",
 				"Flags": 0,
 			}
+		"itemList", "Inventory", "EquippedInventory":
+			return {
+				"InventoryRes": "",
+				"Dropable": 1,
+				"Infinite": 0,
+				"Recharge": 0,
+			}
 		"Scripts":
 			return {
 				"Script": "",

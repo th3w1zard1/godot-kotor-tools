@@ -19,6 +19,8 @@ func _run_tests() -> void:
 func _test_item_field_detection() -> void:
 	assert(TypedFieldHelpers.is_item_resref_field("InventoryRes"))
 	assert(TypedFieldHelpers.is_item_resref_field("ResRef", ["itemList", 0]))
+	assert(TypedFieldHelpers.is_item_resref_field("InventoryRes", ["Inventory", 0]))
+	assert(TypedFieldHelpers.is_item_resref_field("InventoryRes", ["EquippedInventory", 0]))
 	assert(not TypedFieldHelpers.is_item_resref_field("ResRef", ["ScriptList"]))
 	assert(TypedFieldHelpers.is_item_resref_field("TemplateItemRes"))
 	print("✓ Item field detection passed")

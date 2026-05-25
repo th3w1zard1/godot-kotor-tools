@@ -20,6 +20,8 @@ const EDITABLE_STRUCT_ARRAY_FIELDS := {
 	# UTC (Creature) arrays
 	"CreatureActions": true,
 	"itemList": true,
+	"Inventory": true,
+	"EquippedInventory": true,
 	# UTP (Placeable) arrays
 	"Scripts": true,
 	"UTCInstanceList": true,

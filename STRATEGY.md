@@ -28,7 +28,7 @@ We commit to a Godot-native, install-aware workspace where parser/importer/edito
 
 ### Phase 2 Capability Expansion
 
-**Status:** Active (Q1–Q9 shipped)
+**Status:** Active (Q1–Q10 shipped)
 
 Deliver vertical capability slices that combine editor ergonomics, mutation safety, and native Godot integration. Each slice lands parser/importer/editor/write-back parity for a format family or major editing surface.
 
@@ -80,6 +80,7 @@ Future capability work is organized by family. Slices map to Q6+, with dependenc
 - Q7: GFF struct/array editing (add/remove/reorder + locstring hierarchies)
 - Q8: Typed field picker UIs (resref browsers, enum combos from gamefs)
 - Q9: Dynamic enum registry + inventory pickers (2DA-backed enum labels, UTI item browse)
+- Q10: GFF inventory array editing (`Inventory`, `EquippedInventory`, itemList defaults)
 
 **Data Mutation Safety:**
 - Advanced rollback strategies (preview before commit, multi-slice transactions)

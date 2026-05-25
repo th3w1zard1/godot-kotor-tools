@@ -139,8 +139,15 @@ static func is_item_resref_field(field_name: String, path: Array = []) -> bool:
 		return true
 	if lower.ends_with("ItemRes"):
 		return true
-	if lower == "ResRef" and _path_contains_segment(path, "itemList"):
+	if lower == "ResRef" and _path_contains_inventory_array(path):
 		return true
+	return false
+
+
+static func _path_contains_inventory_array(path: Array) -> bool:
+	for segment in ["itemList", "Inventory", "EquippedInventory"]:
+		if _path_contains_segment(path, segment):
+			return true
 	return false
 
 
@@ -229,5 +236,11 @@ static func get_validation_warning(field_name: String, value: Variant) -> String
 		var action_value := int(value) if typeof(value) == TYPE_INT else -1
 		if action_value == -1:
 			return "ActionID is -1 (no action linked); modder must set this"
+	
+	if lower_field == "inventoryres":
+		if str_value.is_empty():
+			return "InventoryRes is empty; assign a UTI template via Browse Item"
+		if str_value.length() > MAX_RESREF_LENGTH:
+			return "InventoryRes exceeds %d characters" % MAX_RESREF_LENGTH
 	
 	return ""
