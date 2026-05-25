@@ -13,6 +13,7 @@ const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const GFFTreePopulator := preload("../gff_tree_populator.gd")
 const TypedFieldHelpers := preload("../typed_field_helpers.gd")
 const KotorResRefPickerDialog := preload("../dialogs/kotor_resref_picker_dialog.gd")
+const KotorItemPickerDialog := preload("../dialogs/kotor_item_picker_dialog.gd")
 
 const WORKSPACE_GFF_EXTENSIONS := [
 	"utc", "utp", "uti", "utd", "ute", "utm", "uts", "utt", "utw",
@@ -819,18 +820,27 @@ func _on_gff_item_mouse_selected(item: TreeItem, column: int, at_position: Vecto
 		return
 	_context_field_path = path
 	_context_field_name = str(path.back()) if not path.is_empty() else ""
+	var has_item := item.has_meta("is_item_resref") and bool(item.get_meta("is_item_resref"))
 	var has_resref := item.has_meta("is_resref") and bool(item.get_meta("is_resref"))
 	var has_enum := item.has_meta("enum_field_name")
-	if not has_resref and not has_enum:
+	if not has_item and not has_resref and not has_enum:
 		return
-	_show_field_context_menu(item, at_position, has_resref, has_enum)
+	_show_field_context_menu(item, at_position, has_item, has_resref, has_enum)
 
 
-func _show_field_context_menu(item: TreeItem, position: Vector2, has_resref: bool, has_enum: bool) -> void:
+func _show_field_context_menu(
+	item: TreeItem,
+	position: Vector2,
+	has_item: bool,
+	has_resref: bool,
+	has_enum: bool
+) -> void:
 	if _field_context_menu == null:
 		return
 	_field_context_menu.clear()
-	if has_resref:
+	if has_item:
+		_field_context_menu.add_item("Browse Item…", 3)
+	elif has_resref:
 		_field_context_menu.add_item("Browse ResRef…", 1)
 	if has_enum:
 		_field_context_menu.add_item("Pick Enum Value…", 2)
@@ -852,6 +862,9 @@ func _on_field_context_menu_selected(menu_id: int) -> void:
 			var enum_field := str(item.get_meta("enum_field_name"))
 			var current_value := int(item.get_text(1)) if item.get_text(1).is_valid_int() else 0
 			_open_gff_enum_picker(_context_field_path, enum_field, current_value)
+		3:
+			var current_item := item.get_text(1)
+			_open_gff_item_picker(_context_field_path, current_item)
 	_context_field_path = []
 	_context_field_name = ""
 
@@ -876,16 +889,19 @@ func _open_gff_resref_picker(path: Array, field_name: String, current_value: Str
 
 
 func _open_gff_enum_picker(path: Array, field_name: String, current_value: int) -> void:
+	var registry := _get_enum_registry()
 	var dialog := AcceptDialog.new()
 	dialog.title = "Pick %s" % field_name
 	dialog.ok_button_text = "Apply"
 	var option := OptionButton.new()
-	var options := TypedFieldHelpers.get_enum_options_as_array(field_name)
+	var options := TypedFieldHelpers.get_enum_options_as_array(field_name, registry)
 	for option_text in options:
 		option.add_item(option_text)
-	var selected_index := TypedFieldHelpers.find_enum_option_index(field_name, current_value)
+	var selected_index := TypedFieldHelpers.find_enum_option_index(field_name, current_value, registry)
 	if selected_index >= 0:
 		option.select(selected_index)
+	elif not TypedFieldHelpers.validate_enum_value(field_name, current_value, registry):
+		push_warning("Field '%s' has out-of-range enum value %d" % [field_name, current_value])
 	dialog.add_child(option)
 	add_child(dialog)
 	dialog.confirmed.connect(func() -> void:
@@ -898,6 +914,27 @@ func _open_gff_enum_picker(path: Array, field_name: String, current_value: int) 
 		dialog.queue_free()
 	)
 	dialog.popup_centered_ratio(0.35)
+
+
+func _open_gff_item_picker(path: Array, current_value: String) -> void:
+	var dialog := KotorItemPickerDialog.new()
+	dialog.configure(_editor_state, "uti", current_value)
+	add_child(dialog)
+	dialog.item_selected.connect(func(selected: String) -> void:
+		if not selected.is_empty():
+			_apply_tree_field_edit(path, selected)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func() -> void:
+		dialog.queue_free()
+	)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _get_enum_registry() -> RefCounted:
+	if _editor_state != null and _editor_state.get("enum_registry") != null:
+		return _editor_state.enum_registry
+	return null
 
 
 func _show_array_context_menu(array_field: String, index: int, position: Vector2) -> void:

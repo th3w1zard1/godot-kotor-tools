@@ -82,7 +82,9 @@ static func _configure_scalar_leaf(item: TreeItem, value: Variant, path: Array, 
 		item.set_editable(1, true)
 		
 		if not field_name.is_empty():
-			if TypedFieldHelpers.is_resref_field(field_name):
+			if TypedFieldHelpers.is_item_resref_field(field_name, path):
+				item.set_meta("is_item_resref", true)
+			elif TypedFieldHelpers.is_resref_field(field_name):
 				item.set_meta("is_resref", true)
 			
 			if TypedFieldHelpers.has_enum_hints(field_name):

@@ -23,18 +23,19 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q5 | Context-action expansion for compare/install/export | Compare/install/export actions are available from resource browser, document tabs, and area tools surfaces. |
 | Q6 | DLG struct/array mutation UI | Reply/entry container editing with add/remove/reorder, hybrid validation, and undo/redo support. |
 | Q7 | GFF struct/array editing | GFF struct-array mutations and inline struct field editing with validation and undo/redo. |
+| Q8 | Typed field picker UIs | Install-aware ResRef browsers, enum combos, and locstring/strref assist in workspace editors. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q8 | Typed field picker UIs | Add install-aware ResRef browsers, enum combos, and locstring/strref assist in workspace editors. | Q7 struct/array patterns validated; gamefs browse API stable. | Builds on Q3 typed helpers and Q6/Q7 editor surfaces. |
+| _None_ | — | — | — | Q9 shipped; re-evaluate next slice from gap analysis. |
 
 ## Next Slices (Deferred)
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q9 | Dynamic enum registry + inventory pickers | Load enum labels from 2DA/gamefs and add item/inventory picker UX. | Q8 picker patterns validated. | Follow-up to Q8 static enum mapping. |
+| Q9 | Dynamic enum registry + inventory pickers | Load enum labels from 2DA/gamefs and add item/inventory picker UX. | Q8 picker patterns validated. | **Shipped** — install-aware 2DA enum registry, UTI item picker, GFF itemList integration. |
 
 ## Queue Governance
 

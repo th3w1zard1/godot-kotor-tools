@@ -38,6 +38,7 @@ const RESREF_TYPE_HINTS := {
 	"Sound": "wav",
 	"VO_ResRef": "wav",
 	"TemplateResRef": "utc",
+	"InventoryRes": "uti",
 	"Conversation": "dlg",
 	"PortraitId": "tga",
 }
@@ -45,30 +46,40 @@ const RESREF_TYPE_HINTS := {
 const LOCSTRING_LANGUAGE_IDS := [0, 1, 2, 3, 4, 5]
 
 
-static func has_enum_hints(field_name: String) -> bool:
-	return ENUM_FIELD_MAPPING.has(field_name)
+static func has_enum_hints(field_name: String, registry: RefCounted = null) -> bool:
+	return not get_enum_values(field_name, registry).is_empty()
 
 
-static func get_enum_values(field_name: String) -> Dictionary:
-	var mapping: Dictionary = ENUM_FIELD_MAPPING.get(field_name, {})
-	return mapping
+static func get_enum_values(field_name: String, registry: RefCounted = null) -> Dictionary:
+	if registry != null and registry.has_method("get_enum_values"):
+		var dynamic_values: Dictionary = registry.get_enum_values(field_name)
+		if not dynamic_values.is_empty():
+			return dynamic_values
+	return ENUM_FIELD_MAPPING.get(field_name, {})
 
 
-static func get_enum_display_name(field_name: String, value: int) -> String:
-	var mapping: Dictionary = ENUM_FIELD_MAPPING.get(field_name, {})
+static func get_enum_display_name(field_name: String, value: int, registry: RefCounted = null) -> String:
+	var mapping: Dictionary = get_enum_values(field_name, registry)
 	if mapping.has(value):
 		return mapping[value]
 	return "Unknown (%d)" % value
 
 
-static func validate_enum_value(field_name: String, value: int) -> bool:
-	var mapping: Dictionary = ENUM_FIELD_MAPPING.get(field_name, {})
-	return mapping.has(value)
+static func validate_enum_value(field_name: String, value: int, registry: RefCounted = null) -> bool:
+	var mapping: Dictionary = get_enum_values(field_name, registry)
+	if mapping.is_empty():
+		return true
+	if mapping.has(value):
+		return true
+	if registry != null and registry.has_method("get_enum_source"):
+		if registry.get_enum_source(field_name) == "2da":
+			return true
+	return false
 
 
-static func get_enum_options_as_array(field_name: String) -> Array[String]:
+static func get_enum_options_as_array(field_name: String, registry: RefCounted = null) -> Array[String]:
 	var options: Array[String] = []
-	var mapping: Dictionary = ENUM_FIELD_MAPPING.get(field_name, {})
+	var mapping: Dictionary = get_enum_values(field_name, registry)
 	var keys = mapping.keys() as Array
 	keys.sort()
 	for key in keys:
@@ -114,12 +125,30 @@ static func parse_enum_option_index(option_text: String) -> int:
 	return int(option_text.substr(0, colon_index))
 
 
-static func find_enum_option_index(field_name: String, value: int) -> int:
-	var options := get_enum_options_as_array(field_name)
+static func find_enum_option_index(field_name: String, value: int, registry: RefCounted = null) -> int:
+	var options := get_enum_options_as_array(field_name, registry)
 	for i in options.size():
 		if parse_enum_option_index(options[i]) == value:
 			return i
 	return -1
+
+
+static func is_item_resref_field(field_name: String, path: Array = []) -> bool:
+	var lower := field_name.strip_edges()
+	if lower == "InventoryRes":
+		return true
+	if lower.ends_with("ItemRes"):
+		return true
+	if lower == "ResRef" and _path_contains_segment(path, "itemList"):
+		return true
+	return false
+
+
+static func _path_contains_segment(path: Array, segment: String) -> bool:
+	for part in path:
+		if str(part) == segment:
+			return true
+	return false
 
 
 # Hybrid Validation Helpers for Q6 DLG Array Mutations

@@ -832,15 +832,16 @@ func _add_dlg_number_editor(struct_value: Dictionary, field_name: String, value:
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
 
-	if integer and TypedFieldHelpers.has_enum_hints(field_name):
+	if integer and TypedFieldHelpers.has_enum_hints(field_name, _get_enum_registry()):
+		var registry := _get_enum_registry()
 		var option := OptionButton.new()
-		var options := TypedFieldHelpers.get_enum_options_as_array(field_name)
+		var options := TypedFieldHelpers.get_enum_options_as_array(field_name, registry)
 		for option_text in options:
 			option.add_item(option_text)
-		var selected_index := TypedFieldHelpers.find_enum_option_index(field_name, int(value))
+		var selected_index := TypedFieldHelpers.find_enum_option_index(field_name, int(value), registry)
 		if selected_index >= 0:
 			option.select(selected_index)
-		elif not TypedFieldHelpers.validate_enum_value(field_name, int(value)):
+		elif not TypedFieldHelpers.validate_enum_value(field_name, int(value), registry):
 			push_warning("Field '%s' has out-of-range enum value %d" % [field_name, int(value)])
 		option.item_selected.connect(func(index: int) -> void:
 			var parsed := TypedFieldHelpers.parse_enum_option_index(option.get_item_text(index))
@@ -1367,15 +1368,21 @@ func _exec_bool_edit(struct_value: Dictionary, field_name: String, value: Varian
 	_dlg_document.set_struct_field(struct_value, field_name, value)
 
 
+func _get_enum_registry() -> RefCounted:
+	var editor_state := get_editor_state()
+	if editor_state != null and editor_state.get("enum_registry") != null:
+		return editor_state.enum_registry
+	return null
+
+
 func _apply_int_edit(struct_value: Dictionary, field_name: String, new_value: float) -> void:
 	if _dlg_document == null or struct_value.is_empty():
 		return
 	var normalized := int(new_value)
 	
-	if TypedFieldHelpers.has_enum_hints(field_name):
-		if not TypedFieldHelpers.validate_enum_value(field_name, normalized):
-			push_warning("Invalid enum value %d for field %s" % [normalized, field_name])
-			return
+	if TypedFieldHelpers.has_enum_hints(field_name, _get_enum_registry()):
+		if not TypedFieldHelpers.validate_enum_value(field_name, normalized, _get_enum_registry()):
+			push_warning("Field '%s' has out-of-range enum value %d" % [field_name, normalized])
 	
 	# Check for required field validation (blocking)
 	if TypedFieldHelpers.is_required_field(field_name):

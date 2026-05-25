@@ -2,6 +2,7 @@
 extends RefCounted
 
 const KotorGameFS := preload("../../gamefs/kotor_gamefs.gd")
+const KotorEnumRegistry := preload("../workspace/kotor_enum_registry.gd")
 const PREF_KEY := "kotor_tools/game_path"
 const GAME_TLK_NAME := "dialog.tlk"
 
@@ -10,11 +11,13 @@ signal gamefs_reindexed(status_text: String)
 
 var game_path: String = ""
 var gamefs: RefCounted
+var enum_registry: RefCounted
 
 
 func load_settings() -> void:
 	if gamefs == null:
 		gamefs = KotorGameFS.new()
+	_ensure_enum_registry()
 	var editor_settings := EditorInterface.get_editor_settings()
 	game_path = editor_settings.get_setting(PREF_KEY) if editor_settings.has_setting(PREF_KEY) else ""
 	refresh_gamefs()
@@ -30,6 +33,7 @@ func set_game_path(new_path: String) -> void:
 func refresh_gamefs() -> void:
 	if gamefs == null:
 		gamefs = KotorGameFS.new()
+	_ensure_enum_registry()
 	if not has_valid_game_path():
 		gamefs.clear()
 		gamefs_reindexed.emit(get_game_path_status())
@@ -69,6 +73,11 @@ func find_dialog_tlk() -> String:
 		if FileAccess.file_exists(candidate):
 			return candidate
 	return ""
+
+
+func _ensure_enum_registry() -> void:
+	if enum_registry == null:
+		enum_registry = KotorEnumRegistry.new().configure(self)
 
 
 func find_first_existing_dir(candidates: Array[String]) -> String:
