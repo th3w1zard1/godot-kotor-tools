@@ -5,6 +5,7 @@ const GFFResourceFactory := preload("../../resources/gff_resource_factory.gd")
 const FACResource := preload("../../resources/typed/fac_resource.gd")
 const JRLResource := preload("../../resources/typed/jrl_resource.gd")
 const PTHResource := preload("../../resources/typed/pth_resource.gd")
+const UTIResource := preload("../../resources/typed/uti_resource.gd")
 
 
 func _initialize() -> void:
@@ -15,6 +16,7 @@ func _run_tests() -> void:
 	_test_jrl_factory_mapping()
 	_test_pth_factory_mapping()
 	_test_fac_factory_mapping()
+	_test_uti_factory_mapping()
 	print("✓ GFF resource factory tests passed")
 	quit()
 
@@ -78,3 +80,25 @@ func _test_fac_factory_mapping() -> void:
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Sith Academy")
 	assert(document.get_summary_lines().size() >= 4)
+
+
+func _test_uti_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "UTI",
+		"root": {
+			"TemplateResRef": "g_w_lghtsbr01",
+			"Tag": "test_item",
+			"LocalizedName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Prototype Saber"},
+			},
+			"BaseItem": 38,
+			"StackSize": 1,
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is UTIResource)
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Prototype Saber")
+	assert(document.get_summary_lines().size() >= 5)
