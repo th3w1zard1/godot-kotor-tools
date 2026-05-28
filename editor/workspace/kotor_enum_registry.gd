@@ -36,6 +36,14 @@ func clear_cache() -> void:
 	_cache.clear()
 
 
+func cache_size() -> int:
+	return _cache.size()
+
+
+func has_cached_entries() -> bool:
+	return not _cache.is_empty()
+
+
 func get_enum_values(field_name: String) -> Dictionary:
 	if _cache.has(field_name):
 		return _cache[field_name].get("values", {})

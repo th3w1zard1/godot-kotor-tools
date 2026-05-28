@@ -121,9 +121,9 @@ func _test_cache_clear_on_reindex() -> void:
 	state.load_settings()
 	var registry: KotorEnumRegistry = state.enum_registry
 	registry.get_enum_values("Gender")
-	assert(not registry._cache.is_empty())
+	assert(registry.has_cached_entries())
 	state.refresh_gamefs()
-	assert(registry._cache.is_empty())
+	assert(registry.cache_size() == 0)
 	print("✓ Enum registry cache clear passed")
 
 
