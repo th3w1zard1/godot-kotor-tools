@@ -9,12 +9,14 @@ const DLGResource := preload("./typed/dlg_resource.gd")
 const AREResource := preload("./typed/are_resource.gd")
 const GITResource := preload("./typed/git_resource.gd")
 const IFOResource := preload("./typed/ifo_resource.gd")
+const JRLResource := preload("./typed/jrl_resource.gd")
 
 const RESOURCE_TYPES := {
 	"ARE": AREResource,
 	"DLG": DLGResource,
 	"GIT": GITResource,
 	"IFO": IFOResource,
+	"JRL": JRLResource,
 	"UTC": UTCResource,
 	"UTP": UTPResource,
 }
