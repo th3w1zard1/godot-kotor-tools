@@ -7,16 +7,20 @@ const UTCResource := preload("./typed/utc_resource.gd")
 const UTPResource := preload("./typed/utp_resource.gd")
 const DLGResource := preload("./typed/dlg_resource.gd")
 const AREResource := preload("./typed/are_resource.gd")
+const FACResource := preload("./typed/fac_resource.gd")
 const GITResource := preload("./typed/git_resource.gd")
 const IFOResource := preload("./typed/ifo_resource.gd")
 const JRLResource := preload("./typed/jrl_resource.gd")
+const PTHResource := preload("./typed/pth_resource.gd")
 
 const RESOURCE_TYPES := {
 	"ARE": AREResource,
 	"DLG": DLGResource,
+	"FAC": FACResource,
 	"GIT": GITResource,
 	"IFO": IFOResource,
 	"JRL": JRLResource,
+	"PTH": PTHResource,
 	"UTC": UTCResource,
 	"UTP": UTPResource,
 }
