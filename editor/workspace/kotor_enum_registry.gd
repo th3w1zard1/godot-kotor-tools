@@ -14,15 +14,21 @@ const FIELD_TO_2DA := {
 
 const LABEL_COLUMNS := ["label", "string", "name", "text"]
 
-var _editor_state: RefCounted
+var _editor_state_ref: WeakRef
 var _cache: Dictionary = {}
 
 
 func configure(editor_state: RefCounted) -> KotorEnumRegistry:
-	_editor_state = editor_state
-	if _editor_state != null and _editor_state.has_signal("gamefs_reindexed"):
-		if not _editor_state.gamefs_reindexed.is_connected(_on_gamefs_reindexed):
-			_editor_state.gamefs_reindexed.connect(_on_gamefs_reindexed)
+	var previous_state := _resolve_editor_state()
+	if previous_state != null and previous_state.has_signal("gamefs_reindexed"):
+		if previous_state.gamefs_reindexed.is_connected(_on_gamefs_reindexed):
+			previous_state.gamefs_reindexed.disconnect(_on_gamefs_reindexed)
+
+	_editor_state_ref = weakref(editor_state)
+	var current_state := _resolve_editor_state()
+	if current_state != null and current_state.has_signal("gamefs_reindexed"):
+		if not current_state.gamefs_reindexed.is_connected(_on_gamefs_reindexed):
+			current_state.gamefs_reindexed.connect(_on_gamefs_reindexed)
 	return self
 
 
@@ -130,7 +136,14 @@ func _find_label_column(columns) -> String:
 
 
 func _resolve_gamefs() -> RefCounted:
-	if _editor_state == null:
+	var editor_state := _resolve_editor_state()
+	if editor_state == null:
 		return null
-	var gamefs = _editor_state.get("gamefs")
+	var gamefs = editor_state.get("gamefs")
 	return gamefs as RefCounted
+
+
+func _resolve_editor_state() -> RefCounted:
+	if _editor_state_ref == null:
+		return null
+	return _editor_state_ref.get_ref() as RefCounted
