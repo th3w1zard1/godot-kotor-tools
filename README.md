@@ -31,7 +31,7 @@ Fast path:
 ## Features
 
 | Format | Parser | Importer | Resource wrapper | Write-back |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | GFF (`.utc` `.dlg` `.gff` `.utp` .utt …) | `GffParser` | ✅ | `GFFResource` + typed GFF docs/resources | ✅ typed GFF serializer + DLG editing |
 | ERF / RIM / MOD archives | `ErfParser` | ✅ | `ErfResource` | — |
 | 2DA spreadsheets | `TwoDaParser` | ✅ | `TwoDaResource` | ✅ `.2da` serializer + dock editing |
@@ -40,6 +40,7 @@ Fast path:
 | KEY / BIF archives | `KeyBifParser` | — | — | — |
 
 **KotOR Tools** workspace (main editor screen + optional bottom dock during migration):
+
 - Game path picker + install status for the active K1/K2/JE workspace
 - Install-aware resource browser with search, grouped resource tree, and open/export/install/compare actions
 - Document-style editors for DLG, 2DA, TLK, and NSS with shared dirty/session/stale handling
@@ -49,19 +50,61 @@ Fast path:
 - Area Tools with indexed module ARE discovery, linked GIT/IFO/LYT inspection, and room-model checks (MDL/MDX/WOK)
 - Activity log for modding writes, compare output, and editor actions
 
+### Current functionality catalog
+
+The plugin currently includes the following in-editor functionality:
+
+- Install indexing for KotOR 1, KotOR 2, and Jade Empire resource trees
+- Open/edit/save/install/compare flows for GFF-family resources via workspace editor (`utc`, `utp`, `uti`, `utd`, `ute`, `utm`, `uts`, `utt`, `utw`, `are`, `git`, `ifo`, `jrl`, `pth`, `fac`)
+- Open/edit/save/install/compare flows for DLG resources with struct/array mutation support
+- Open/edit/save/install/compare flows for 2DA resources with write-back
+- Open/edit/save/install/compare flows for TLK resources with write-back
+- Open/edit/save/install/compare flows for NSS script resources
+- Archive and format support for ERF/RIM/MOD parse and write-back parity
+- Archive and format support for KEY/BIF index and extraction
+- Archive and format support for TPC import/read pipeline
+- Transaction safety via preflight previews, install/export mutation history, and rollback/restore operations
+
+### OpenKotOR parity program
+
+This repository now tracks parity against both upstream toolsets:
+
+- [PyKotor](https://github.com/OpenKotOR/PyKotor)
+- [HolocronToolset](https://github.com/OpenKotOR/HolocronToolset)
+
+Parity status and remaining capability backlog are maintained in:
+
+- [docs/30-gap-analysis/openkotor-parity-matrix.md](docs/30-gap-analysis/openkotor-parity-matrix.md)
+
+The parity matrix is updated slice-by-slice as functionality lands in Godot editor workflows.
+
 ---
 
 ## Installation
 
 ### Asset Library (recommended)
+
 Search **KotOR Tools** in the Godot Asset Library and click Install.
 
 ### Manual
-```
+
+```bash
 cd your_project/addons
 git clone https://github.com/OpenKotOR/godot-kotor-tools.git kotor_tools
 ```
+
 Then **Project → Project Settings → Plugins → KotOR Tools → Enable**.
+
+## Using the plugin in Godot editor
+
+1. Enable the plugin.
+2. Open the KotOR Tools workspace from the editor UI.
+3. Configure the game install path and wait for index completion.
+4. Browse resources and open files in the corresponding workspace editor.
+5. Edit fields, run compare, and use install/export actions.
+6. Use transaction history to inspect and restore previous mutation operations.
+
+For full first-run instructions and troubleshooting, see [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 ---
 

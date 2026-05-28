@@ -42,6 +42,14 @@ Close remaining format and write-back/editor parity gaps so modders can run full
 
 _Why it serves the approach:_ Vertical parity slices are the fastest path to a trustworthy Godot-native workflow.
 
+### OpenKotOR parity program
+
+Run a sustained parity program that maps PyKotor and HolocronToolset capabilities to Godot editor slices, with explicit shipped/partial/backlog status.
+
+_Why it serves the approach:_ Upstream parity tracking prevents feature drift and keeps implementation priorities tied to real modder workflows.
+
+Parity matrix reference: [docs/30-gap-analysis/openkotor-parity-matrix.md](docs/30-gap-analysis/openkotor-parity-matrix.md)
+
 ### Editing safety and consistency
 
 Strengthen post-mutation refresh behavior, state coherence, and failure-path handling across install-aware workflows.
@@ -77,6 +85,7 @@ Execution queue reference: [docs/50-execution/godot-capability-execution-queue.m
 Future capability work is organized by family. Slices map to Q6+, with dependencies and readiness criteria tracked in the execution queue.
 
 **Editor Ergonomics:**
+
 - Q7: GFF struct/array editing (add/remove/reorder + locstring hierarchies)
 - Q8: Typed field picker UIs (resref browsers, enum combos from gamefs)
 - Q9: Dynamic enum registry + inventory pickers (2DA-backed enum labels, UTI item browse)
@@ -85,10 +94,12 @@ Future capability work is organized by family. Slices map to Q6+, with dependenc
 - Q12: Install-aware feat/skill 2DA labels (`feat.2da`, `skills.2da` in GFF tree)
 
 **Data Mutation Safety:**
+
 - Advanced rollback strategies (preview before commit, multi-slice transactions)
 - Installation verification and pre-flight checks
 
 **Workspace Integration:**
+
 - Q6: DLG struct/array mutation UI (dialogue container editing)
 - Script authoring and validation improvements
 - Area model visualization and linking

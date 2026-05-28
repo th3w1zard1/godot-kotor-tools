@@ -17,7 +17,7 @@ const KotorItemPickerDialog := preload("../dialogs/kotor_item_picker_dialog.gd")
 
 const WORKSPACE_GFF_EXTENSIONS := [
 	"utc", "utp", "uti", "utd", "ute", "utm", "uts", "utt", "utw",
-	"are", "git", "ifo",
+	"are", "git", "ifo", "jrl", "pth", "fac",
 ]
 
 const ENTITY_EXTENSIONS := WORKSPACE_GFF_EXTENSIONS

@@ -43,6 +43,35 @@ If the plugin does not appear, verify the folder path is `addons/kotor_tools/` a
 4. Use the resource browser to open a resource (DLG, 2DA, TLK, NSS, or area-linked assets).
 5. Make a small edit, then use compare/install actions through the workspace pipeline.
 
+## Using the editor effectively
+
+1. Select a resource in the browser and open it in the workspace editor.
+2. Use typed controls and inline tree editing to modify values.
+3. Review validation and preflight output before install/export.
+4. Use compare output to verify expected changes.
+5. Apply install/export actions.
+6. Use transaction history to restore if needed.
+
+## Current functionality coverage
+
+- Workspace editors:
+  - GFF-family editing (`utc`, `utp`, `uti`, `utd`, `ute`, `utm`, `uts`, `utt`, `utw`, `are`, `git`, `ifo`, `jrl`, `pth`, `fac`)
+  - DLG editing
+  - 2DA editing
+  - TLK editing
+  - NSS script editing
+- Install-aware capabilities:
+  - indexed resource browsing
+  - compare/install/export actions
+  - transaction history + rollback
+- Format/serialization support:
+  - GFF write-back
+  - TLK write-back
+  - 2DA write-back
+  - ERF/RIM/MOD archive write-back
+
+OpenKotOR parity status is tracked in [30-gap-analysis/openkotor-parity-matrix.md](30-gap-analysis/openkotor-parity-matrix.md).
+
 ## Troubleshooting
 
 - **Plugin not listed in Plugins panel**

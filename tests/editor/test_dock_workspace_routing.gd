@@ -39,9 +39,10 @@ func _assert_dock_workspace_routing() -> void:
 	})
 	assert(not _delegated)
 
-	assert(dock._should_delegate_to_workspace_editor("utc"))
-	assert(not dock._should_delegate_to_workspace_editor("jrl"))
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("are"))
+	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("jrl"))
+	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("pth"))
+	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("fac"))
 
 	quit()
 

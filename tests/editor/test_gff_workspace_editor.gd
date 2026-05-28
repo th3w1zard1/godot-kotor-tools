@@ -27,6 +27,9 @@ func _assert_editor_behavior() -> void:
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("utc"))
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("are"))
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("ifo"))
+	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("jrl"))
+	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("pth"))
+	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("fac"))
 	assert(not KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("dlg"))
 
 	var editor_state := KotorEditorState.new()

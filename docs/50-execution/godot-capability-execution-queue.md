@@ -33,7 +33,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| _None_ | — | — | — | Q12 shipped; re-evaluate next slice from gap analysis. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q12 shipped baseline, parity matrix published, per-slice verification retained. | Active track begins with GFF-family route parity + install/use doc consolidation. |
 
 ## Next Slices (Deferred)
 
@@ -53,4 +53,5 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 - Strategy grounding: `STRATEGY.md`
 - Gap inventory: `docs/30-gap-analysis/godot-support-gaps.md`
+- OpenKotOR parity matrix: `docs/30-gap-analysis/openkotor-parity-matrix.md`
 - Next-wave requirements: `docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md`
