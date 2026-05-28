@@ -7,6 +7,7 @@ const JRLResource := preload("../../resources/typed/jrl_resource.gd")
 const PTHResource := preload("../../resources/typed/pth_resource.gd")
 const UTIResource := preload("../../resources/typed/uti_resource.gd")
 const UTDResource := preload("../../resources/typed/utd_resource.gd")
+const UTEResource := preload("../../resources/typed/ute_resource.gd")
 
 
 func _initialize() -> void:
@@ -19,6 +20,7 @@ func _run_tests() -> void:
 	_test_fac_factory_mapping()
 	_test_uti_factory_mapping()
 	_test_utd_factory_mapping()
+	_test_ute_factory_mapping()
 	print("✓ GFF resource factory tests passed")
 	quit()
 
@@ -126,4 +128,29 @@ func _test_utd_factory_mapping() -> void:
 	assert(resource is UTDResource)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Main Security Door")
+	assert(document.get_summary_lines().size() >= 6)
+
+
+func _test_ute_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "UTE",
+		"root": {
+			"TemplateResRef": "m12aa_enc01",
+			"Tag": "test_encounter",
+			"LocName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Test Encounter"},
+			},
+			"CreatureList": [
+				{"ResRef": "n_test_01"},
+				{"ResRef": "n_test_02"},
+			],
+			"Respawns": 1,
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is UTEResource)
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Test Encounter")
 	assert(document.get_summary_lines().size() >= 6)
