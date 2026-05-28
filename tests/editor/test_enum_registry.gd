@@ -14,6 +14,7 @@ func _run_tests() -> void:
 	_test_static_fallback()
 	_test_2da_load()
 	_test_feat_and_skills_tables()
+	_test_non_sequential_row_indices()
 	_test_cache_clear_on_reindex()
 	_test_out_of_range_2da_value_allowed()
 	print("✓ Enum registry tests passed")
@@ -82,6 +83,37 @@ func _test_feat_and_skills_tables() -> void:
 	DirAccess.remove_absolute(feat_path)
 	DirAccess.remove_absolute(skills_path)
 	print("✓ Enum registry feat/skills tables passed")
+
+
+func _test_non_sequential_row_indices() -> void:
+	var install_path := ProjectSettings.globalize_path("user://enum_registry_sparse_rows")
+	var override_dir := install_path.path_join("override")
+	DirAccess.make_dir_recursive_absolute(override_dir)
+	var feat_path := override_dir.path_join("feat.2da")
+	var skills_path := override_dir.path_join("skills.2da")
+	var feat_file := FileAccess.open(feat_path, FileAccess.WRITE)
+	assert(feat_file != null)
+	feat_file.store_string("2DA V2.0\n\nlabel\n2 Flurry\n5 \"Power Attack\"\n")
+	feat_file.close()
+	var skills_file := FileAccess.open(skills_path, FileAccess.WRITE)
+	assert(skills_file != null)
+	skills_file.store_string("2DA V2.0\n\nlabel\n7 Awareness\n12 Repair\n")
+	skills_file.close()
+
+	var state := KotorEditorState.new()
+	state.game_path = install_path
+	state.refresh_gamefs()
+	var registry: KotorEnumRegistry = state.enum_registry
+	registry.clear_cache()
+	var feat_values := registry.get_enum_values("Feat")
+	assert(feat_values[2] == "Flurry")
+	assert(feat_values[5] == "Power Attack")
+	assert(registry.get_skill_label(12) == "Repair")
+	assert(registry.get_skill_label(1) == "")
+
+	DirAccess.remove_absolute(feat_path)
+	DirAccess.remove_absolute(skills_path)
+	print("✓ Enum registry sparse row indices passed")
 
 
 func _test_cache_clear_on_reindex() -> void:

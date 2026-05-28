@@ -14,7 +14,7 @@
 ##
 ## The parser returns a Dictionary:
 ##   "columns"  : PackedStringArray   ordered column headers
-##   "rows"     : Array[Dictionary]   each dict is { col_name: value }
+##   "rows"     : Array[Dictionary]   each dict is { col_name: value, "__row_index": int }
 ##   "default"  : String              default value (or "" if not specified)
 class_name TwoDaParser
 
@@ -65,11 +65,16 @@ static func parse_string(text: String) -> Dictionary:
 		var tokens := _tokenize(lines[i])
 		if tokens.is_empty():
 			continue
-		# First token is the row index — skip it
+		# First token is the row index. Preserve it for callers that need table row IDs.
+		var parsed_row_index := _parse_row_index(tokens[0], rows.size())
 		var row: Dictionary = {}
+		row["__row_index"] = parsed_row_index
 		for ci in columns.size():
 			var tok := tokens[ci + 1] if ci + 1 < tokens.size() else EMPTY_VALUE
-			row[columns[ci]] = tok if tok != EMPTY_VALUE else null
+			var cell_value: Variant = tok
+			if tok == EMPTY_VALUE:
+				cell_value = null
+			row[columns[ci]] = cell_value
 		rows.append(row)
 
 	return {
@@ -146,3 +151,10 @@ static func _tokenize(line: String) -> Array[String]:
 
 static func _empty() -> Dictionary:
 	return { "columns": PackedStringArray(), "rows": [], "default": "" }
+
+
+static func _parse_row_index(raw_index: String, fallback_index: int) -> int:
+	var trimmed := raw_index.strip_edges()
+	if trimmed.is_valid_int():
+		return int(trimmed)
+	return fallback_index

@@ -118,10 +118,11 @@ func _rows_to_enum(parsed: Dictionary) -> Dictionary:
 	var label_col := _find_label_column(columns)
 	for i in rows.size():
 		var row: Dictionary = rows[i] if typeof(rows[i]) == TYPE_DICTIONARY else {}
+		var row_index := int(row.get("__row_index", i))
 		var label := str(row.get(label_col, "")).strip_edges()
 		if label.is_empty():
-			label = "Row %d" % i
-		result[i] = label
+			label = "Row %d" % row_index
+		result[row_index] = label
 	return result
 
 
