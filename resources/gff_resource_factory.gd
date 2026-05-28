@@ -13,6 +13,7 @@ const IFOResource := preload("./typed/ifo_resource.gd")
 const JRLResource := preload("./typed/jrl_resource.gd")
 const PTHResource := preload("./typed/pth_resource.gd")
 const UTIResource := preload("./typed/uti_resource.gd")
+const UTDResource := preload("./typed/utd_resource.gd")
 
 const RESOURCE_TYPES := {
 	"ARE": AREResource,
@@ -23,6 +24,7 @@ const RESOURCE_TYPES := {
 	"JRL": JRLResource,
 	"PTH": PTHResource,
 	"UTI": UTIResource,
+	"UTD": UTDResource,
 	"UTC": UTCResource,
 	"UTP": UTPResource,
 }

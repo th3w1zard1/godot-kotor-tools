@@ -6,6 +6,7 @@ const FACResource := preload("../../resources/typed/fac_resource.gd")
 const JRLResource := preload("../../resources/typed/jrl_resource.gd")
 const PTHResource := preload("../../resources/typed/pth_resource.gd")
 const UTIResource := preload("../../resources/typed/uti_resource.gd")
+const UTDResource := preload("../../resources/typed/utd_resource.gd")
 
 
 func _initialize() -> void:
@@ -17,6 +18,7 @@ func _run_tests() -> void:
 	_test_pth_factory_mapping()
 	_test_fac_factory_mapping()
 	_test_uti_factory_mapping()
+	_test_utd_factory_mapping()
 	print("✓ GFF resource factory tests passed")
 	quit()
 
@@ -102,3 +104,26 @@ func _test_uti_factory_mapping() -> void:
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Prototype Saber")
 	assert(document.get_summary_lines().size() >= 5)
+
+
+func _test_utd_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "UTD",
+		"root": {
+			"TemplateResRef": "m12aa_door01",
+			"Tag": "main_door",
+			"LocName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Main Security Door"},
+			},
+			"Conversation": "door_talk",
+			"Static": 1,
+			"Plot": 0,
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is UTDResource)
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Main Security Door")
+	assert(document.get_summary_lines().size() >= 6)
