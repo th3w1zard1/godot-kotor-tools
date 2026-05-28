@@ -9,6 +9,7 @@ const UTIResource := preload("../../resources/typed/uti_resource.gd")
 const UTDResource := preload("../../resources/typed/utd_resource.gd")
 const UTEResource := preload("../../resources/typed/ute_resource.gd")
 const UTMResource := preload("../../resources/typed/utm_resource.gd")
+const UTSResource := preload("../../resources/typed/uts_resource.gd")
 
 
 func _initialize() -> void:
@@ -23,6 +24,7 @@ func _run_tests() -> void:
 	_test_utd_factory_mapping()
 	_test_ute_factory_mapping()
 	_test_utm_factory_mapping()
+	_test_uts_factory_mapping()
 	print("✓ GFF resource factory tests passed")
 	quit()
 
@@ -179,4 +181,28 @@ func _test_utm_factory_mapping() -> void:
 	assert(resource is UTMResource)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Test Merchant")
+	assert(document.get_summary_lines().size() >= 6)
+
+
+func _test_uts_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "UTS",
+		"root": {
+			"TemplateResRef": "m12aa_sound01",
+			"Tag": "test_sound",
+			"LocName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Test Ambient Sound"},
+			},
+			"Sounds": [
+				{"Sound": "as_test_01"},
+			],
+			"Active": 1,
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is UTSResource)
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Test Ambient Sound")
 	assert(document.get_summary_lines().size() >= 6)

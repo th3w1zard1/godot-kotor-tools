@@ -16,6 +16,7 @@ const UTIResource := preload("./typed/uti_resource.gd")
 const UTDResource := preload("./typed/utd_resource.gd")
 const UTEResource := preload("./typed/ute_resource.gd")
 const UTMResource := preload("./typed/utm_resource.gd")
+const UTSResource := preload("./typed/uts_resource.gd")
 
 const RESOURCE_TYPES := {
 	"ARE": AREResource,
@@ -29,6 +30,7 @@ const RESOURCE_TYPES := {
 	"UTD": UTDResource,
 	"UTE": UTEResource,
 	"UTM": UTMResource,
+	"UTS": UTSResource,
 	"UTC": UTCResource,
 	"UTP": UTPResource,
 }
