@@ -75,12 +75,14 @@ func open_resource(resource: GITResource, source_path: String = "", file_name: S
 		_clear_document_state("No GIT resource is loaded.")
 		return
 	_document = _resource.create_document() as KotorGITDocument
+	_disconnect_document_signal()
 	_source_path = source_path if source_path.is_absolute_path() else ""
 	_file_name = file_name.get_file() if not file_name.is_empty() else "module.git"
 	_dirty = false
 	_status_text = ""
 	_refresh_module_bundle()
 	_register_controller_document()
+	_connect_document_signal()
 	_refresh_view()
 
 
@@ -223,6 +225,7 @@ func _build_ui() -> void:
 	_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_map_view.instance_selected.connect(_on_map_instance_selected)
+	_map_view.instance_drag_finished.connect(_on_map_instance_drag_finished)
 
 	var right_split := VSplitContainer.new()
 	right_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -421,6 +424,17 @@ func _on_map_instance_selected(category: String, index: int) -> void:
 	_select_instance(category, index)
 
 
+func _on_map_instance_drag_finished(
+	category: String,
+	index: int,
+	old_x: float,
+	old_y: float,
+	new_x: float,
+	new_y: float
+) -> void:
+	_apply_instance_position_with_undo(category, index, old_x, old_y, new_x, new_y)
+
+
 func _on_viewport_instance_selected(category: String, index: int) -> void:
 	_select_instance(category, index)
 
@@ -475,6 +489,7 @@ func _select_tree_record(record: Dictionary) -> void:
 
 
 func _clear_document_state(message: String) -> void:
+	_disconnect_document_signal()
 	_resource = null
 	_document = null
 	_source_path = ""
@@ -603,6 +618,60 @@ func _remove_previous_controller_document(previous_key: String) -> void:
 	if controller == null or previous_key.is_empty() or previous_key == _document_key or not controller.has_method("remove_document"):
 		return
 	controller.call("remove_document", previous_key)
+
+
+func _get_undo_redo() -> EditorUndoRedoManager:
+	if Engine.is_editor_hint():
+		return EditorInterface.get_editor_undo_redo()
+	return null
+
+
+func _apply_instance_position_with_undo(
+	category: String,
+	index: int,
+	old_x: float,
+	old_y: float,
+	new_x: float,
+	new_y: float
+) -> void:
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Move GIT instance", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_instance_position", category, index, new_x, new_y)
+		ur.add_undo_method(self, "_exec_instance_position", category, index, old_x, old_y)
+		ur.commit_action()
+	else:
+		_exec_instance_position(category, index, new_x, new_y)
+
+
+func _exec_instance_position(category: String, index: int, x: float, y: float) -> void:
+	if _document == null:
+		return
+	if not _document.set_instance_position(category, index, x, y):
+		return
+	_select_instance(category, index)
+
+
+func _connect_document_signal() -> void:
+	if _document == null:
+		return
+	var changed := Callable(self, "_on_document_changed")
+	if not _document.changed.is_connected(changed):
+		_document.changed.connect(changed)
+
+
+func _disconnect_document_signal() -> void:
+	if _document == null:
+		return
+	var changed := Callable(self, "_on_document_changed")
+	if _document.changed.is_connected(changed):
+		_document.changed.disconnect(changed)
+
+
+func _on_document_changed() -> void:
+	_dirty = true
+	_update_controller_dirty_state()
+	_refresh_view()
 
 
 func _resolve_mutation_service() -> RefCounted:

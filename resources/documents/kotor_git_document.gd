@@ -92,6 +92,33 @@ func find_instance_record(category: String, index: int) -> Dictionary:
 	return {}
 
 
+func set_instance_position(
+	category: String,
+	index: int,
+	x: float,
+	y: float,
+	z: Variant = null
+) -> bool:
+	var record := find_instance_record(category, index)
+	if record.is_empty():
+		return false
+	var base_path: Array = record.get("path", [])
+	if base_path.is_empty():
+		return false
+	var changed := false
+	changed = _set_instance_field(base_path, "XPosition", x) or changed
+	changed = _set_instance_field(base_path, "YPosition", y) or changed
+	if z != null:
+		changed = _set_instance_field(base_path, "ZPosition", float(z)) or changed
+	return changed
+
+
+func _set_instance_field(base_path: Array, field_name: String, value: float) -> bool:
+	var path: Array = base_path.duplicate()
+	path.append(field_name)
+	return set_field_at_path(path, value)
+
+
 func _build_instance_record(
 	category: String,
 	list_field: String,
