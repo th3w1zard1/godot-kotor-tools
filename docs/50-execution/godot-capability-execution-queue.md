@@ -39,12 +39,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q21 | GIT instance bearing rotate + undo | `set_instance_bearing` on GIT document; 2D map right-drag rotate with live preview; EditorUndoRedoManager undo; dirty refresh across map/tree/3D. |
 | Q22 | Indoor Builder foundations | `KotorIndoorMapIO` + `KotorIndoorDocument`; Indoor Builder workspace tab; 2D room map drag/rotate with undo; `.indoor` filesystem save; session restore. |
 | Q23 | Indoor kit library + placement | `KotorIndoorKitLoader`/`KotorIndoorKitLibrary`; kits path in editor settings; kit/component pickers; `add_room_from_kit` with undo; resource-browser `.indoor` routing. |
+| Q24 | Indoor hook connections | `KotorIndoorHookConnections` + document connection cache; map hook markers; room hook summaries; auto-rebuild on mutations; manual rebuild button. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q23 shipped kit library baseline, parity master plan active, per-slice verification retained. | Next: indoor hooks/export, script/media parity, or diff tooling per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q24 shipped hook connection baseline, parity master plan active, per-slice verification retained. | Next: indoor `.mod` export, script/media parity, or diff tooling per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 

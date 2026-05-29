@@ -95,6 +95,22 @@ func _draw_room(record: Dictionary) -> void:
 	if absf(rotation) > 0.001:
 		var direction := Vector2.RIGHT.rotated(-rotation) * 10.0
 		draw_line(center_screen, center_screen + direction, Color(0.9, 0.9, 0.85), 2.0)
+	_draw_room_hooks(record)
+
+
+func _draw_room_hooks(record: Dictionary) -> void:
+	var markers: Variant = record.get("hook_markers", [])
+	if typeof(markers) != TYPE_ARRAY:
+		return
+	for raw_marker in markers:
+		if typeof(raw_marker) != TYPE_DICTIONARY:
+			continue
+		var marker: Dictionary = raw_marker
+		var screen := _world_to_screen(Vector2(float(marker.get("x", 0.0)), float(marker.get("y", 0.0))))
+		var connected := int(marker.get("connected_room", -1)) >= 0
+		var color := Color(0.35, 0.9, 0.45) if connected else Color(0.95, 0.65, 0.2)
+		draw_circle(screen, 4.0, color)
+		draw_arc(screen, 4.0, 0.0, TAU, 16, color.lightened(0.35), 1.5)
 
 
 func _gui_input(event: InputEvent) -> void:

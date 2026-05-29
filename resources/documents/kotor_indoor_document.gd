@@ -6,6 +6,7 @@ signal changed
 
 const KotorIndoorMapIO := preload("../indoor/kotor_indoor_map_io.gd")
 const KotorIndoorKitLibrary := preload("../indoor/kotor_indoor_kit_library.gd")
+const KotorIndoorHookConnections := preload("../indoor/kotor_indoor_hook_connections.gd")
 const BWMParser := preload("../../formats/bwm_parser.gd")
 
 const DEFAULT_HALF_EXTENT := 2.0
@@ -13,6 +14,7 @@ const DEFAULT_HALF_EXTENT := 2.0
 var _data: Dictionary = {}
 var _embedded_by_id: Dictionary = {}
 var _kit_library: RefCounted
+var _room_connections: Array = []
 
 
 func load_from_bytes(data: PackedByteArray) -> bool:
@@ -59,6 +61,12 @@ func get_summary_lines() -> Array[String]:
 	lines.append("Embedded components: %d" % _embedded_by_id.size())
 	if _kit_library != null and _kit_library.has_method("get_kit_count"):
 		lines.append("Loaded kits: %d" % int(_kit_library.call("get_kit_count")))
+	var hook_counts := get_hook_connection_counts()
+	if int(hook_counts.get("connected", 0)) + int(hook_counts.get("open", 0)) > 0:
+		lines.append(
+			"Hook connections: %d connected, %d open"
+			% [int(hook_counts.get("connected", 0)), int(hook_counts.get("open", 0))]
+		)
 	return lines
 
 
@@ -101,6 +109,7 @@ func get_room_records() -> Array[Dictionary]:
 			"flip_y": bool(room.get("flip_y", false)),
 			"half_width": footprint.x,
 			"half_height": footprint.y,
+			"hook_markers": _build_hook_markers(index, room),
 		})
 	return records
 
@@ -192,8 +201,41 @@ func add_room_from_kit(
 	}
 	room_list.append(room)
 	_data["rooms"] = room_list
+	rebuild_room_connections()
 	_emit_changed()
 	return room_list.size() - 1
+
+
+func rebuild_room_connections() -> void:
+	var rooms: Variant = _data.get("rooms", [])
+	if typeof(rooms) != TYPE_ARRAY:
+		_room_connections = []
+		return
+	_room_connections = KotorIndoorHookConnections.rebuild_connections(
+		rooms as Array,
+		_hooks_for_room
+	)
+
+
+func get_hook_connection_counts() -> Dictionary:
+	return KotorIndoorHookConnections.count_connected_hooks(_room_connections)
+
+
+func get_room_hook_summaries(index: int) -> Array[String]:
+	var summaries: Array[String] = []
+	var room := get_room_dictionary(index)
+	if room.is_empty():
+		return summaries
+	var hooks := _get_component_hooks(room)
+	var connections := _connections_for_room(index)
+	for hook_index in hooks.size():
+		var target := int(connections[hook_index]) if hook_index < connections.size() else -1
+		if target >= 0:
+			var other := get_room_dictionary(target)
+			summaries.append("Hook %d -> room %d (%s)" % [hook_index, target, _room_label(other)])
+		else:
+			summaries.append("Hook %d -> (open)" % hook_index)
+	return summaries
 
 
 func remove_room(index: int) -> bool:
@@ -205,6 +247,7 @@ func remove_room(index: int) -> bool:
 		return false
 	room_list.remove_at(index)
 	_data["rooms"] = room_list
+	rebuild_room_connections()
 	_emit_changed()
 	return true
 
@@ -212,6 +255,7 @@ func remove_room(index: int) -> bool:
 func _set_data(data: Dictionary) -> void:
 	_data = data.duplicate(true)
 	_rebuild_embedded_index()
+	rebuild_room_connections()
 	_emit_changed()
 
 
@@ -239,6 +283,7 @@ func _commit_room(index: int, room: Dictionary) -> void:
 		return
 	room_list[index] = room
 	_data["rooms"] = room_list
+	rebuild_room_connections()
 	_emit_changed()
 
 
@@ -317,6 +362,64 @@ func _footprint_from_bwm(parsed: Dictionary) -> Vector2:
 	var half_x := maxf(bounds.size.x * 0.5, 0.5)
 	var half_y := maxf(bounds.size.z * 0.5, 0.5)
 	return Vector2(half_x, half_y)
+
+
+func _hooks_for_room(room_index: int, room: Dictionary) -> Array:
+	return _get_component_hooks(room)
+
+
+func _get_component_hooks(room: Dictionary) -> Array:
+	var component_id := str(room.get("component", ""))
+	var kit_id := str(room.get("kit", ""))
+	if component_id.is_empty():
+		return []
+	if kit_id == KotorIndoorMapIO.EMBEDDED_KIT_ID:
+		var embedded: Dictionary = _embedded_by_id.get(component_id, {})
+		var hooks: Variant = embedded.get("hooks", [])
+		return hooks as Array if typeof(hooks) == TYPE_ARRAY else []
+	if _kit_library != null and _kit_library.has_method("find_component"):
+		var component: Dictionary = _kit_library.call("find_component", kit_id, component_id)
+		if component.is_empty():
+			return []
+		var kit_hooks: Variant = component.get("hooks", [])
+		return kit_hooks as Array if typeof(kit_hooks) == TYPE_ARRAY else []
+	return []
+
+
+func _connections_for_room(index: int) -> Array:
+	if index < 0 or index >= _room_connections.size():
+		return []
+	var raw: Variant = _room_connections[index]
+	return raw as Array if typeof(raw) == TYPE_ARRAY else []
+
+
+func _room_hook_input(room: Dictionary) -> Dictionary:
+	return {
+		"position": room.get("position", [0.0, 0.0, 0.0]),
+		"flip_x": bool(room.get("flip_x", false)),
+		"flip_y": bool(room.get("flip_y", false)),
+		"rotation": float(room.get("rotation", 0.0)),
+	}
+
+
+func _build_hook_markers(room_index: int, room: Dictionary) -> Array:
+	var markers: Array = []
+	var hooks := _get_component_hooks(room)
+	var connections := _connections_for_room(room_index)
+	var hook_room := _room_hook_input(room)
+	for hook_index in hooks.size():
+		if typeof(hooks[hook_index]) != TYPE_DICTIONARY:
+			continue
+		var hook: Dictionary = hooks[hook_index]
+		var world := KotorIndoorHookConnections.hook_world_position(hook_room, hook)
+		var connected := int(connections[hook_index]) if hook_index < connections.size() else -1
+		markers.append({
+			"hook_index": hook_index,
+			"x": world.x,
+			"y": world.y,
+			"connected_room": connected,
+		})
+	return markers
 
 
 static func _room_world_corners(record: Dictionary) -> PackedVector2Array:

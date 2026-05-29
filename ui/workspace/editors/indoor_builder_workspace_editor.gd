@@ -190,6 +190,11 @@ func _build_ui() -> void:
 	add_room_btn.pressed.connect(_add_room_from_selected_kit)
 	left_panel.add_child(add_room_btn)
 
+	var rebuild_hooks_btn := Button.new()
+	rebuild_hooks_btn.text = "Rebuild hook connections"
+	rebuild_hooks_btn.pressed.connect(_rebuild_hook_connections)
+	left_panel.add_child(rebuild_hooks_btn)
+
 	_kit_status_label = Label.new()
 	_kit_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	left_panel.add_child(_kit_status_label)
@@ -305,17 +310,20 @@ func _select_room(index: int) -> void:
 	if record.is_empty():
 		return
 	if _detail_label != null:
-		_detail_label.text = (
-			"Room #%d\nLabel: %s\nPosition: %.2f, %.2f, %.2f\nRotation: %.2f"
-			% [
-				int(record.get("index", 0)),
-				str(record.get("label", "")),
+		var lines: PackedStringArray = PackedStringArray([
+			"Room #%d" % int(record.get("index", 0)),
+			"Label: %s" % str(record.get("label", "")),
+			"Position: %.2f, %.2f, %.2f" % [
 				float(record.get("x", 0.0)),
 				float(record.get("y", 0.0)),
 				float(record.get("z", 0.0)),
-				float(record.get("rotation", 0.0)),
-			]
-		)
+			],
+			"Rotation: %.2f" % float(record.get("rotation", 0.0)),
+		])
+		if _document != null:
+			for hook_line in _document.get_room_hook_summaries(int(record.get("index", 0))):
+				lines.append(hook_line)
+		_detail_label.text = "\n".join(lines)
 	if _map_view != null:
 		_map_view.set_selection(index)
 	_select_tree_record(record)
@@ -613,6 +621,15 @@ func _exec_remove_last_room() -> void:
 	if count <= 0:
 		return
 	_document.remove_room(count - 1)
+
+
+func _rebuild_hook_connections() -> void:
+	if _document == null:
+		return
+	_document.rebuild_room_connections()
+	_refresh_view()
+	_status_text = "Rebuilt hook connections"
+	_refresh_status()
 
 
 func _open_indoor_dialog() -> void:
