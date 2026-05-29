@@ -32,6 +32,8 @@ const EDITABLE_STRUCT_ARRAY_FIELDS := {
 	"OnCondition": true,  # Quest-like conditions
 	"OnSuccess": true,    # Condition blocks
 	"OnFailure": true,    # Condition blocks
+	# UTT (Trigger) arrays
+	"TrapList": true,
 }
 
 

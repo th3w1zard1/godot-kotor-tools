@@ -28,7 +28,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 
 | Family | Upstream examples | godot-kotor-tools status | Notes |
 | --- | --- | --- | --- |
-| Core GFF parsing/editing | Holocron editors: utc/utp/uti/utd/ute/utm/uts/utt/utw, gff; PyKotor `formats/gff/*` | Partial | Q13: typed factory coverage for all Holocron blueprint families including `utt` and `utw`; field-depth parity continues in Q14+. |
+| Core GFF parsing/editing | Holocron editors: utc/utp/uti/utd/ute/utm/uts/utt/utw, gff; PyKotor `formats/gff/*` | Partial | Q13: typed factory for all Holocron blueprint families; Q14 (shipped 2026-05-29): script hooks, trap fields, map notes, appearance IDs in summaries and GFF tree pickers. |
 | Extended GFF-family routes | jrl, pth, fac editor surfaces in Holocron | Partial | Routing parity expanded in current slice (`jrl`, `pth`, `fac` route into GFF workspace editor). |
 | DLG editing | Holocron DLG editor stack (`editors/dlg/*`) | Partial | Q6 shipped struct/array mutation UI; continue with advanced dialogue tooling parity. |
 | 2DA editing | Holocron `twoda` editor; PyKotor `formats/twoda/*` | Shipped | Parser/importer/editor/write-back available. |
@@ -63,7 +63,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 ## Next Parity Slices
 
 1. **Q13 (shipped 2026-05-29):** Typed `UTT`/`UTW` resources + documents in GFF factory; see `docs/plans/2026-05-29-018-feat-holocron-full-parity-master-plan.md`.
-2. **Q14:** Blueprint field-depth parity (scripts, traps, map notes, appearance IDs) for typed GFF documents.
+2. **Q14 (shipped 2026-05-29):** Blueprint field-depth parity — script hook NSS pickers, trap summaries/`TrapList` editing, appearance enum labels; see `docs/plans/2026-05-29-019-feat-q14-blueprint-field-depth-plan.md`.
 3. Script tooling parity expansion (NCS compile/decompile workflows and diagnostics).
 4. Media/tooling parity wave (LIP/SSF/TPC advanced editing and previews).
 5. Module/area designer parity wave (LYT/walkmesh/module designer tooling).

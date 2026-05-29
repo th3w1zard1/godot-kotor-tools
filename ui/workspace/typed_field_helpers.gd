@@ -87,8 +87,21 @@ static func get_enum_options_as_array(field_name: String, registry: RefCounted =
 	return options
 
 
+static func is_kotor_script_hook_field(field_name: String) -> bool:
+	var lower_field := field_name.strip_edges()
+	if lower_field.is_empty():
+		return false
+	if lower_field.begins_with("Script"):
+		return true
+	if lower_field.begins_with("On"):
+		return true
+	return false
+
+
 static func is_resref_field(field_name: String) -> bool:
-	return "Ref" in field_name
+	if "Ref" in field_name:
+		return true
+	return is_kotor_script_hook_field(field_name)
 
 
 static func validate_resref(text: String) -> String:
@@ -107,6 +120,8 @@ static func get_resref_type_hint(field_name: String) -> String:
 	if RESREF_TYPE_HINTS.has(lower_field):
 		return RESREF_TYPE_HINTS[lower_field]
 	if lower_field.ends_with("Script"):
+		return "nss"
+	if is_kotor_script_hook_field(lower_field):
 		return "nss"
 	if lower_field.ends_with("Sound"):
 		return "wav"

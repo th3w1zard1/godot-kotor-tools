@@ -22,6 +22,8 @@ func _test_resref_type_hints() -> void:
 	assert(TypedFieldHelpers.get_resref_type_hint("Script") == "nss")
 	assert(TypedFieldHelpers.get_resref_type_hint("Sound") == "wav")
 	assert(TypedFieldHelpers.get_resref_type_hint("OnRunScript") == "nss")
+	assert(TypedFieldHelpers.get_resref_type_hint("OnClick") == "nss")
+	assert(TypedFieldHelpers.get_resref_type_hint("ScriptHeartbeat") == "nss")
 	assert(TypedFieldHelpers.get_resref_type_hint("Tag") == "")
 	print("✓ ResRef type hint tests passed")
 

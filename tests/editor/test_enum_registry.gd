@@ -17,6 +17,7 @@ func _run_tests() -> void:
 	_test_non_sequential_row_indices()
 	_test_cache_clear_on_reindex()
 	_test_out_of_range_2da_value_allowed()
+	_test_traps_table_mapping()
 	print("✓ Enum registry tests passed")
 	quit()
 
@@ -145,3 +146,24 @@ func _test_out_of_range_2da_value_allowed() -> void:
 	assert(TypedFieldHelpers.validate_enum_value("Gender", 99, registry))
 	DirAccess.remove_absolute(gender_path)
 	print("✓ Enum registry out-of-range validation passed")
+
+
+func _test_traps_table_mapping() -> void:
+	var install_path := ProjectSettings.globalize_path("user://enum_registry_traps")
+	var override_dir := install_path.path_join("override")
+	DirAccess.make_dir_recursive_absolute(override_dir)
+	var traps_path := override_dir.path_join("traps.2da")
+	var file := FileAccess.open(traps_path, FileAccess.WRITE)
+	assert(file != null)
+	file.store_string("2DA V2.0\n\nlabel\n0 \"Minor Blast\"\n")
+	file.close()
+
+	var state := KotorEditorState.new()
+	state.game_path = install_path
+	state.refresh_gamefs()
+	var registry: KotorEnumRegistry = state.enum_registry
+	registry.clear_cache()
+	assert(registry.get_enum_source("TrapType") == "2da")
+	assert(registry.get_enum_values("TrapType")[0] == "Minor Blast")
+	DirAccess.remove_absolute(traps_path)
+	print("✓ Enum registry traps.2da mapping passed")

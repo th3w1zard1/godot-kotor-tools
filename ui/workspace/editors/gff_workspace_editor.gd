@@ -1030,6 +1030,10 @@ func _create_default_struct(array_field: String) -> Dictionary:
 				"Parameter": 0,
 				"Comment": "",
 			}
+		"TrapList":
+			return {
+				"TrapType": 0,
+			}
 		# DLG default (for backwards compatibility)
 		"EntryList", "ReplyList", "StartingList":
 			return {

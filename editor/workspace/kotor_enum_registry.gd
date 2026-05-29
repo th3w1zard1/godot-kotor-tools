@@ -10,6 +10,7 @@ const FIELD_TO_2DA := {
 	"Race": "racialtypes",
 	"Appearance_Type": "appearance",
 	"Feat": "feat",
+	"TrapType": "traps",
 }
 
 const LABEL_COLUMNS := ["label", "string", "name", "text"]

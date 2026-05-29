@@ -24,7 +24,5 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Type", get_type_label())
 	_append_summary_line(lines, "Name", get_area_name())
 	_append_summary_line(lines, "Tag", get_tag())
-	_append_summary_line(lines, "On Enter", get_resref("OnEnter"))
-	_append_summary_line(lines, "On Exit", get_resref("OnExit"))
-	_append_summary_line(lines, "On Heartbeat", get_resref("OnHeartbeat"))
+	append_script_hook_summary_lines(lines)
 	return lines

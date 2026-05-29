@@ -36,5 +36,7 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Template", get_template_resref())
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Traps", get_trap_count())
+	append_trap_scalar_summary_lines(lines)
 	_append_summary_line(lines, "Auto Remove Key", get_bool("AutoRemoveKey"))
+	append_script_hook_summary_lines(lines)
 	return lines

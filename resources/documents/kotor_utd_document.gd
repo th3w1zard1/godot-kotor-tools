@@ -38,4 +38,6 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Conversation", get_conversation_resref())
 	_append_summary_line(lines, "Static", get_bool("Static"))
 	_append_summary_line(lines, "Plot", get_bool("Plot"))
+	append_trap_scalar_summary_lines(lines)
+	append_script_hook_summary_lines(lines)
 	return lines

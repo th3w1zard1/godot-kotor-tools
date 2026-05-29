@@ -40,6 +40,7 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Template", get_template_resref())
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Conversation", get_conversation_resref())
+	append_enum_summary_line(lines, "Appearance_Type", "Appearance")
 	_append_summary_line(lines, "Challenge Rating", get_field("ChallengeRating", null))
-	_append_summary_line(lines, "Appearance", get_field("Appearance_Type", null))
+	append_script_hook_summary_lines(lines)
 	return lines

@@ -35,6 +35,8 @@ func _test_resref_field_detection() -> void:
 	assert(TypedFieldHelpers.is_resref_field("HeadRef"), "HeadRef should be detected as resref field")
 	assert(TypedFieldHelpers.is_resref_field("BodyRef"), "BodyRef should be detected as resref field")
 	assert(TypedFieldHelpers.is_resref_field("TemplateResRef"), "TemplateResRef should be detected as resref field")
+	assert(TypedFieldHelpers.is_resref_field("OnClick"), "OnClick should be detected as script hook resref")
+	assert(TypedFieldHelpers.is_resref_field("ScriptHeartbeat"), "ScriptHeartbeat should be detected as script hook resref")
 	assert(not TypedFieldHelpers.is_resref_field("Tag"), "Tag should not be detected as resref field")
 	assert(not TypedFieldHelpers.is_resref_field("Name"), "Name should not be detected as resref field")
 	assert(not TypedFieldHelpers.is_resref_field("Description"), "Description should not be detected as resref field")
