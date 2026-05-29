@@ -7,14 +7,17 @@ signal instance_selected(category: String, index: int)
 const KotorGITDocument := preload("../../../resources/documents/kotor_git_document.gd")
 const KotorWorldCoordinates := preload("../../../editor/module/kotor_world_coordinates.gd")
 const BWMParser := preload("../../../formats/bwm_parser.gd")
+const MDLParser := preload("../../../formats/mdl_parser.gd")
 
 var _viewport: SubViewport
 var _camera: Camera3D
 var _instances_root: Node3D
 var _layout_root: Node3D
+var _room_mesh_root: Node3D
 var _walkmesh_root: Node3D
 var _records: Array[Dictionary] = []
 var _layout_rooms: Array = []
+var _room_meshes: Array = []
 var _walkmesh: Dictionary = {}
 var _selected_category := ""
 var _selected_index := -1
@@ -67,6 +70,10 @@ func _build_scene() -> void:
 	_layout_root.name = "Layout"
 	world.add_child(_layout_root)
 
+	_room_mesh_root = Node3D.new()
+	_room_mesh_root.name = "RoomMeshes"
+	world.add_child(_room_mesh_root)
+
 	_walkmesh_root = Node3D.new()
 	_walkmesh_root.name = "Walkmesh"
 	world.add_child(_walkmesh_root)
@@ -90,6 +97,17 @@ func set_instances(records: Array, layout: Dictionary = {}) -> void:
 func set_walkmesh(parsed: Dictionary) -> void:
 	_walkmesh = parsed if typeof(parsed) == TYPE_DICTIONARY else {}
 	_rebuild_walkmesh()
+	_fit_camera_to_content()
+
+
+func set_room_meshes(entries: Array) -> void:
+	_room_meshes.clear()
+	for raw_entry in entries:
+		if typeof(raw_entry) != TYPE_DICTIONARY:
+			continue
+		_room_meshes.append(raw_entry)
+	_rebuild_room_meshes()
+	_rebuild_markers()
 	_fit_camera_to_content()
 
 
@@ -146,15 +164,17 @@ func _rebuild_markers() -> void:
 		if typeof(room) != TYPE_DICTIONARY:
 			continue
 		var room_dict: Dictionary = room
-		var position: Vector3 = room_dict.get("position", Vector3.ZERO)
-		var marker := _make_box_marker(
-			KotorWorldCoordinates.kotor_to_godot(position),
-			Vector3(6.0, 3.0, 6.0),
-			Color(0.35, 0.55, 0.85, 0.25),
-			true
-		)
-		marker.name = "Room_%s" % str(room_dict.get("model", "room"))
-		_layout_root.add_child(marker)
+		var model_name := str(room_dict.get("model", "room"))
+		if _room_mesh_for_model(model_name).is_empty():
+			var position: Vector3 = room_dict.get("position", Vector3.ZERO)
+			var marker := _make_box_marker(
+				KotorWorldCoordinates.kotor_to_godot(position),
+				Vector3(6.0, 3.0, 6.0),
+				Color(0.35, 0.55, 0.85, 0.25),
+				true
+			)
+			marker.name = "Room_%s" % model_name
+			_layout_root.add_child(marker)
 
 	for record in _records:
 		var category := str(record.get("category", ""))
@@ -173,6 +193,63 @@ func _rebuild_markers() -> void:
 		_marker_nodes[key] = marker
 
 	_refresh_marker_highlights()
+
+
+func _rebuild_room_meshes() -> void:
+	if _room_mesh_root == null:
+		return
+	for child in _room_mesh_root.get_children():
+		child.queue_free()
+	for entry in _room_meshes:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var mesh_dict: Dictionary = entry.get("mesh", {})
+		if mesh_dict.is_empty():
+			continue
+		var room_position: Vector3 = entry.get("position", Vector3.ZERO)
+		var mesh_instance := MeshInstance3D.new()
+		mesh_instance.name = "RoomMesh_%s" % str(entry.get("model", "room"))
+		mesh_instance.mesh = _build_model_mesh_surface(mesh_dict, room_position)
+		if mesh_instance.mesh == null:
+			continue
+		var material := StandardMaterial3D.new()
+		material.albedo_color = Color(0.55, 0.72, 0.95, 0.85)
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mesh_instance.material_override = material
+		_room_mesh_root.add_child(mesh_instance)
+
+
+func _build_model_mesh_surface(parsed: Dictionary, room_position: Vector3) -> ArrayMesh:
+	var vertices: Array = parsed.get("vertices", [])
+	var faces: Array = parsed.get("faces", [])
+	if vertices.is_empty() or faces.is_empty():
+		return null
+	var surface_tool := SurfaceTool.new()
+	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for raw_face in faces:
+		if typeof(raw_face) != TYPE_DICTIONARY:
+			continue
+		var face: Dictionary = raw_face
+		for key in ["i1", "i2", "i3"]:
+			var vertex_index := int(face.get(key, -1))
+			if vertex_index < 0 or vertex_index >= vertices.size():
+				continue
+			var kotor_vertex: Vector3 = vertices[vertex_index] + room_position
+			surface_tool.add_vertex(KotorWorldCoordinates.kotor_to_godot(kotor_vertex))
+	return surface_tool.commit()
+
+
+func _room_mesh_for_model(model_name: String) -> Dictionary:
+	var normalized := model_name.strip_edges().to_lower()
+	for entry in _room_meshes:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if str(entry.get("model", "")).strip_edges().to_lower() == normalized:
+			var mesh_dict: Dictionary = entry.get("mesh", {})
+			if typeof(mesh_dict) == TYPE_DICTIONARY and not mesh_dict.is_empty():
+				return mesh_dict
+	return {}
 
 
 func _rebuild_walkmesh() -> void:
@@ -318,7 +395,7 @@ func _pick_instance(screen_pos: Vector2) -> Dictionary:
 
 
 func _fit_camera_to_content() -> void:
-	if _records.is_empty() and _layout_rooms.is_empty() and _walkmesh.is_empty():
+	if _records.is_empty() and _layout_rooms.is_empty() and _walkmesh.is_empty() and _room_meshes.is_empty():
 		_orbit_focus = Vector3.ZERO
 		_orbit_distance = 40.0
 		_update_camera_transform()
@@ -351,7 +428,25 @@ func _fit_camera_to_content() -> void:
 	for room in _layout_rooms:
 		if typeof(room) != TYPE_DICTIONARY:
 			continue
-		var godot_pos := KotorWorldCoordinates.kotor_to_godot(room.get("position", Vector3.ZERO))
+		var room_dict: Dictionary = room
+		var model_name := str(room_dict.get("model", ""))
+		var room_position: Vector3 = room_dict.get("position", Vector3.ZERO)
+		if not _room_mesh_for_model(model_name).is_empty():
+			var mesh_bounds := MDLParser.compute_bounds(_room_mesh_for_model(model_name))
+			if mesh_bounds.size != Vector3.ZERO:
+				var corners := [
+					room_position + mesh_bounds.position,
+					room_position + mesh_bounds.position + Vector3(mesh_bounds.size.x, 0.0, 0.0),
+					room_position + mesh_bounds.position + Vector3(0.0, mesh_bounds.size.y, 0.0),
+					room_position + mesh_bounds.position + Vector3(0.0, 0.0, mesh_bounds.size.z),
+					room_position + mesh_bounds.position + mesh_bounds.size,
+				]
+				for corner in corners:
+					var godot_pos := KotorWorldCoordinates.kotor_to_godot(corner)
+					min_pos = min_pos.min(godot_pos)
+					max_pos = max_pos.max(godot_pos)
+				continue
+		var godot_pos := KotorWorldCoordinates.kotor_to_godot(room_position)
 		min_pos = min_pos.min(godot_pos)
 		max_pos = max_pos.max(godot_pos)
 	_orbit_focus = (min_pos + max_pos) * 0.5

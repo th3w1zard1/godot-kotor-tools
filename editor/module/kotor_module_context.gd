@@ -5,6 +5,8 @@ class_name KotorModuleContext
 const LYTParser := preload("../../formats/lyt_parser.gd")
 const BWMParser := preload("../../formats/bwm_parser.gd")
 
+const MDLParser := preload("../../formats/mdl_parser.gd")
+
 const MODULE_EXTENSIONS := ["git", "are", "ifo", "lyt", "vis", "pth", "wok"]
 const CORE_MODULE_EXTENSIONS := ["git", "are", "ifo"]
 const LAYOUT_EXTENSIONS := ["lyt", "vis", "pth"]
@@ -73,6 +75,28 @@ static func load_parsed_walkmesh(gamefs: RefCounted, bundle: Dictionary) -> Dict
 	if bytes.is_empty():
 		return {}
 	return BWMParser.parse_bytes(bytes)
+
+
+static func load_parsed_model_mesh(gamefs: RefCounted, model_resref: String) -> Dictionary:
+	var normalized := model_resref.strip_edges().to_lower()
+	if gamefs == null or normalized.is_empty():
+		return {}
+	if not gamefs.has_method("resolve_resource") or not gamefs.has_method("load_resource_entry_bytes"):
+		return {}
+
+	var mdl_entry: Dictionary = gamefs.resolve_resource(normalized, "mdl")
+	if mdl_entry.is_empty():
+		return {}
+	var mdl_bytes: PackedByteArray = gamefs.load_resource_entry_bytes(mdl_entry)
+	if mdl_bytes.is_empty():
+		return {}
+
+	var mdx_bytes := PackedByteArray()
+	var mdx_entry: Dictionary = gamefs.resolve_resource(normalized, "mdx")
+	if not mdx_entry.is_empty():
+		mdx_bytes = gamefs.load_resource_entry_bytes(mdx_entry)
+
+	return MDLParser.parse_bytes(mdl_bytes, mdx_bytes)
 
 
 static func describe_bundle(bundle: Dictionary) -> String:

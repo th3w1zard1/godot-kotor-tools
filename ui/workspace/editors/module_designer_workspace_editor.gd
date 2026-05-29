@@ -25,6 +25,7 @@ var _map_view: ModuleDesignerMapView
 var _viewport_3d: ModuleDesignerViewport3D
 var _parsed_layout: Dictionary = {}
 var _parsed_walkmesh: Dictionary = {}
+var _parsed_room_meshes: Array = []
 var _mutation_service: RefCounted
 var _resource: GITResource
 var _document: KotorGITDocument
@@ -312,6 +313,7 @@ func _refresh_viewport_3d() -> void:
 	var records := _document.get_instance_records()
 	_viewport_3d.set_instances(records, _parsed_layout)
 	_viewport_3d.set_walkmesh(_parsed_walkmesh)
+	_viewport_3d.set_room_meshes(_parsed_room_meshes)
 
 
 func _refresh_status() -> void:
@@ -330,6 +332,31 @@ func _refresh_module_bundle() -> void:
 	_module_bundle = KotorModuleContext.find_module_bundle(gamefs, module_resref)
 	_parsed_layout = KotorModuleContext.load_parsed_layout(gamefs, _module_bundle)
 	_parsed_walkmesh = KotorModuleContext.load_parsed_walkmesh(gamefs, _module_bundle)
+	_parsed_room_meshes = _load_room_meshes(gamefs)
+
+
+func _load_room_meshes(gamefs: RefCounted) -> Array:
+	var entries: Array = []
+	if gamefs == null or _parsed_layout.is_empty():
+		return entries
+	var rooms: Array = _parsed_layout.get("rooms", [])
+	var mesh_cache: Dictionary = {}
+	for raw_room in rooms:
+		if typeof(raw_room) != TYPE_DICTIONARY:
+			continue
+		var room: Dictionary = raw_room
+		var model_name := str(room.get("model", "")).strip_edges()
+		if model_name.is_empty():
+			continue
+		var normalized := model_name.to_lower()
+		if not mesh_cache.has(normalized):
+			mesh_cache[normalized] = KotorModuleContext.load_parsed_model_mesh(gamefs, normalized)
+		entries.append({
+			"model": normalized,
+			"position": room.get("position", Vector3.ZERO),
+			"mesh": mesh_cache[normalized],
+		})
+	return entries
 
 
 func _on_instance_tree_selected() -> void:
@@ -416,6 +443,7 @@ func _clear_document_state(message: String) -> void:
 	_module_bundle = {}
 	_parsed_layout = {}
 	_parsed_walkmesh = {}
+	_parsed_room_meshes = []
 	if _instance_tree != null:
 		_instance_tree.clear()
 	if _map_view != null:
@@ -423,6 +451,7 @@ func _clear_document_state(message: String) -> void:
 	if _viewport_3d != null:
 		_viewport_3d.set_instances([], {})
 		_viewport_3d.set_walkmesh({})
+		_viewport_3d.set_room_meshes([])
 	if _detail_label != null:
 		_detail_label.text = ""
 	if _summary_label != null:

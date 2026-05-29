@@ -5,6 +5,8 @@ const KotorWorldCoordinates := preload("../../editor/module/kotor_world_coordina
 const KotorModuleContext := preload("../../editor/module/kotor_module_context.gd")
 const LYTParser := preload("../../formats/lyt_parser.gd")
 const BWMParser := preload("../../formats/bwm_parser.gd")
+const MDLParser := preload("../../formats/mdl_parser.gd")
+const MdlParserTest := preload("test_mdl_parser.gd")
 const BwmParserTest := preload("test_bwm_parser.gd")
 const ModuleDesignerViewport3D := preload("../../ui/workspace/panels/module_designer_viewport_3d.gd")
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
@@ -27,7 +29,9 @@ func _run_tests() -> void:
 	_test_world_coordinates()
 	_test_layout_parsing()
 	_test_walkmesh_bundle()
+	_test_mdl_bundle()
 	await _test_viewport_walkmesh()
+	await _test_viewport_room_meshes()
 	_test_viewport_markers()
 	_test_editor_has_viewport()
 	_cleanup()
@@ -84,6 +88,23 @@ func _test_walkmesh_bundle() -> void:
 	print("✓ Walkmesh bundle + parse passed")
 
 
+func _test_mdl_bundle() -> void:
+	var mdl_bytes: PackedByteArray = MdlParserTest._build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2]
+	)
+	var mdl_path := _install_root.path_join("override").path_join("room001.mdl")
+	var file := FileAccess.open(mdl_path, FileAccess.WRITE)
+	file.store_buffer(mdl_bytes)
+	file.close()
+	var editor_state := KotorEditorState.new()
+	editor_state.game_path = _install_root
+	editor_state.refresh_gamefs()
+	var mesh := KotorModuleContext.load_parsed_model_mesh(editor_state.gamefs, "room001")
+	assert(mesh.get("face_count", 0) == 1)
+	print("✓ MDL bundle + parse passed")
+
+
 func _test_viewport_walkmesh() -> void:
 	var viewport := ModuleDesignerViewport3D.new()
 	root.add_child(viewport)
@@ -103,6 +124,33 @@ func _test_viewport_walkmesh() -> void:
 	assert(walkmesh_root != null)
 	assert(walkmesh_root.get_child_count() >= 1)
 	print("✓ Viewport walkmesh overlay passed")
+
+
+func _test_viewport_room_meshes() -> void:
+	var viewport := ModuleDesignerViewport3D.new()
+	root.add_child(viewport)
+	var parsed_mesh := MDLParser.parse_bytes(
+		MdlParserTest._build_minimal_mdl(
+			[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+			[0, 1, 2]
+		)
+	)
+	assert(not parsed_mesh.is_empty())
+	viewport.set_room_meshes([
+		{
+			"model": "room001",
+			"position": Vector3(1.0, 0.0, 2.0),
+			"mesh": parsed_mesh,
+		},
+	])
+	await process_frame
+	var subviewport := viewport.get_child(0) as SubViewport
+	assert(subviewport != null)
+	var world := subviewport.get_child(0)
+	var room_mesh_root := world.get_node_or_null("RoomMeshes")
+	assert(room_mesh_root != null)
+	assert(room_mesh_root.get_child_count() >= 1)
+	print("✓ Viewport room mesh overlay passed")
 
 
 func _test_viewport_markers() -> void:
