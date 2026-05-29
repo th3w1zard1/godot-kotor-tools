@@ -102,4 +102,3 @@ find . -name '*.gd' -print0 | xargs -0 -I{} godot --headless --quiet --check-onl
 - Repository overview and feature matrix: [../README.md](../README.md)
 - Knowledgebase intent and architecture orientation: [00-intent/godot-serialization-kb-intent.md](00-intent/godot-serialization-kb-intent.md)
 - Godot API source references used in this project: [90-meta/godot-doc-source-map.md](90-meta/godot-doc-source-map.md)
-

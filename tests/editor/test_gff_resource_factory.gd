@@ -10,6 +10,8 @@ const UTDResource := preload("../../resources/typed/utd_resource.gd")
 const UTEResource := preload("../../resources/typed/ute_resource.gd")
 const UTMResource := preload("../../resources/typed/utm_resource.gd")
 const UTSResource := preload("../../resources/typed/uts_resource.gd")
+const UTTResource := preload("../../resources/typed/utt_resource.gd")
+const UTWResource := preload("../../resources/typed/utw_resource.gd")
 
 
 func _initialize() -> void:
@@ -25,6 +27,8 @@ func _run_tests() -> void:
 	_test_ute_factory_mapping()
 	_test_utm_factory_mapping()
 	_test_uts_factory_mapping()
+	_test_utt_factory_mapping()
+	_test_utw_factory_mapping()
 	print("✓ GFF resource factory tests passed")
 	quit()
 
@@ -205,4 +209,54 @@ func _test_uts_factory_mapping() -> void:
 	assert(resource is UTSResource)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Test Ambient Sound")
+	assert(document.get_summary_lines().size() >= 6)
+
+
+func _test_utt_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "UTT",
+		"root": {
+			"TemplateResRef": "m12aa_trg01",
+			"Tag": "test_trigger",
+			"LocName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Test Trigger"},
+			},
+			"TrapList": [
+				{"TrapType": 1},
+			],
+			"AutoRemoveKey": 0,
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is UTTResource)
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Test Trigger")
+	assert(document.get_summary_lines().size() >= 6)
+
+
+func _test_utw_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "UTW",
+		"root": {
+			"TemplateResRef": "m12aa_wp01",
+			"Tag": "test_waypoint",
+			"LocalizedName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Test Waypoint"},
+			},
+			"LinkedTo": "exit_door",
+			"HasMapNote": 1,
+			"MapNote": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Secret passage"},
+			},
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is UTWResource)
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Test Waypoint")
 	assert(document.get_summary_lines().size() >= 6)

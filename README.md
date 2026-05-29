@@ -237,6 +237,7 @@ var image: Image = TpcReader.read(raw_bytes: PackedByteArray) -> Image
 Importers produce these `Resource` subclasses, loadable via `load()` at runtime.
 
 ### `GFFResource`
+
 ```gdscript
 var res: GFFResource = load("res://path/to/file.utc")
 var value = res.get_field("Tag")        # → Variant
@@ -244,6 +245,7 @@ var struct = res.get_struct("Stats")    # → Dictionary
 ```
 
 ### `ErfResource`
+
 ```gdscript
 var erf: ErfResource = load("res://path/to/file.erf")
 var names: Array = erf.resource_names()              # → Array[String]
@@ -251,6 +253,7 @@ var bytes: PackedByteArray = erf.get_resource("k_ptar_inc", 0x03ED)
 ```
 
 ### `TLKResource`
+
 ```gdscript
 var tlk: TLKResource = load("res://path/to/dialog.tlk")
 var text: String = tlk.get_string(1234)   # StrRef → text
@@ -261,6 +264,7 @@ ResourceSaver.save(tlk, "/absolute/path/to/dialog.tlk")
 ```
 
 ### `TwoDaResource`
+
 ```gdscript
 var sheet: TwoDaResource = load("res://path/to/feat.2da")
 var val: String = sheet.get_cell(row_index: int, column_name: String) -> String
