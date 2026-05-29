@@ -18,6 +18,7 @@ func _run_tests() -> void:
 	_test_layout_bounds_and_records()
 	_test_room_world_corners()
 	_test_extension_allowed()
+	_test_add_room_from_embedded_kit()
 	print("✓ Indoor builder foundation tests passed")
 	quit()
 
@@ -86,6 +87,20 @@ func _test_room_world_corners() -> void:
 func _test_extension_allowed() -> void:
 	assert(KotorIndoorBuilderWorkspaceEditor.indoor_extension_allowed("indoor"))
 	assert(not KotorIndoorBuilderWorkspaceEditor.indoor_extension_allowed("git"))
+
+
+func _test_add_room_from_embedded_kit() -> void:
+	var document := KotorIndoorDocument.new()
+	assert(document.load_from_bytes(KotorIndoorMapIO.write_bytes(_sample_map_data())))
+	var before := document.get_room_count()
+	var index := document.add_room_from_kit(
+		KotorIndoorMapIO.EMBEDDED_KIT_ID,
+		"room_a",
+		Vector3(8.0, 9.0, 0.0),
+		0.0
+	)
+	assert(index == before)
+	assert(document.get_room_count() == before + 1)
 
 
 func _sample_map_data() -> Dictionary:

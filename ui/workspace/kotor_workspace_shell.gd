@@ -318,6 +318,18 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 		_gff_editor.call("open_gff_bytes", gff_label, gff_bytes, source_path)
 		_tabs.current_tab = _gff_editor.get_index()
 		return
+	if KotorIndoorBuilderWorkspaceEditor.indoor_extension_allowed(extension):
+		if not source_path.is_empty() and FileAccess.file_exists(source_path):
+			_indoor_builder.call("open_indoor_file", source_path)
+		else:
+			var indoor_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+			var indoor_label := "%s [%s]" % [
+				"%s.%s" % [entry.get("resref", ""), entry.get("extension", "")],
+				entry.get("source", ""),
+			]
+			_indoor_builder.call("open_indoor_bytes", indoor_label, indoor_bytes, source_path)
+		_tabs.current_tab = _indoor_builder.get_index()
+		return
 	if _shell != null and _shell.has_method("open_gamefs_entry"):
 		_shell.call("open_gamefs_entry", entry)
 		_tabs.current_tab = _shell.get_index()

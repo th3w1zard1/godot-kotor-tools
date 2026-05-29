@@ -5,12 +5,14 @@ class_name KotorIndoorDocument
 signal changed
 
 const KotorIndoorMapIO := preload("../indoor/kotor_indoor_map_io.gd")
+const KotorIndoorKitLibrary := preload("../indoor/kotor_indoor_kit_library.gd")
 const BWMParser := preload("../../formats/bwm_parser.gd")
 
 const DEFAULT_HALF_EXTENT := 2.0
 
 var _data: Dictionary = {}
 var _embedded_by_id: Dictionary = {}
+var _kit_library: RefCounted
 
 
 func load_from_bytes(data: PackedByteArray) -> bool:
@@ -46,11 +48,17 @@ func get_display_name() -> String:
 	return "Indoor map (%s)" % get_module_id()
 
 
+func set_kit_library(library: RefCounted) -> void:
+	_kit_library = library
+
+
 func get_summary_lines() -> Array[String]:
 	var lines: Array[String] = []
 	lines.append("Module ID: %s" % get_module_id())
 	lines.append("Rooms: %d" % get_room_count())
 	lines.append("Embedded components: %d" % _embedded_by_id.size())
+	if _kit_library != null and _kit_library.has_method("get_kit_count"):
+		lines.append("Loaded kits: %d" % int(_kit_library.call("get_kit_count")))
 	return lines
 
 
@@ -154,6 +162,53 @@ func set_room_rotation(index: int, rotation: float) -> bool:
 	return true
 
 
+func add_room_from_kit(
+	kit_id: String,
+	component_id: String,
+	position: Vector3,
+	rotation: float = 0.0
+) -> int:
+	if kit_id.is_empty() or component_id.is_empty():
+		return -1
+	if kit_id != KotorIndoorMapIO.EMBEDDED_KIT_ID:
+		if _kit_library == null or not _kit_library.has_method("has_component"):
+			return -1
+		if not bool(_kit_library.call("has_component", kit_id, component_id)):
+			return -1
+	elif not _embedded_by_id.has(component_id):
+		return -1
+
+	var rooms: Variant = _data.get("rooms", [])
+	if typeof(rooms) != TYPE_ARRAY:
+		rooms = []
+	var room_list: Array = rooms
+	var room := {
+		"position": [position.x, position.y, position.z],
+		"rotation": rotation,
+		"flip_x": false,
+		"flip_y": false,
+		"kit": kit_id,
+		"component": component_id,
+	}
+	room_list.append(room)
+	_data["rooms"] = room_list
+	_emit_changed()
+	return room_list.size() - 1
+
+
+func remove_room(index: int) -> bool:
+	var rooms: Variant = _data.get("rooms", [])
+	if typeof(rooms) != TYPE_ARRAY:
+		return false
+	var room_list: Array = rooms
+	if index < 0 or index >= room_list.size():
+		return false
+	room_list.remove_at(index)
+	_data["rooms"] = room_list
+	_emit_changed()
+	return true
+
+
 func _set_data(data: Dictionary) -> void:
 	_data = data.duplicate(true)
 	_rebuild_embedded_index()
@@ -229,6 +284,13 @@ func _room_footprint(room: Dictionary) -> Vector2:
 		var embedded_bwm := _decode_base64_bytes(str(embedded.get("bwm", "")))
 		if not embedded_bwm.is_empty():
 			return _footprint_from_bwm(BWMParser.parse_bytes(embedded_bwm))
+	var kit_id := str(room.get("kit", ""))
+	if not kit_id.is_empty() and _kit_library != null and _kit_library.has_method("get_component_footprint"):
+		return _kit_library.call(
+			"get_component_footprint",
+			kit_id,
+			component_id
+		) as Vector2
 	return Vector2(DEFAULT_HALF_EXTENT, DEFAULT_HALF_EXTENT)
 
 

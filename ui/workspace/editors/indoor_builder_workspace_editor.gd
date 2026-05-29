@@ -4,6 +4,7 @@ class_name KotorIndoorBuilderWorkspaceEditor
 
 const KotorIndoorDocument := preload("../../../resources/documents/kotor_indoor_document.gd")
 const KotorIndoorMapIO := preload("../../../resources/indoor/kotor_indoor_map_io.gd")
+const KotorIndoorKitLibrary := preload("../../../resources/indoor/kotor_indoor_kit_library.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const IndoorBuilderMapView := preload("../panels/indoor_builder_map_view.gd")
 
@@ -15,8 +16,13 @@ var _summary_label: Label
 var _detail_label: Label
 var _room_tree: Tree
 var _map_view: IndoorBuilderMapView
+var _kits_path_edit: LineEdit
+var _kit_option: OptionButton
+var _component_list: ItemList
+var _kit_status_label: Label
 
 var _document: KotorIndoorDocument
+var _kit_library: KotorIndoorKitLibrary
 var _source_path := ""
 var _file_name := "layout.indoor"
 var _dirty := false
@@ -32,7 +38,11 @@ func _on_workspace_setup() -> void:
 	if _editor_state == null:
 		_editor_state = KotorEditorState.new()
 		_editor_state.load_settings()
+	_kit_library = KotorIndoorKitLibrary.new()
+	_kit_library.configure(_editor_state.indoor_kits_path)
+	_kit_library.refresh()
 	_build_ui()
+	_refresh_kit_ui()
 	if not _pending_bytes.is_empty():
 		var pending_bytes := _pending_bytes
 		var pending_source_path := _pending_source_path
@@ -141,6 +151,49 @@ func _build_ui() -> void:
 	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	split.add_child(left_panel)
 
+	var kits_label := Label.new()
+	kits_label.text = "Kit library"
+	left_panel.add_child(kits_label)
+
+	var kits_path_row := HBoxContainer.new()
+	left_panel.add_child(kits_path_row)
+
+	_kits_path_edit = LineEdit.new()
+	_kits_path_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_kits_path_edit.placeholder_text = "Path to Holocron kits folder"
+	if _editor_state != null:
+		_kits_path_edit.text = _editor_state.indoor_kits_path
+	_kits_path_edit.text_submitted.connect(_on_kits_path_submitted)
+	kits_path_row.add_child(_kits_path_edit)
+
+	var browse_kits_btn := Button.new()
+	browse_kits_btn.text = "Browse"
+	browse_kits_btn.pressed.connect(_browse_kits_path)
+	kits_path_row.add_child(browse_kits_btn)
+
+	var refresh_kits_btn := Button.new()
+	refresh_kits_btn.text = "Refresh"
+	refresh_kits_btn.pressed.connect(_refresh_kit_library)
+	left_panel.add_child(refresh_kits_btn)
+
+	_kit_option = OptionButton.new()
+	_kit_option.item_selected.connect(_on_kit_selected)
+	left_panel.add_child(_kit_option)
+
+	_component_list = ItemList.new()
+	_component_list.custom_minimum_size = Vector2(0, 120)
+	_component_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_panel.add_child(_component_list)
+
+	var add_room_btn := Button.new()
+	add_room_btn.text = "Add room from kit"
+	add_room_btn.pressed.connect(_add_room_from_selected_kit)
+	left_panel.add_child(add_room_btn)
+
+	_kit_status_label = Label.new()
+	_kit_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	left_panel.add_child(_kit_status_label)
+
 	_room_tree = Tree.new()
 	_room_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_room_tree.item_selected.connect(_on_room_tree_selected)
@@ -162,6 +215,8 @@ func _build_ui() -> void:
 func _set_document(document: KotorIndoorDocument, source_path: String, file_name: String) -> void:
 	_disconnect_document_signal()
 	_document = document
+	if _document != null:
+		_document.set_kit_library(_kit_library)
 	_source_path = source_path if source_path.is_absolute_path() else ""
 	_file_name = file_name.get_file() if not file_name.is_empty() else "layout.indoor"
 	_dirty = false
@@ -396,6 +451,168 @@ func _exec_room_rotation(index: int, rotation: float) -> void:
 	if not _document.set_room_rotation(index, rotation):
 		return
 	_select_room(index)
+
+
+func _on_kits_path_submitted(new_path: String) -> void:
+	_apply_kits_path(new_path)
+
+
+func _browse_kits_path() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select Indoor Kits Folder"
+	if _editor_state != null and _editor_state.has_valid_indoor_kits_path():
+		dialog.current_dir = _editor_state.indoor_kits_path
+	dialog.dir_selected.connect(func(path: String) -> void:
+		_apply_kits_path(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _apply_kits_path(new_path: String) -> void:
+	if _editor_state != null:
+		_editor_state.set_indoor_kits_path(new_path)
+	if _kits_path_edit != null:
+		_kits_path_edit.text = new_path
+	_refresh_kit_library()
+
+
+func _refresh_kit_library() -> void:
+	if _kit_library == null:
+		_kit_library = KotorIndoorKitLibrary.new()
+	var kits_path := ""
+	if _kits_path_edit != null:
+		kits_path = _kits_path_edit.text.strip_edges()
+	elif _editor_state != null:
+		kits_path = _editor_state.indoor_kits_path
+	_kit_library.configure(kits_path)
+	_kit_library.refresh()
+	if _document != null:
+		_document.set_kit_library(_kit_library)
+	_refresh_kit_ui()
+
+
+func _refresh_kit_ui() -> void:
+	if _kit_option == null or _component_list == null:
+		return
+	_kit_option.clear()
+	_component_list.clear()
+	var kit_count := _kit_library.get_kit_count() if _kit_library != null else 0
+	if kit_count == 0:
+		_kit_option.add_item("(no kits loaded)")
+		if _kit_status_label != null:
+			var errors := (
+				_kit_library.get_last_errors() if _kit_library != null else []
+			) as Array
+			if errors.is_empty():
+				_kit_status_label.text = "Configure a kits folder and click Refresh."
+			else:
+				_kit_status_label.text = "\n".join(errors)
+		return
+	for kit_id in _kit_library.get_kit_ids():
+		var kit_name := _kit_library.get_kit_name(kit_id)
+		_kit_option.add_item("%s (%s)" % [kit_name, kit_id], -1)
+		_kit_option.set_item_metadata(_kit_option.item_count - 1, kit_id)
+	_populate_component_list_for_kit(_get_selected_kit_id())
+	if _kit_status_label != null:
+		_kit_status_label.text = "Loaded %d kit(s)." % kit_count
+
+
+func _on_kit_selected(_index: int) -> void:
+	_populate_component_list_for_kit(_get_selected_kit_id())
+
+
+func _get_selected_kit_id() -> String:
+	if _kit_option == null or _kit_library == null or _kit_library.get_kit_count() == 0:
+		return ""
+	var selected := _kit_option.get_selected()
+	if selected < 0:
+		return ""
+	return str(_kit_option.get_item_metadata(selected))
+
+
+func _populate_component_list_for_kit(kit_id: String) -> void:
+	if _component_list == null:
+		return
+	_component_list.clear()
+	if kit_id.is_empty() or _kit_library == null:
+		return
+	for summary in _kit_library.get_component_summaries(kit_id):
+		var component_id := str(summary.get("id", ""))
+		var component_name := str(summary.get("name", component_id))
+		_component_list.add_item("%s (%s)" % [component_name, component_id])
+		_component_list.set_item_metadata(
+			_component_list.item_count - 1,
+			{"kit_id": kit_id, "component_id": component_id}
+		)
+
+
+func _add_room_from_selected_kit() -> void:
+	if _document == null or _kit_library == null:
+		return
+	var selected_components := _component_list.get_selected_items()
+	if selected_components.is_empty():
+		return
+	var metadata = _component_list.get_item_metadata(selected_components[0])
+	if typeof(metadata) != TYPE_DICTIONARY:
+		return
+	var kit_id := str(metadata.get("kit_id", ""))
+	var component_id := str(metadata.get("component_id", ""))
+	if kit_id.is_empty() or component_id.is_empty():
+		return
+	var spawn := _spawn_position_for_new_room()
+	_apply_add_room_with_undo(kit_id, component_id, spawn)
+
+
+func _spawn_position_for_new_room() -> Vector3:
+	if _document == null:
+		return Vector3.ZERO
+	var records := _document.get_room_records()
+	if records.is_empty():
+		return Vector3.ZERO
+	var last_record: Dictionary = records[records.size() - 1]
+	return Vector3(
+		float(last_record.get("x", 0.0)) + 4.0,
+		float(last_record.get("y", 0.0)),
+		float(last_record.get("z", 0.0))
+	)
+
+
+func _apply_add_room_with_undo(kit_id: String, component_id: String, position: Vector3) -> void:
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Add indoor room", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_add_room", kit_id, component_id, position)
+		ur.add_undo_method(self, "_exec_remove_last_room")
+		ur.commit_action()
+	else:
+		_exec_add_room(kit_id, component_id, position)
+
+
+func _exec_add_room(kit_id: String, component_id: String, position: Vector3) -> void:
+	if _document == null:
+		return
+	var index := _document.add_room_from_kit(kit_id, component_id, position, 0.0)
+	if index < 0:
+		_status_text = "Failed to add room from %s/%s" % [kit_id, component_id]
+		_refresh_status()
+		return
+	_select_room(index)
+
+
+func _exec_remove_last_room() -> void:
+	if _document == null:
+		return
+	var count := _document.get_room_count()
+	if count <= 0:
+		return
+	_document.remove_room(count - 1)
 
 
 func _open_indoor_dialog() -> void:
