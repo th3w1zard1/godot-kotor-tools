@@ -11,6 +11,7 @@ const KotorMutationService := preload("../../../editor/transactions/kotor_mutati
 const KotorModuleContext := preload("../../../editor/module/kotor_module_context.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const ModuleDesignerMapView := preload("../panels/module_designer_map_view.gd")
+const ModuleDesignerViewport3D := preload("../panels/module_designer_viewport_3d.gd")
 
 const MODULE_DESIGNER_EXTENSIONS := ["git"]
 
@@ -21,6 +22,8 @@ var _summary_label: Label
 var _detail_label: Label
 var _instance_tree: Tree
 var _map_view: ModuleDesignerMapView
+var _viewport_3d: ModuleDesignerViewport3D
+var _parsed_layout: Dictionary = {}
 var _mutation_service: RefCounted
 var _resource: GITResource
 var _document: KotorGITDocument
@@ -217,7 +220,17 @@ func _build_ui() -> void:
 	_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_map_view.instance_selected.connect(_on_map_instance_selected)
-	split.add_child(_map_view)
+
+	var right_split := VSplitContainer.new()
+	right_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_split.add_child(_map_view)
+
+	_viewport_3d = ModuleDesignerViewport3D.new()
+	_viewport_3d.instance_selected.connect(_on_viewport_instance_selected)
+	right_split.add_child(_viewport_3d)
+
+	split.add_child(right_split)
 
 
 func _refresh_view() -> void:
@@ -289,6 +302,14 @@ func _refresh_map() -> void:
 		return
 	var records := _document.get_instance_records()
 	_map_view.set_instances(records, _document.get_layout_bounds())
+	_refresh_viewport_3d()
+
+
+func _refresh_viewport_3d() -> void:
+	if _viewport_3d == null or _document == null:
+		return
+	var records := _document.get_instance_records()
+	_viewport_3d.set_instances(records, _parsed_layout)
 
 
 func _refresh_status() -> void:
@@ -305,6 +326,7 @@ func _refresh_module_bundle() -> void:
 	var gamefs := _resolve_gamefs()
 	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
 	_module_bundle = KotorModuleContext.find_module_bundle(gamefs, module_resref)
+	_parsed_layout = KotorModuleContext.load_parsed_layout(gamefs, _module_bundle)
 
 
 func _on_instance_tree_selected() -> void:
@@ -317,17 +339,30 @@ func _on_instance_tree_selected() -> void:
 			_detail_label.text = ""
 		if _map_view != null:
 			_map_view.set_selection("", -1)
+		if _viewport_3d != null:
+			_viewport_3d.set_selection("", -1)
 		return
 	_show_instance_detail(record)
-	_map_view.set_selection(str(record.get("category", "")), int(record.get("index", -1)))
+	_select_instance(str(record.get("category", "")), int(record.get("index", -1)))
 
 
 func _on_map_instance_selected(category: String, index: int) -> void:
+	_select_instance(category, index)
+
+
+func _on_viewport_instance_selected(category: String, index: int) -> void:
+	_select_instance(category, index)
+
+
+func _select_instance(category: String, index: int) -> void:
 	var record := _document.find_instance_record(category, index)
 	if record.is_empty():
 		return
 	_show_instance_detail(record)
-	_map_view.set_selection(category, index)
+	if _map_view != null:
+		_map_view.set_selection(category, index)
+	if _viewport_3d != null:
+		_viewport_3d.set_selection(category, index)
 	_select_tree_record(record)
 
 
@@ -376,10 +411,13 @@ func _clear_document_state(message: String) -> void:
 	_dirty = false
 	_status_text = message
 	_module_bundle = {}
+	_parsed_layout = {}
 	if _instance_tree != null:
 		_instance_tree.clear()
 	if _map_view != null:
 		_map_view.set_instances([], Rect2())
+	if _viewport_3d != null:
+		_viewport_3d.set_instances([], {})
 	if _detail_label != null:
 		_detail_label.text = ""
 	if _summary_label != null:

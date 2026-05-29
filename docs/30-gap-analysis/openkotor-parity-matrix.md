@@ -37,7 +37,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 | Archive formats | ERF/RIM/MOD, BIF/KEY | Partial | ERF/RIM/MOD write-back shipped; broader archive utilities and workflows remain. |
 | Texture/media editing | tpc/tga/dds/wav/lip/mdl surfaces | Partial | TPC read/import available; full media editor parity not complete. |
 | Install-aware extraction/indexing | PyKotor `extract/installation`, talktable, key/chitin flows | Shipped | GameFS index and install-aware browsing/mutation workflow available. |
-| Module/area designer workflows | Holocron module designer, indoor builder, walkmesh/lyt tools | Partial | Q15 (shipped 2026-05-29): dedicated Module Designer tab for `.git` with typed instance records, 2D map, instance tree, module bundle context, save/install. Q16+: SubViewport 3D, LYT/BWM, indoor builder. |
+| Module/area designer workflows | Holocron module designer, indoor builder, walkmesh/lyt tools | Partial | Q15 (shipped 2026-05-29): Module Designer tab with typed GIT instances, 2D map, instance tree, bundle context, save/install. Q16 (shipped 2026-05-29): SubViewport 3D markers, LYT room overlay, three-way selection sync, override-first layout bundle resolution. Q17+: BWM walkmesh, MDL meshes, indoor builder. |
 | Patching/diff tooling parity | HoloPatcher, KotorDiff | Not started | Out of current in-editor scope; can be linked as companion tooling initially. |
 | Advanced utility tools | PyKotor tools (modulekit, references, texture batch, model helpers) | Not started | Candidate backlog for targeted Godot utility panels or CLI integration. |
 
@@ -46,7 +46,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 - Install-aware resource browser (indexed game install, variants, open/export/install/compare actions)
 - Workspace editors:
   - GFF-family entity editor (`utc`, `utp`, `uti`, `utd`, `ute`, `utm`, `uts`, `utt`, `utw`, `are`, `ifo`, `jrl`, `pth`, `fac`)
-  - Module Designer (`.git` area layout: instance map, tree, bundle context)
+  - Module Designer (`.git` area layout: instance map, 3D viewport, tree, bundle context)
   - DLG editor
   - 2DA editor
   - TLK editor
