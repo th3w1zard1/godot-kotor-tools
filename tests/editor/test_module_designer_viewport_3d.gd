@@ -32,6 +32,7 @@ func _run_tests() -> void:
 	_test_mdl_bundle()
 	await _test_viewport_walkmesh()
 	await _test_viewport_room_meshes()
+	await _test_viewport_instance_meshes()
 	_test_viewport_markers()
 	_test_editor_has_viewport()
 	_cleanup()
@@ -151,6 +152,56 @@ func _test_viewport_room_meshes() -> void:
 	assert(room_mesh_root != null)
 	assert(room_mesh_root.get_child_count() >= 1)
 	print("✓ Viewport room mesh overlay passed")
+
+
+func _test_viewport_instance_meshes() -> void:
+	var viewport := ModuleDesignerViewport3D.new()
+	root.add_child(viewport)
+	var parsed_mesh := MDLParser.parse_bytes(
+		MdlParserTest._build_minimal_mdl(
+			[Vector3(-0.5, 0.0, -0.5), Vector3(0.5, 0.0, -0.5), Vector3(0.0, 1.0, 0.5)],
+			[0, 1, 2]
+		)
+	)
+	assert(not parsed_mesh.is_empty())
+	var records := [
+		{
+			"category": "Creatures",
+			"index": 0,
+			"x": 1.0,
+			"y": 2.0,
+			"z": 0.5,
+			"bearing": 0.0,
+			"template": "npc_test",
+			"tag": "",
+		},
+	]
+	viewport.set_instances(records, {})
+	viewport.set_instance_meshes([
+		{
+			"category": "Creatures",
+			"index": 0,
+			"mesh": parsed_mesh,
+		},
+	])
+	await process_frame
+	var subviewport := viewport.get_child(0) as SubViewport
+	assert(subviewport != null)
+	var world := subviewport.get_child(0)
+	var instances_root := world.get_node_or_null("Instances")
+	assert(instances_root != null)
+	assert(instances_root.get_child_count() >= 1)
+	var area := instances_root.get_child(0) as Area3D
+	assert(area != null)
+	var mesh_child: MeshInstance3D = null
+	for child in area.get_children():
+		if child is MeshInstance3D:
+			mesh_child = child
+			break
+	assert(mesh_child != null)
+	assert(mesh_child.mesh != null)
+	assert(mesh_child.mesh is ArrayMesh)
+	print("✓ Viewport instance mesh overlay passed")
 
 
 func _test_viewport_markers() -> void:

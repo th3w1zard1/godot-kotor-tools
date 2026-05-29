@@ -18,6 +18,7 @@ var _walkmesh_root: Node3D
 var _records: Array[Dictionary] = []
 var _layout_rooms: Array = []
 var _room_meshes: Array = []
+var _instance_mesh_by_key: Dictionary = {}
 var _walkmesh: Dictionary = {}
 var _selected_category := ""
 var _selected_index := -1
@@ -111,6 +112,21 @@ func set_room_meshes(entries: Array) -> void:
 	_fit_camera_to_content()
 
 
+func set_instance_meshes(entries: Array) -> void:
+	_instance_mesh_by_key.clear()
+	for raw_entry in entries:
+		if typeof(raw_entry) != TYPE_DICTIONARY:
+			continue
+		var entry: Dictionary = raw_entry
+		var mesh_dict: Dictionary = entry.get("mesh", {})
+		if mesh_dict.is_empty():
+			continue
+		var key := "%s:%d" % [str(entry.get("category", "")), int(entry.get("index", -1))]
+		_instance_mesh_by_key[key] = mesh_dict
+	_rebuild_markers()
+	_fit_camera_to_content()
+
+
 func set_selection(category: String, index: int) -> void:
 	_selected_category = category
 	_selected_index = index
@@ -187,7 +203,8 @@ func _rebuild_markers() -> void:
 		)
 		var godot_pos := KotorWorldCoordinates.kotor_to_godot(kotor_pos)
 		var color := KotorGITDocument.category_color(category)
-		var marker := _make_pickable_marker(record, godot_pos, color)
+		var instance_mesh := _instance_mesh_for_key(key)
+		var marker := _make_pickable_marker(record, godot_pos, color, instance_mesh)
 		marker.name = "GIT_%s" % key
 		_instances_root.add_child(marker)
 		_marker_nodes[key] = marker
@@ -252,6 +269,13 @@ func _room_mesh_for_model(model_name: String) -> Dictionary:
 	return {}
 
 
+func _instance_mesh_for_key(key: String) -> Dictionary:
+	var mesh_dict: Variant = _instance_mesh_by_key.get(key, {})
+	if typeof(mesh_dict) == TYPE_DICTIONARY:
+		return mesh_dict
+	return {}
+
+
 func _rebuild_walkmesh() -> void:
 	if _walkmesh_root == null:
 		return
@@ -298,7 +322,7 @@ func _build_walkmesh_surface(parsed: Dictionary) -> ArrayMesh:
 	return surface_tool.commit()
 
 
-func _make_pickable_marker(record: Dictionary, position: Vector3, color: Color) -> Area3D:
+func _make_pickable_marker(record: Dictionary, position: Vector3, color: Color, instance_mesh: Dictionary = {}) -> Area3D:
 	var area := Area3D.new()
 	area.position = position
 	area.set_meta("git_record", record)
@@ -306,22 +330,40 @@ func _make_pickable_marker(record: Dictionary, position: Vector3, color: Color) 
 	var collision := CollisionShape3D.new()
 	var shape := SphereShape3D.new()
 	shape.radius = 0.55
+	if not instance_mesh.is_empty():
+		var mesh_bounds := MDLParser.compute_bounds(instance_mesh)
+		if mesh_bounds.size != Vector3.ZERO:
+			shape.radius = clampf(mesh_bounds.size.length() * 0.35, 0.55, 4.0)
 	collision.shape = shape
 	area.add_child(collision)
 
 	var mesh_instance := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(0.7, 0.7, 0.7)
-	mesh_instance.mesh = box
+	if not instance_mesh.is_empty():
+		mesh_instance.mesh = _build_model_mesh_surface(instance_mesh, Vector3.ZERO)
+		if mesh_instance.mesh == null:
+			instance_mesh = {}
+	if instance_mesh.is_empty():
+		var box := BoxMesh.new()
+		box.size = Vector3(0.7, 0.7, 0.7)
+		mesh_instance.mesh = box
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	if not instance_mesh.is_empty():
+		material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mesh_instance.material_override = material
 	area.add_child(mesh_instance)
 
 	var bearing := float(record.get("bearing", 0.0))
 	area.rotation.y = KotorWorldCoordinates.kotor_bearing_to_yaw(bearing)
 	return area
+
+
+func _marker_visual_mesh(area: Area3D) -> MeshInstance3D:
+	for child in area.get_children():
+		if child is MeshInstance3D:
+			return child
+	return null
 
 
 func _make_box_marker(position: Vector3, box_size: Vector3, color: Color, wireframe: bool) -> MeshInstance3D:
@@ -347,7 +389,7 @@ func _refresh_marker_highlights() -> void:
 			continue
 		var category := str(record.get("category", ""))
 		var index := int(record.get("index", -1))
-		var mesh := area.get_child(1) as MeshInstance3D
+		var mesh := _marker_visual_mesh(area)
 		if mesh == null or mesh.material_override == null:
 			continue
 		var material := mesh.material_override as StandardMaterial3D
@@ -395,7 +437,7 @@ func _pick_instance(screen_pos: Vector2) -> Dictionary:
 
 
 func _fit_camera_to_content() -> void:
-	if _records.is_empty() and _layout_rooms.is_empty() and _walkmesh.is_empty() and _room_meshes.is_empty():
+	if _records.is_empty() and _layout_rooms.is_empty() and _walkmesh.is_empty() and _room_meshes.is_empty() and _instance_mesh_by_key.is_empty():
 		_orbit_focus = Vector3.ZERO
 		_orbit_distance = 40.0
 		_update_camera_transform()
@@ -425,6 +467,32 @@ func _fit_camera_to_content() -> void:
 		var godot_pos := KotorWorldCoordinates.kotor_to_godot(kotor_pos)
 		min_pos = min_pos.min(godot_pos)
 		max_pos = max_pos.max(godot_pos)
+	for record in _records:
+		var category := str(record.get("category", ""))
+		var index := int(record.get("index", -1))
+		var key := "%s:%d" % [category, index]
+		var instance_mesh := _instance_mesh_for_key(key)
+		if instance_mesh.is_empty():
+			continue
+		var kotor_pos := Vector3(
+			float(record.get("x", 0.0)),
+			float(record.get("y", 0.0)),
+			float(record.get("z", 0.0))
+		)
+		var mesh_bounds := MDLParser.compute_bounds(instance_mesh)
+		if mesh_bounds.size == Vector3.ZERO:
+			continue
+		var corners := [
+			kotor_pos + mesh_bounds.position,
+			kotor_pos + mesh_bounds.position + Vector3(mesh_bounds.size.x, 0.0, 0.0),
+			kotor_pos + mesh_bounds.position + Vector3(0.0, mesh_bounds.size.y, 0.0),
+			kotor_pos + mesh_bounds.position + Vector3(0.0, 0.0, mesh_bounds.size.z),
+			kotor_pos + mesh_bounds.position + mesh_bounds.size,
+		]
+		for corner in corners:
+			var godot_corner := KotorWorldCoordinates.kotor_to_godot(corner)
+			min_pos = min_pos.min(godot_corner)
+			max_pos = max_pos.max(godot_corner)
 	for room in _layout_rooms:
 		if typeof(room) != TYPE_DICTIONARY:
 			continue

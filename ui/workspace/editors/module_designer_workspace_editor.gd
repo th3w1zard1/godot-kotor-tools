@@ -9,6 +9,7 @@ const KotorGITDocument := preload("../../../resources/documents/kotor_git_docume
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorModuleContext := preload("../../../editor/module/kotor_module_context.gd")
+const KotorTemplateModelResolver := preload("../../../editor/module/kotor_template_model_resolver.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const ModuleDesignerMapView := preload("../panels/module_designer_map_view.gd")
 const ModuleDesignerViewport3D := preload("../panels/module_designer_viewport_3d.gd")
@@ -314,6 +315,7 @@ func _refresh_viewport_3d() -> void:
 	_viewport_3d.set_instances(records, _parsed_layout)
 	_viewport_3d.set_walkmesh(_parsed_walkmesh)
 	_viewport_3d.set_room_meshes(_parsed_room_meshes)
+	_viewport_3d.set_instance_meshes(_load_instance_meshes(_resolve_gamefs(), records))
 
 
 func _refresh_status() -> void:
@@ -355,6 +357,45 @@ func _load_room_meshes(gamefs: RefCounted) -> Array:
 			"model": normalized,
 			"position": room.get("position", Vector3.ZERO),
 			"mesh": mesh_cache[normalized],
+		})
+	return entries
+
+
+func _load_instance_meshes(gamefs: RefCounted, records: Array) -> Array:
+	var entries: Array = []
+	if gamefs == null:
+		return entries
+	var resolve_cache: Dictionary = {}
+	var mesh_cache: Dictionary = {}
+	for raw_record in records:
+		if typeof(raw_record) != TYPE_DICTIONARY:
+			continue
+		var record: Dictionary = raw_record
+		var category := str(record.get("category", ""))
+		if not KotorTemplateModelResolver.supports_mesh_category(category):
+			continue
+		var template := str(record.get("template", "")).strip_edges()
+		if template.is_empty():
+			continue
+		var resolve_key := "%s:%s" % [category, template.to_lower()]
+		if not resolve_cache.has(resolve_key):
+			resolve_cache[resolve_key] = KotorTemplateModelResolver.resolve_model_resref(
+				gamefs,
+				category,
+				template
+			)
+		var model_resref := str(resolve_cache[resolve_key])
+		if model_resref.is_empty():
+			continue
+		if not mesh_cache.has(model_resref):
+			mesh_cache[model_resref] = KotorModuleContext.load_parsed_model_mesh(gamefs, model_resref)
+		var mesh_dict: Dictionary = mesh_cache[model_resref]
+		if mesh_dict.is_empty():
+			continue
+		entries.append({
+			"category": category,
+			"index": int(record.get("index", -1)),
+			"mesh": mesh_dict,
 		})
 	return entries
 
