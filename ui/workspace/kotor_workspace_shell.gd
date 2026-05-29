@@ -11,6 +11,7 @@ const KotorTwoDaWorkspaceEditor := preload("./editors/twoda_workspace_editor.gd"
 const KotorTLKWorkspaceEditor := preload("./editors/tlk_workspace_editor.gd")
 const KotorScriptWorkspaceEditor := preload("./editors/script_workspace_editor.gd")
 const KotorGFFWorkspaceEditor := preload("./editors/gff_workspace_editor.gd")
+const KotorModuleDesignerWorkspaceEditor := preload("./editors/module_designer_workspace_editor.gd")
 const KotorResourceBrowserPanel := preload("./panels/resource_browser_panel.gd")
 const KotorTransactionHistoryPanel := preload("./panels/transaction_history_panel.gd")
 
@@ -26,6 +27,7 @@ var _twoda_editor: Control
 var _tlk_editor: Control
 var _script_editor: Control
 var _gff_editor: Control
+var _module_designer: Control
 
 
 func _init(controller: RefCounted = null) -> void:
@@ -123,6 +125,13 @@ func _ensure_shell() -> void:
 	_gff_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_gff_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs.add_child(_gff_editor)
+
+	_module_designer = KotorModuleDesignerWorkspaceEditor.new()
+	_module_designer.name = "Module Designer"
+	_module_designer.setup(_resolve_editor_state(), _controller)
+	_module_designer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_module_designer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_module_designer)
 	_restore_workspace_session()
 
 
@@ -172,6 +181,10 @@ func get_gff_workspace_editor() -> Control:
 	return _gff_editor
 
 
+func get_module_designer_workspace_editor() -> Control:
+	return _module_designer
+
+
 func _restore_workspace_session() -> void:
 	if _controller == null or _dlg_editor == null or not _controller.has_method("restore_workspace_session"):
 		return
@@ -212,6 +225,10 @@ func _restore_workspace_session() -> void:
 				_gff_editor.call("open_gff_file", source_path)
 				if str(document_entry.get("key", "")) == active_key:
 					_tabs.current_tab = _gff_editor.get_index()
+			"module":
+				_module_designer.call("open_git_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _module_designer.get_index()
 			_:
 				pass
 
@@ -265,6 +282,15 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 		]
 		_script_editor.call("open_script_bytes", script_label, script_bytes, extension, source_path)
 		_tabs.current_tab = _script_editor.get_index()
+		return
+	if KotorModuleDesignerWorkspaceEditor.module_designer_extension_allowed(extension):
+		var git_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		var git_label := "%s [%s]" % [
+			"%s.%s" % [entry.get("resref", ""), entry.get("extension", "")],
+			entry.get("source", ""),
+		]
+		_module_designer.call("open_git_bytes", git_label, git_bytes, source_path)
+		_tabs.current_tab = _module_designer.get_index()
 		return
 	if KotorGFFWorkspaceEditor.workspace_gff_extension_allowed(extension):
 		var gff_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)

@@ -17,7 +17,7 @@ const KotorItemPickerDialog := preload("../dialogs/kotor_item_picker_dialog.gd")
 
 const WORKSPACE_GFF_EXTENSIONS := [
 	"utc", "utp", "uti", "utd", "ute", "utm", "uts", "utt", "utw",
-	"are", "git", "ifo", "jrl", "pth", "fac",
+	"are", "ifo", "jrl", "pth", "fac",
 ]
 
 const ENTITY_EXTENSIONS := WORKSPACE_GFF_EXTENSIONS
@@ -413,7 +413,7 @@ func _refresh_status() -> void:
 func _open_gff() -> void:
 	var filter := (
 		"*.utc,*.utp,*.uti,*.utd,*.ute,*.utm,*.uts,*.utt,*.utw,"
-		+ "*.are,*.git,*.ifo ; KotOR GFF"
+		+ "*.are,*.ifo ; KotOR GFF"
 	)
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,

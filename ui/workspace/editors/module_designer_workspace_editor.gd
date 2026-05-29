@@ -1,0 +1,548 @@
+@tool
+extends "./kotor_workspace_editor.gd"
+class_name KotorModuleDesignerWorkspaceEditor
+
+const GFFParser := preload("../../../formats/gff_parser.gd")
+const GFFResourceFactory := preload("../../../resources/gff_resource_factory.gd")
+const GITResource := preload("../../../resources/typed/git_resource.gd")
+const KotorGITDocument := preload("../../../resources/documents/kotor_git_document.gd")
+const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
+const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
+const KotorModuleContext := preload("../../../editor/module/kotor_module_context.gd")
+const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
+const ModuleDesignerMapView := preload("../panels/module_designer_map_view.gd")
+
+const MODULE_DESIGNER_EXTENSIONS := ["git"]
+
+var _toolbar: HBoxContainer
+var _path_label: Label
+var _bundle_label: Label
+var _summary_label: Label
+var _detail_label: Label
+var _instance_tree: Tree
+var _map_view: ModuleDesignerMapView
+var _mutation_service: RefCounted
+var _resource: GITResource
+var _document: KotorGITDocument
+var _source_path := ""
+var _file_name := "module.git"
+var _dirty := false
+var _status_text := ""
+var _document_key := ""
+var _module_bundle: Dictionary = {}
+
+var _pending_resource: GITResource
+var _pending_source_path := ""
+var _pending_file_name := ""
+
+var _preflight_dialog: KotorPreflightDialog
+var _preflight_pending_path := ""
+var _preflight_pending_preview: Dictionary = {}
+var _preflight_pending_kind := ""
+var _skip_preflight_for_testing := false
+
+
+func _on_workspace_setup() -> void:
+	if _editor_state == null:
+		_editor_state = KotorEditorState.new()
+		_editor_state.load_settings()
+	_mutation_service = _resolve_mutation_service()
+	_build_ui()
+	if _pending_resource != null:
+		var pending_resource := _pending_resource
+		var pending_source_path := _pending_source_path
+		var pending_file_name := _pending_file_name
+		_pending_resource = null
+		_pending_source_path = ""
+		_pending_file_name = ""
+		open_resource(pending_resource, pending_source_path, pending_file_name)
+
+
+func open_resource(resource: GITResource, source_path: String = "", file_name: String = "") -> void:
+	if not is_node_ready():
+		_pending_resource = resource
+		_pending_source_path = source_path
+		_pending_file_name = file_name
+		return
+	_resource = resource
+	if _resource == null:
+		_clear_document_state("No GIT resource is loaded.")
+		return
+	_document = _resource.create_document() as KotorGITDocument
+	_source_path = source_path if source_path.is_absolute_path() else ""
+	_file_name = file_name.get_file() if not file_name.is_empty() else "module.git"
+	_dirty = false
+	_status_text = ""
+	_refresh_module_bundle()
+	_register_controller_document()
+	_refresh_view()
+
+
+func open_git_file(path: String) -> void:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		_clear_document_state("Failed to open %s" % path.get_file())
+		return
+	var bytes := file.get_buffer(file.get_length())
+	file.close()
+	open_git_bytes(path, bytes, path if module_designer_extension_allowed(path.get_extension()) else "")
+
+
+func open_git_bytes(label: String, data: PackedByteArray, source_path: String = "") -> void:
+	var parsed := GFFParser.parse_bytes(data)
+	if parsed.is_empty():
+		_clear_document_state("Failed to load %s" % _guess_loaded_file_name(label, "module.git"))
+		return
+	var file_type := String(parsed.get("file_type", "")).strip_edges().to_upper()
+	if file_type != "GIT":
+		_clear_document_state("Unsupported GFF type %s for module designer" % file_type)
+		return
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	if not resource is GITResource:
+		_clear_document_state("Resource is not a GIT layout")
+		return
+	open_resource(resource, source_path, _guess_loaded_file_name(label, "module.git"))
+
+
+static func module_designer_extension_allowed(extension: String) -> bool:
+	return extension.strip_edges().to_lower() in MODULE_DESIGNER_EXTENSIONS
+
+
+func has_document() -> bool:
+	return _document != null and _resource != null
+
+
+func get_document() -> KotorGITDocument:
+	return _document
+
+
+func is_document_dirty() -> bool:
+	return _dirty
+
+
+func save_document_to_path(path: String) -> Dictionary:
+	if _resource == null:
+		return {}
+	var target_path := _ensure_extension(path, "git")
+	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, _resource)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Export failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "File is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		return _apply_export_now(target_path)
+	_preflight_pending_path = target_path
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "export"
+	_show_preflight_dialog(preview)
+	return {}
+
+
+func install_document_to_override() -> Dictionary:
+	if _resource == null:
+		return {}
+	var preview: Dictionary = _mutation_service.preview_install_to_override(
+		_resolve_gamefs(),
+		_current_file_name(),
+		_resource
+	)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Install failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "File is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		return _apply_install_now()
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "install"
+	_show_preflight_dialog(preview)
+	return {}
+
+
+func _build_ui() -> void:
+	if _toolbar != null:
+		return
+	_toolbar = HBoxContainer.new()
+	add_child(_toolbar)
+
+	var install_btn := Button.new()
+	install_btn.text = "Install to Override"
+	install_btn.pressed.connect(_install_git_to_override)
+	_toolbar.add_child(install_btn)
+
+	var save_btn := Button.new()
+	save_btn.text = "Save"
+	save_btn.pressed.connect(_save_git)
+	_toolbar.add_child(save_btn)
+
+	_path_label = Label.new()
+	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_path_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_toolbar.add_child(_path_label)
+
+	_bundle_label = Label.new()
+	_bundle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(_bundle_label)
+
+	_summary_label = Label.new()
+	_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(_summary_label)
+
+	var split := HSplitContainer.new()
+	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(split)
+
+	var left_panel := VBoxContainer.new()
+	left_panel.custom_minimum_size = Vector2(260, 0)
+	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.add_child(left_panel)
+
+	_instance_tree = Tree.new()
+	_instance_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_instance_tree.item_selected.connect(_on_instance_tree_selected)
+	left_panel.add_child(_instance_tree)
+
+	_detail_label = Label.new()
+	_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	left_panel.add_child(_detail_label)
+
+	_map_view = ModuleDesignerMapView.new()
+	_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_map_view.instance_selected.connect(_on_map_instance_selected)
+	split.add_child(_map_view)
+
+
+func _refresh_view() -> void:
+	if _document == null:
+		return
+	_refresh_path_label()
+	_refresh_bundle_label()
+	_refresh_summary()
+	_refresh_instance_tree()
+	_refresh_map()
+	_refresh_status()
+
+
+func _refresh_path_label() -> void:
+	if _path_label == null:
+		return
+	var parts: Array[String] = [_current_file_name()]
+	if not _source_path.is_empty():
+		parts.append(_source_path)
+	_path_label.text = " · ".join(parts)
+
+
+func _refresh_bundle_label() -> void:
+	if _bundle_label == null:
+		return
+	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
+	_bundle_label.text = "Module %s — %s" % [
+		module_resref,
+		KotorModuleContext.describe_bundle(_module_bundle),
+	]
+
+
+func _refresh_summary() -> void:
+	if _summary_label == null or _document == null:
+		return
+	_summary_label.text = _document.build_summary_text()
+
+
+func _refresh_instance_tree() -> void:
+	if _instance_tree == null or _document == null:
+		return
+	_instance_tree.clear()
+	var root := _instance_tree.create_item()
+	root.set_text(0, _document.get_display_name())
+	var grouped := {}
+	for record in _document.get_instance_records():
+		var category := str(record.get("category", "Unknown"))
+		if not grouped.has(category):
+			grouped[category] = []
+		grouped[category].append(record)
+	for category in KotorGITDocument.LIST_FIELDS:
+		if not grouped.has(category):
+			continue
+		var category_item := _instance_tree.create_item(root)
+		category_item.set_text(0, "%s (%d)" % [category, grouped[category].size()])
+		for record in grouped[category]:
+			var item := _instance_tree.create_item(category_item)
+			var template := str(record.get("template", ""))
+			var tag := str(record.get("tag", ""))
+			var label := template if not template.is_empty() else tag
+			if label.is_empty():
+				label = "%s #%d" % [category, int(record.get("index", 0))]
+			item.set_text(0, label)
+			item.set_metadata(0, record)
+
+
+func _refresh_map() -> void:
+	if _map_view == null or _document == null:
+		return
+	var records := _document.get_instance_records()
+	_map_view.set_instances(records, _document.get_layout_bounds())
+
+
+func _refresh_status() -> void:
+	var parts: Array[String] = []
+	if _dirty:
+		parts.append("Unsaved changes")
+	if not _status_text.is_empty():
+		parts.append(_status_text)
+	var text := "Ready" if parts.is_empty() else " · ".join(parts)
+	_emit_status_text(text)
+
+
+func _refresh_module_bundle() -> void:
+	var gamefs := _resolve_gamefs()
+	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
+	_module_bundle = KotorModuleContext.find_module_bundle(gamefs, module_resref)
+
+
+func _on_instance_tree_selected() -> void:
+	var selected := _instance_tree.get_selected()
+	if selected == null:
+		return
+	var record = selected.get_metadata(0)
+	if typeof(record) != TYPE_DICTIONARY:
+		if _detail_label != null:
+			_detail_label.text = ""
+		if _map_view != null:
+			_map_view.set_selection("", -1)
+		return
+	_show_instance_detail(record)
+	_map_view.set_selection(str(record.get("category", "")), int(record.get("index", -1)))
+
+
+func _on_map_instance_selected(category: String, index: int) -> void:
+	var record := _document.find_instance_record(category, index)
+	if record.is_empty():
+		return
+	_show_instance_detail(record)
+	_map_view.set_selection(category, index)
+	_select_tree_record(record)
+
+
+func _show_instance_detail(record: Dictionary) -> void:
+	if _detail_label == null:
+		return
+	_detail_label.text = (
+		"%s #%d\nTemplate: %s\nTag: %s\nPosition: %.2f, %.2f, %.2f\nBearing: %.2f"
+		% [
+			str(record.get("category", "")),
+			int(record.get("index", 0)),
+			str(record.get("template", "")),
+			str(record.get("tag", "")),
+			float(record.get("x", 0.0)),
+			float(record.get("y", 0.0)),
+			float(record.get("z", 0.0)),
+			float(record.get("bearing", 0.0)),
+		]
+	)
+
+
+func _select_tree_record(record: Dictionary) -> void:
+	if _instance_tree == null:
+		return
+	var root := _instance_tree.get_root()
+	if root == null:
+		return
+	for category_item in root.get_children():
+		for item in category_item.get_children():
+			var metadata = item.get_metadata(0)
+			if typeof(metadata) != TYPE_DICTIONARY:
+				continue
+			if (
+				str(metadata.get("category", "")) == str(record.get("category", ""))
+				and int(metadata.get("index", -1)) == int(record.get("index", -1))
+			):
+				item.select(0)
+				return
+
+
+func _clear_document_state(message: String) -> void:
+	_resource = null
+	_document = null
+	_source_path = ""
+	_file_name = "module.git"
+	_dirty = false
+	_status_text = message
+	_module_bundle = {}
+	if _instance_tree != null:
+		_instance_tree.clear()
+	if _map_view != null:
+		_map_view.set_instances([], Rect2())
+	if _detail_label != null:
+		_detail_label.text = ""
+	if _summary_label != null:
+		_summary_label.text = ""
+	if _bundle_label != null:
+		_bundle_label.text = ""
+	_refresh_path_label()
+	_refresh_status()
+
+
+func _save_git() -> void:
+	if _source_path.is_empty():
+		_status_text = "Use Install to Override or open from a file path first"
+		_refresh_status()
+		return
+	save_document_to_path(_source_path)
+
+
+func _install_git_to_override() -> void:
+	install_document_to_override()
+
+
+func _apply_export_now(target_path: String) -> Dictionary:
+	var previous_key := _document_key
+	var result: Dictionary = _mutation_service.apply_export_to_path(target_path, _resource, true)
+	_status_text = _mutation_message(result)
+	if result.get("applied", false):
+		_source_path = target_path
+		_file_name = target_path.get_file()
+		_dirty = false
+		_register_controller_document()
+		_remove_previous_controller_document(previous_key)
+	_update_controller_dirty_state()
+	_refresh_status()
+	return result
+
+
+func _apply_install_now() -> Dictionary:
+	var result: Dictionary = _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		_current_file_name(),
+		_resource,
+		true
+	)
+	_status_text = _mutation_message(result)
+	if result.get("applied", false):
+		_dirty = false
+		_refresh_gamefs()
+		_refresh_module_bundle()
+		_refresh_bundle_label()
+	_update_controller_dirty_state()
+	_refresh_status()
+	return result
+
+
+func _show_preflight_dialog(preview: Dictionary) -> void:
+	if _preflight_dialog == null:
+		_preflight_dialog = KotorPreflightDialog.new()
+		_preflight_dialog.preflight_proceed.connect(_on_preflight_proceed)
+		_preflight_dialog.preflight_cancel.connect(_on_preflight_cancel)
+		add_child(_preflight_dialog)
+	_preflight_dialog.show_preflight(preview)
+
+
+func _on_preflight_proceed() -> void:
+	if _preflight_pending_kind == "export":
+		_apply_export_now(_preflight_pending_path)
+	elif _preflight_pending_kind == "install":
+		_apply_install_now()
+	_preflight_pending_kind = ""
+	_preflight_pending_path = ""
+	_preflight_pending_preview = {}
+
+
+func _on_preflight_cancel() -> void:
+	_status_text = "Operation cancelled."
+	_refresh_status()
+	_preflight_pending_kind = ""
+	_preflight_pending_path = ""
+	_preflight_pending_preview = {}
+
+
+func _register_controller_document() -> void:
+	var controller := get_controller()
+	if controller == null or not controller.has_method("register_document"):
+		return
+	var entry: Dictionary = controller.call(
+		"register_document",
+		"module",
+		_resource,
+		_document,
+		_source_path,
+		_current_file_name(),
+		{}
+	)
+	_document_key = str(entry.get("key", ""))
+
+
+func _update_controller_dirty_state() -> void:
+	var controller := get_controller()
+	if controller == null or _document_key.is_empty() or not controller.has_method("update_document_dirty"):
+		return
+	controller.call("update_document_dirty", _document_key, _dirty)
+
+
+func _remove_previous_controller_document(previous_key: String) -> void:
+	var controller := get_controller()
+	if controller == null or previous_key.is_empty() or previous_key == _document_key or not controller.has_method("remove_document"):
+		return
+	controller.call("remove_document", previous_key)
+
+
+func _resolve_mutation_service() -> RefCounted:
+	var controller := get_controller()
+	if controller != null:
+		var service = controller.get("mutation_service")
+		if service != null:
+			return service
+	return KotorMutationService.new()
+
+
+func _resolve_gamefs() -> RefCounted:
+	var editor_state := get_editor_state()
+	if editor_state == null:
+		return null
+	return editor_state.get("gamefs") as RefCounted
+
+
+func _refresh_gamefs() -> void:
+	var editor_state := get_editor_state()
+	if editor_state != null and editor_state.has_method("refresh_gamefs"):
+		editor_state.call("refresh_gamefs")
+
+
+func _current_file_name() -> String:
+	return _ensure_extension(_file_name, "git")
+
+
+func _ensure_extension(path: String, extension: String) -> String:
+	var normalized := path.strip_edges()
+	if normalized.is_empty():
+		return "module.%s" % extension
+	if normalized.get_extension().to_lower() == extension:
+		return normalized
+	return "%s.%s" % [normalized.get_basename(), extension]
+
+
+func _guess_loaded_file_name(label: String, fallback: String) -> String:
+	var candidate := label.get_file()
+	if candidate.is_empty():
+		return fallback
+	return candidate
+
+
+func _mutation_message(result: Dictionary) -> String:
+	if result.is_empty():
+		return "Operation failed"
+	return str(result.get("message", "Operation complete"))
+
+
+func is_dirty() -> bool:
+	return _dirty
+
+
+func get_status_text() -> String:
+	return _status_text

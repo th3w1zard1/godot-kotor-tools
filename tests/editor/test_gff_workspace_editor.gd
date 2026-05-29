@@ -31,6 +31,7 @@ func _assert_editor_behavior() -> void:
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("pth"))
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("fac"))
 	assert(not KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("dlg"))
+	assert(not KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("git"))
 
 	var editor_state := KotorEditorState.new()
 	editor_state.game_path = _install_root
@@ -46,6 +47,7 @@ func _assert_editor_behavior() -> void:
 	_exercise_are_round_trip(editor, controller)
 
 	_cleanup()
+	print("✓ GFF workspace editor tests passed")
 	quit()
 
 

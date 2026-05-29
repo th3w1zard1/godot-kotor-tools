@@ -5,6 +5,7 @@ const KotorWorkspaceController := preload("../../editor/workspace/kotor_workspac
 const KotorMainScreen := preload("../../editor/workspace/kotor_main_screen.gd")
 const KotorWorkspaceShell := preload("../../ui/workspace/kotor_workspace_shell.gd")
 const KotorDLGWorkspaceEditor := preload("../../ui/workspace/editors/dlg_workspace_editor.gd")
+const KotorModuleDesignerWorkspaceEditor := preload("../../ui/workspace/editors/module_designer_workspace_editor.gd")
 
 var _main_screen: Control
 var _workspace_shell: Control
@@ -27,4 +28,5 @@ func _assert_host_composition() -> void:
 	assert(_main_screen.get_child(0) is Control)
 	assert(_workspace_shell.get_child(0) is Control)
 	assert(_workspace_shell.get_dlg_workspace_editor() is KotorDLGWorkspaceEditor)
+	assert(_workspace_shell.get_module_designer_workspace_editor() is KotorModuleDesignerWorkspaceEditor)
 	quit()

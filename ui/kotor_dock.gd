@@ -28,13 +28,14 @@ const KotorModdingPipeline := preload("../editor/modding/kotor_modding_pipeline.
 const KotorMutationService := preload("../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("./workspace/dialogs/kotor_preflight_dialog.gd")
 const KotorGFFWorkspaceEditor := preload("./workspace/editors/gff_workspace_editor.gd")
+const KotorModuleDesignerWorkspaceEditor := preload("./workspace/editors/module_designer_workspace_editor.gd")
 const GAME_TLK_NAME := KotorEditorState.GAME_TLK_NAME
 const GAMEFS_RESULT_LIMIT := 500
 const AREA_RESULT_LIMIT := 256
 const GFF_EXTENSIONS := {
 	"utc": true, "utd": true, "ute": true, "uti": true, "utp": true,
 	"uts": true, "utt": true, "utw": true, "utm": true, "jrl": true,
-	"dlg": true, "git": true, "are": true, "ifo": true, "gff": true,
+	"dlg": true, "are": true, "ifo": true, "gff": true,
 }
 const AREA_TOOL_EXTENSIONS := {
 	"lyt": true,
@@ -1198,6 +1199,8 @@ func _open_gamefs_entry(entry: Dictionary) -> void:
 	elif SCRIPT_EXTENSIONS.has(extension):
 		_load_script_bytes(label, bytes, extension)
 		_tabs.current_tab = _script_tab.get_index()
+	elif KotorModuleDesignerWorkspaceEditor.module_designer_extension_allowed(extension):
+		_append_activity("Open %s in the Module Designer workspace tab" % label)
 	elif GFF_EXTENSIONS.has(extension):
 		_load_gff_bytes(label, bytes)
 		_tabs.current_tab = _gff_tab.get_index()
@@ -1753,7 +1756,7 @@ func _install_selected_erf_entry() -> void:
 
 func _open_gff() -> void:
 	var gff_exts := "*.utc,*.utd,*.ute,*.uti,*.utp,*.uts,*.utt,*.utw,*.utm,"
-	gff_exts += "*.jrl,*.dlg,*.git,*.are,*.ifo,*.gff ; KotOR GFF"
+	gff_exts += "*.jrl,*.dlg,*.are,*.ifo,*.gff ; KotOR GFF"
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
 		PackedStringArray([gff_exts]),
@@ -3330,12 +3333,16 @@ func _should_delegate_to_workspace_editor(extension: String) -> bool:
 		return true
 	if SCRIPT_EXTENSIONS.has(normalized):
 		return true
+	if KotorModuleDesignerWorkspaceEditor.module_designer_extension_allowed(normalized):
+		return true
 	return KotorGFFWorkspaceEditor.workspace_gff_extension_allowed(normalized)
 
 
 func _viewer_for_extension(extension: String) -> String:
 	if extension == "dlg":
 		return "DLG Editor"
+	if KotorModuleDesignerWorkspaceEditor.module_designer_extension_allowed(extension):
+		return "Module Designer"
 	if SCRIPT_EXTENSIONS.has(extension):
 		return "Script Editor"
 	if GFF_EXTENSIONS.has(extension):

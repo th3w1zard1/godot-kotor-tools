@@ -4,6 +4,7 @@ extends SceneTree
 const KotorDock := preload("../../ui/kotor_dock.gd")
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const KotorGFFWorkspaceEditor := preload("../../ui/workspace/editors/gff_workspace_editor.gd")
+const KotorModuleDesignerWorkspaceEditor := preload("../../ui/workspace/editors/module_designer_workspace_editor.gd")
 
 var _delegated := false
 var _captured: Dictionary = {}
@@ -31,6 +32,16 @@ func _assert_dock_workspace_routing() -> void:
 	assert(str(_captured.get("resref", "")) == "player")
 
 	_delegated = false
+	_captured = {}
+	dock.open_gamefs_entry({
+		"resref": "tar_m02aa",
+		"extension": "git",
+		"source": "override",
+	})
+	assert(_delegated)
+	assert(str(_captured.get("extension", "")) == "git")
+
+	_delegated = false
 	dock.set_workspace_entry_opener(Callable())
 	dock.open_gamefs_entry({
 		"resref": "player",
@@ -43,6 +54,8 @@ func _assert_dock_workspace_routing() -> void:
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("jrl"))
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("pth"))
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("fac"))
+	assert(not KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("git"))
+	assert(KotorModuleDesignerWorkspaceEditor.module_designer_extension_allowed("git"))
 
 	quit()
 

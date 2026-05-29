@@ -30,12 +30,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q12 | Install-aware feat/skill 2DA labels | Feat enum labels from feat.2da; SkillList rows show skills.2da names by index. |
 | Q13 | GFF blueprint typed factory completion (`utt`, `utw`) | Holocron blueprint types `utt` and `utw` map to typed resources/documents in `GFFResourceFactory` with headless tests. |
 | Q14 | Blueprint field-depth parity (scripts, traps, map notes, appearance) | Script hook NSS pickers, trap scalar/`TrapList` editing, typed document summaries, `TrapType` from traps.2da. |
+| Q15 | Module designer foundations (`.git` workspace) | Dedicated Module Designer tab: typed GIT instances, 2D map + tree selection sync, module bundle context, save/install on mutation path; `.git` routed out of GFF entity editor. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q14 shipped baseline, parity master plan active, per-slice verification retained. | Next: Q15 module/area designer foundations per master plan Phase C. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q15 shipped baseline, parity master plan active, per-slice verification retained. | Next: Q16 SubViewport 3D module designer per master plan Phase C. |
 
 ## Next Slices (Deferred)
 
