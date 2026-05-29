@@ -3,8 +3,9 @@ extends RefCounted
 class_name KotorModuleContext
 
 const LYTParser := preload("../../formats/lyt_parser.gd")
+const BWMParser := preload("../../formats/bwm_parser.gd")
 
-const MODULE_EXTENSIONS := ["git", "are", "ifo", "lyt", "vis", "pth"]
+const MODULE_EXTENSIONS := ["git", "are", "ifo", "lyt", "vis", "pth", "wok"]
 const CORE_MODULE_EXTENSIONS := ["git", "are", "ifo"]
 const LAYOUT_EXTENSIONS := ["lyt", "vis", "pth"]
 
@@ -33,6 +34,7 @@ static func find_module_bundle(gamefs: RefCounted, module_resref: String) -> Dic
 		"lyt": {},
 		"vis": {},
 		"pth": {},
+		"wok": {},
 	}
 	if gamefs == null:
 		return bundle
@@ -57,6 +59,20 @@ static func load_parsed_layout(gamefs: RefCounted, bundle: Dictionary) -> Dictio
 	if bytes.is_empty():
 		return {}
 	return LYTParser.parse_bytes(bytes)
+
+
+static func load_parsed_walkmesh(gamefs: RefCounted, bundle: Dictionary) -> Dictionary:
+	if gamefs == null or bundle.is_empty():
+		return {}
+	var wok_entry: Dictionary = bundle.get("wok", {})
+	if wok_entry.is_empty():
+		return {}
+	if not gamefs.has_method("load_resource_entry_bytes"):
+		return {}
+	var bytes: PackedByteArray = gamefs.load_resource_entry_bytes(wok_entry)
+	if bytes.is_empty():
+		return {}
+	return BWMParser.parse_bytes(bytes)
 
 
 static func describe_bundle(bundle: Dictionary) -> String:

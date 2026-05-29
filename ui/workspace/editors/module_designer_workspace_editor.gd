@@ -24,6 +24,7 @@ var _instance_tree: Tree
 var _map_view: ModuleDesignerMapView
 var _viewport_3d: ModuleDesignerViewport3D
 var _parsed_layout: Dictionary = {}
+var _parsed_walkmesh: Dictionary = {}
 var _mutation_service: RefCounted
 var _resource: GITResource
 var _document: KotorGITDocument
@@ -310,6 +311,7 @@ func _refresh_viewport_3d() -> void:
 		return
 	var records := _document.get_instance_records()
 	_viewport_3d.set_instances(records, _parsed_layout)
+	_viewport_3d.set_walkmesh(_parsed_walkmesh)
 
 
 func _refresh_status() -> void:
@@ -327,6 +329,7 @@ func _refresh_module_bundle() -> void:
 	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
 	_module_bundle = KotorModuleContext.find_module_bundle(gamefs, module_resref)
 	_parsed_layout = KotorModuleContext.load_parsed_layout(gamefs, _module_bundle)
+	_parsed_walkmesh = KotorModuleContext.load_parsed_walkmesh(gamefs, _module_bundle)
 
 
 func _on_instance_tree_selected() -> void:
@@ -412,12 +415,14 @@ func _clear_document_state(message: String) -> void:
 	_status_text = message
 	_module_bundle = {}
 	_parsed_layout = {}
+	_parsed_walkmesh = {}
 	if _instance_tree != null:
 		_instance_tree.clear()
 	if _map_view != null:
 		_map_view.set_instances([], Rect2())
 	if _viewport_3d != null:
 		_viewport_3d.set_instances([], {})
+		_viewport_3d.set_walkmesh({})
 	if _detail_label != null:
 		_detail_label.text = ""
 	if _summary_label != null:

@@ -6,13 +6,16 @@ signal instance_selected(category: String, index: int)
 
 const KotorGITDocument := preload("../../../resources/documents/kotor_git_document.gd")
 const KotorWorldCoordinates := preload("../../../editor/module/kotor_world_coordinates.gd")
+const BWMParser := preload("../../../formats/bwm_parser.gd")
 
 var _viewport: SubViewport
 var _camera: Camera3D
 var _instances_root: Node3D
 var _layout_root: Node3D
+var _walkmesh_root: Node3D
 var _records: Array[Dictionary] = []
 var _layout_rooms: Array = []
+var _walkmesh: Dictionary = {}
 var _selected_category := ""
 var _selected_index := -1
 var _marker_nodes: Dictionary = {}
@@ -64,6 +67,10 @@ func _build_scene() -> void:
 	_layout_root.name = "Layout"
 	world.add_child(_layout_root)
 
+	_walkmesh_root = Node3D.new()
+	_walkmesh_root.name = "Walkmesh"
+	world.add_child(_walkmesh_root)
+
 
 func _ready() -> void:
 	_update_camera_transform()
@@ -78,6 +85,12 @@ func set_instances(records: Array, layout: Dictionary = {}) -> void:
 	_rebuild_markers()
 	_fit_camera_to_content()
 	queue_redraw()
+
+
+func set_walkmesh(parsed: Dictionary) -> void:
+	_walkmesh = parsed if typeof(parsed) == TYPE_DICTIONARY else {}
+	_rebuild_walkmesh()
+	_fit_camera_to_content()
 
 
 func set_selection(category: String, index: int) -> void:
@@ -160,6 +173,52 @@ func _rebuild_markers() -> void:
 		_marker_nodes[key] = marker
 
 	_refresh_marker_highlights()
+
+
+func _rebuild_walkmesh() -> void:
+	if _walkmesh_root == null:
+		return
+	for child in _walkmesh_root.get_children():
+		child.queue_free()
+	if _walkmesh.is_empty():
+		return
+
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.name = "AreaWalkmesh"
+	mesh_instance.mesh = _build_walkmesh_surface(_walkmesh)
+	if mesh_instance.mesh == null:
+		return
+	var material := StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mesh_instance.material_override = material
+	_walkmesh_root.add_child(mesh_instance)
+
+
+func _build_walkmesh_surface(parsed: Dictionary) -> ArrayMesh:
+	var vertices: Array = parsed.get("vertices", [])
+	var faces: Array = parsed.get("faces", [])
+	if vertices.is_empty() or faces.is_empty():
+		return null
+	var offset: Vector3 = parsed.get("position", Vector3.ZERO)
+	var surface_tool := SurfaceTool.new()
+	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for raw_face in faces:
+		if typeof(raw_face) != TYPE_DICTIONARY:
+			continue
+		var face: Dictionary = raw_face
+		var material_id := int(face.get("material", 0))
+		var color := Color(0.25, 0.82, 0.35, 0.38) if BWMParser.is_walkable_material(material_id) else Color(0.9, 0.28, 0.2, 0.32)
+		for key in ["i1", "i2", "i3"]:
+			var vertex_index := int(face.get(key, -1))
+			if vertex_index < 0 or vertex_index >= vertices.size():
+				continue
+			var kotor_vertex: Vector3 = vertices[vertex_index] + offset
+			surface_tool.set_color(color)
+			surface_tool.add_vertex(KotorWorldCoordinates.kotor_to_godot(kotor_vertex))
+	return surface_tool.commit()
 
 
 func _make_pickable_marker(record: Dictionary, position: Vector3, color: Color) -> Area3D:
@@ -259,13 +318,27 @@ func _pick_instance(screen_pos: Vector2) -> Dictionary:
 
 
 func _fit_camera_to_content() -> void:
-	if _records.is_empty() and _layout_rooms.is_empty():
+	if _records.is_empty() and _layout_rooms.is_empty() and _walkmesh.is_empty():
 		_orbit_focus = Vector3.ZERO
 		_orbit_distance = 40.0
 		_update_camera_transform()
 		return
 	var min_pos := Vector3(INF, INF, INF)
 	var max_pos := Vector3(-INF, -INF, -INF)
+	if not _walkmesh.is_empty():
+		var kotor_bounds := BWMParser.compute_bounds(_walkmesh)
+		if kotor_bounds.size != Vector3.ZERO:
+			var corners := [
+				kotor_bounds.position,
+				kotor_bounds.position + Vector3(kotor_bounds.size.x, 0.0, 0.0),
+				kotor_bounds.position + Vector3(0.0, kotor_bounds.size.y, 0.0),
+				kotor_bounds.position + Vector3(0.0, 0.0, kotor_bounds.size.z),
+				kotor_bounds.end,
+			]
+			for corner in corners:
+				var godot_pos := KotorWorldCoordinates.kotor_to_godot(corner)
+				min_pos = min_pos.min(godot_pos)
+				max_pos = max_pos.max(godot_pos)
 	for record in _records:
 		var kotor_pos := Vector3(
 			float(record.get("x", 0.0)),

@@ -32,12 +32,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q14 | Blueprint field-depth parity (scripts, traps, map notes, appearance) | Script hook NSS pickers, trap scalar/`TrapList` editing, typed document summaries, `TrapType` from traps.2da. |
 | Q15 | Module designer foundations (`.git` workspace) | Dedicated Module Designer tab: typed GIT instances, 2D map + tree selection sync, module bundle context, save/install on mutation path; `.git` routed out of GFF entity editor. |
 | Q16 | Module designer 3D viewport | SubViewport 3D view with GIT markers, LYT room overlay, orbit/zoom camera, tree ↔ map ↔ 3D selection sync; override-first module bundle for `lyt`/`vis`/`pth`. |
+| Q17 | Module designer BWM walkmesh overlay | `BWMParser` for area `.wok`, walkable/unwalkable triangle overlay in 3D viewport, bundle `load_parsed_walkmesh`, camera fit includes walkmesh bounds. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q16 shipped baseline, parity master plan active, per-slice verification retained. | Next: Q17 walkmesh/BWM overlay or MDL placement per master plan Phase C. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q17 shipped baseline, parity master plan active, per-slice verification retained. | Next: MDL placement or indoor builder per master plan Phase C. |
 
 ## Next Slices (Deferred)
 
