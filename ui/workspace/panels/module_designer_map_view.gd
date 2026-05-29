@@ -12,6 +12,13 @@ signal instance_drag_finished(
 	new_x: float,
 	new_y: float
 )
+signal instance_rotate_updated(category: String, index: int, bearing: float)
+signal instance_rotate_finished(
+	category: String,
+	index: int,
+	old_bearing: float,
+	new_bearing: float
+)
 
 const KotorGITDocument := preload("../../../resources/documents/kotor_git_document.gd")
 
@@ -25,6 +32,11 @@ var _drag_category := ""
 var _drag_index := -1
 var _drag_start_world := Vector2.ZERO
 var _drag_current_world := Vector2.ZERO
+var _rotate_active := false
+var _rotate_category := ""
+var _rotate_index := -1
+var _rotate_start_bearing := 0.0
+var _rotate_preview_bearing := 0.0
 
 
 func set_instances(records: Array, bounds: Rect2) -> void:
@@ -34,6 +46,7 @@ func set_instances(records: Array, bounds: Rect2) -> void:
 			_records.append(raw_record)
 	_bounds = bounds if bounds.size.x > 0.0 and bounds.size.y > 0.0 else Rect2(-10, -10, 20, 20)
 	_cancel_drag()
+	_cancel_rotate()
 	queue_redraw()
 
 
@@ -83,6 +96,8 @@ func _draw_instance(record: Dictionary) -> void:
 		color = color.lightened(0.35)
 	draw_circle(point, 4.0, color)
 	var bearing := float(record.get("bearing", 0.0))
+	if _rotate_active and category == _rotate_category and index == _rotate_index:
+		bearing = _rotate_preview_bearing
 	if absf(bearing) > 0.001:
 		var direction := Vector2.RIGHT.rotated(-bearing) * 8.0
 		draw_line(point, point + direction, color.lightened(0.2), 1.5)
@@ -91,6 +106,25 @@ func _draw_instance(record: Dictionary) -> void:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_RIGHT:
+			if mouse_event.pressed:
+				var picked := _pick_instance(mouse_event.position)
+				if picked.is_empty():
+					return
+				var category := str(picked.get("category", ""))
+				var index := int(picked.get("index", -1))
+				instance_selected.emit(category, index)
+				_rotate_active = true
+				_rotate_category = category
+				_rotate_index = index
+				_rotate_start_bearing = float(picked.get("bearing", 0.0))
+				_rotate_preview_bearing = _rotate_start_bearing
+				accept_event()
+				return
+			if _rotate_active:
+				_finish_rotate()
+				accept_event()
+			return
 		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
 			return
 		if mouse_event.pressed:
@@ -110,8 +144,22 @@ func _gui_input(event: InputEvent) -> void:
 		if _drag_active:
 			_finish_drag()
 			accept_event()
-	elif event is InputEventMouseMotion and _drag_active:
+	elif event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
+		if _rotate_active:
+			var record := _find_record(_rotate_category, _rotate_index)
+			if record.is_empty():
+				_cancel_rotate()
+				return
+			var instance_world := Vector2(float(record.get("x", 0.0)), float(record.get("y", 0.0)))
+			var cursor_world := _screen_to_world(motion.position)
+			_rotate_preview_bearing = _bearing_from_world_point(instance_world, cursor_world)
+			instance_rotate_updated.emit(_rotate_category, _rotate_index, _rotate_preview_bearing)
+			queue_redraw()
+			accept_event()
+			return
+		if not _drag_active:
+			return
 		_drag_current_world = _screen_to_world(motion.position)
 		instance_drag_updated.emit(_drag_category, _drag_index, _drag_current_world.x, _drag_current_world.y)
 		queue_redraw()
@@ -186,6 +234,36 @@ func _cancel_drag() -> void:
 	_drag_index = -1
 	_drag_start_world = Vector2.ZERO
 	_drag_current_world = Vector2.ZERO
+
+
+func _finish_rotate() -> void:
+	if not _rotate_active:
+		return
+	var changed := absf(_rotate_preview_bearing - _rotate_start_bearing) > 0.001
+	if changed:
+		instance_rotate_finished.emit(
+			_rotate_category,
+			_rotate_index,
+			_rotate_start_bearing,
+			_rotate_preview_bearing
+		)
+	_cancel_rotate()
+	queue_redraw()
+
+
+func _cancel_rotate() -> void:
+	_rotate_active = false
+	_rotate_category = ""
+	_rotate_index = -1
+	_rotate_start_bearing = 0.0
+	_rotate_preview_bearing = 0.0
+
+
+static func _bearing_from_world_point(instance_world: Vector2, cursor_world: Vector2) -> float:
+	var offset := cursor_world - instance_world
+	if offset.length_squared() < 0.000001:
+		return 0.0
+	return atan2(offset.y, offset.x)
 
 
 func _find_record(category: String, index: int) -> Dictionary:

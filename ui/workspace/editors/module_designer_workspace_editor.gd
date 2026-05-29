@@ -226,6 +226,7 @@ func _build_ui() -> void:
 	_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_map_view.instance_selected.connect(_on_map_instance_selected)
 	_map_view.instance_drag_finished.connect(_on_map_instance_drag_finished)
+	_map_view.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
 
 	var right_split := VSplitContainer.new()
 	right_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -433,6 +434,15 @@ func _on_map_instance_drag_finished(
 	new_y: float
 ) -> void:
 	_apply_instance_position_with_undo(category, index, old_x, old_y, new_x, new_y)
+
+
+func _on_map_instance_rotate_finished(
+	category: String,
+	index: int,
+	old_bearing: float,
+	new_bearing: float
+) -> void:
+	_apply_instance_bearing_with_undo(category, index, old_bearing, new_bearing)
 
 
 func _on_viewport_instance_selected(category: String, index: int) -> void:
@@ -648,6 +658,30 @@ func _exec_instance_position(category: String, index: int, x: float, y: float) -
 	if _document == null:
 		return
 	if not _document.set_instance_position(category, index, x, y):
+		return
+	_select_instance(category, index)
+
+
+func _apply_instance_bearing_with_undo(
+	category: String,
+	index: int,
+	old_bearing: float,
+	new_bearing: float
+) -> void:
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Rotate GIT instance", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_instance_bearing", category, index, new_bearing)
+		ur.add_undo_method(self, "_exec_instance_bearing", category, index, old_bearing)
+		ur.commit_action()
+	else:
+		_exec_instance_bearing(category, index, new_bearing)
+
+
+func _exec_instance_bearing(category: String, index: int, bearing: float) -> void:
+	if _document == null:
+		return
+	if not _document.set_instance_bearing(category, index, bearing):
 		return
 	_select_instance(category, index)
 

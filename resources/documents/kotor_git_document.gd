@@ -92,6 +92,16 @@ func find_instance_record(category: String, index: int) -> Dictionary:
 	return {}
 
 
+func set_instance_bearing(category: String, index: int, bearing: float) -> bool:
+	var record := find_instance_record(category, index)
+	if record.is_empty():
+		return false
+	var base_path: Array = record.get("path", [])
+	if base_path.is_empty():
+		return false
+	return _set_instance_field(base_path, "Bearing", bearing)
+
+
 func set_instance_position(
 	category: String,
 	index: int,

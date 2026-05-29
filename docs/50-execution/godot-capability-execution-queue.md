@@ -36,12 +36,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q18 | Module designer MDL room mesh placement | `MDLParser` for K1 trimesh read, `load_parsed_model_mesh`, flat-shaded LYT room meshes in 3D viewport, blue box fallback when MDL missing. |
 | Q19 | GIT template → MDL instance meshes | `KotorTemplateModelResolver` maps creature/placeable/door templates via blueprint GFF + 2DA; `set_instance_meshes` renders MDL at GIT position/bearing with cube fallback. |
 | Q20 | GIT instance drag-move + undo | `set_instance_position` on GIT document; 2D map drag with `_screen_to_world`; EditorUndoRedoManager undo; dirty refresh across map/tree/3D. |
+| Q21 | GIT instance bearing rotate + undo | `set_instance_bearing` on GIT document; 2D map right-drag rotate with live preview; EditorUndoRedoManager undo; dirty refresh across map/tree/3D. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q20 shipped baseline, parity master plan active, per-slice verification retained. | Next: indoor builder or script/media parity per master plan Phase C. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q21 shipped baseline, parity master plan active, per-slice verification retained. | Next: indoor builder, script/media parity, or diff tooling per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
