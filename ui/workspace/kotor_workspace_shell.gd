@@ -12,6 +12,7 @@ const KotorTLKWorkspaceEditor := preload("./editors/tlk_workspace_editor.gd")
 const KotorScriptWorkspaceEditor := preload("./editors/script_workspace_editor.gd")
 const KotorGFFWorkspaceEditor := preload("./editors/gff_workspace_editor.gd")
 const KotorModuleDesignerWorkspaceEditor := preload("./editors/module_designer_workspace_editor.gd")
+const KotorIndoorBuilderWorkspaceEditor := preload("./editors/indoor_builder_workspace_editor.gd")
 const KotorResourceBrowserPanel := preload("./panels/resource_browser_panel.gd")
 const KotorTransactionHistoryPanel := preload("./panels/transaction_history_panel.gd")
 
@@ -28,6 +29,7 @@ var _tlk_editor: Control
 var _script_editor: Control
 var _gff_editor: Control
 var _module_designer: Control
+var _indoor_builder: Control
 
 
 func _init(controller: RefCounted = null) -> void:
@@ -132,6 +134,13 @@ func _ensure_shell() -> void:
 	_module_designer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_module_designer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs.add_child(_module_designer)
+
+	_indoor_builder = KotorIndoorBuilderWorkspaceEditor.new()
+	_indoor_builder.name = "Indoor Builder"
+	_indoor_builder.setup(_resolve_editor_state(), _controller)
+	_indoor_builder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_indoor_builder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_indoor_builder)
 	_restore_workspace_session()
 
 
@@ -185,6 +194,10 @@ func get_module_designer_workspace_editor() -> Control:
 	return _module_designer
 
 
+func get_indoor_builder_workspace_editor() -> Control:
+	return _indoor_builder
+
+
 func _restore_workspace_session() -> void:
 	if _controller == null or _dlg_editor == null or not _controller.has_method("restore_workspace_session"):
 		return
@@ -229,6 +242,10 @@ func _restore_workspace_session() -> void:
 				_module_designer.call("open_git_file", source_path)
 				if str(document_entry.get("key", "")) == active_key:
 					_tabs.current_tab = _module_designer.get_index()
+			"indoor":
+				_indoor_builder.call("open_indoor_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _indoor_builder.get_index()
 			_:
 				pass
 
