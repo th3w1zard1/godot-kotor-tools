@@ -41,12 +41,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q23 | Indoor kit library + placement | `KotorIndoorKitLoader`/`KotorIndoorKitLibrary`; kits path in editor settings; kit/component pickers; `add_room_from_kit` with undo; resource-browser `.indoor` routing. |
 | Q24 | Indoor hook connections | `KotorIndoorHookConnections` + document connection cache; map hook markers; room hook summaries; auto-rebuild on mutations; manual rebuild button. |
 | Q25 | Indoor `.mod` export | `KotorIndoorModExporter` PyKotor CLI bridge (`indoor-build`); Export .mod toolbar; `pykotor_cli_path` editor setting; preflight + dry-run tests. |
+| Q26 | NSS/NCS script tools | `KotorScriptToolBridge` PyKotor CLI bridge (`assemble`/`decompile`/`disassemble`); Script tab Compile/Decompile/Disassemble; include-dir discovery; headless command tests. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q25 shipped indoor `.mod` export baseline, parity master plan active, per-slice verification retained. | Next: native build port, script/media parity, or diff tooling per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q26 shipped script CLI baseline, parity master plan active, per-slice verification retained. | Next: media parity, native indoor build, DLG depth, or diff tooling per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
