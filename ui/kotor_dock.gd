@@ -3576,7 +3576,7 @@ func _should_delegate_to_workspace_editor(extension: String) -> bool:
 	var normalized := extension.strip_edges().to_lower()
 	if normalized == "dlg":
 		return true
-	if normalized == "2da" or normalized == "tlk":
+	if normalized == "2da" or normalized == "tlk" or normalized == "ssf" or normalized == "tpc" or normalized == "wav":
 		return true
 	if SCRIPT_EXTENSIONS.has(normalized):
 		return true
@@ -3600,7 +3600,13 @@ func _viewer_for_extension(extension: String) -> String:
 		return "2DA Viewer"
 	if extension == "tlk":
 		return "TLK Search"
-	if ARCHIVE_EXTENSIONS.has(extension) or extension == "tpc":
+	if extension == "ssf":
+		return "SSF Editor"
+	if extension == "tpc":
+		return "Texture Editor"
+	if extension == "wav":
+		return "Sound Editor"
+	if ARCHIVE_EXTENSIONS.has(extension):
 		return "ERF Browser"
 	return "No viewer yet"
 

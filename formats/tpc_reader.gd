@@ -76,6 +76,46 @@ static func read_bytes(data: PackedByteArray) -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
+## Decode mip 0 pixels and return an Image, or null on failure.
+static func read_image(data: PackedByteArray) -> Image:
+	var texture := read_bytes(data)
+	if texture == null:
+		return null
+	return texture.get_image()
+
+
+## Return header metadata without decoding pixel data.
+static func read_metadata(data: PackedByteArray) -> Dictionary:
+	if data.size() < HEADER_SIZE:
+		return {"ok": false}
+	var encoding := data[0x0C]
+	var data_size := _u32(data, 0x00)
+	var txi_length := maxi(data.size() - HEADER_SIZE - data_size, 0)
+	return {
+		"ok": true,
+		"data_size": data_size,
+		"alpha_test": _read_f32(data, 0x04),
+		"width": _u16(data, 0x08),
+		"height": _u16(data, 0x0A),
+		"encoding": encoding,
+		"encoding_name": _encoding_name(encoding),
+		"num_mips": data[0x0D],
+		"mipmap_count": data[0x0D],
+		"is_cube_map": false,
+		"txi_length": txi_length,
+		"file_size": data.size(),
+	}
+
+
+static func read_metadata_file(path: String) -> Dictionary:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {}
+	var data := file.get_buffer(file.get_length())
+	file.close()
+	return read_metadata(data)
+
+
 ## Read a TPC file from disk and return an ImageTexture, or null on failure.
 static func read_file(path: String) -> ImageTexture:
 	var f := FileAccess.open(path, FileAccess.READ)
@@ -288,3 +328,27 @@ static func _u32(data: PackedByteArray, offset: int) -> int:
 		| (data[offset + 1] << 8)
 		| (data[offset + 2] << 16)
 		| (data[offset + 3] << 24)) & 0xFFFFFFFF
+
+
+static func _read_f32(data: PackedByteArray, offset: int) -> float:
+	if offset + 4 > data.size():
+		return 0.0
+	return data.decode_float(offset)
+
+
+static func _encoding_name(encoding: int) -> String:
+	match encoding:
+		ENC_GREY:
+			return "Greyscale"
+		ENC_RGB:
+			return "RGB"
+		ENC_RGBA:
+			return "RGBA"
+		ENC_DXT1:
+			return "DXT1"
+		ENC_DXT3:
+			return "DXT3"
+		ENC_DXT5:
+			return "DXT5"
+		_:
+			return "Unknown (0x%02X)" % encoding

@@ -50,6 +50,37 @@ func _assert_dock_workspace_routing() -> void:
 	})
 	assert(not _delegated)
 
+	_delegated = false
+	_captured = {}
+	dock.set_workspace_entry_opener(Callable(self, "_capture_workspace_entry"))
+	dock.open_gamefs_entry({
+		"resref": "battlecry",
+		"extension": "ssf",
+		"source": "override",
+	})
+	assert(_delegated)
+	assert(str(_captured.get("extension", "")) == "ssf")
+
+	_delegated = false
+	_captured = {}
+	dock.open_gamefs_entry({
+		"resref": "texture01",
+		"extension": "tpc",
+		"source": "override",
+	})
+	assert(_delegated)
+	assert(str(_captured.get("extension", "")) == "tpc")
+
+	_delegated = false
+	_captured = {}
+	dock.open_gamefs_entry({
+		"resref": "sound01",
+		"extension": "wav",
+		"source": "override",
+	})
+	assert(_delegated)
+	assert(str(_captured.get("extension", "")) == "wav")
+
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("are"))
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("jrl"))
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("pth"))
