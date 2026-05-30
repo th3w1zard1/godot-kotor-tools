@@ -4,16 +4,22 @@ class_name KotorLIPWorkspaceEditor
 
 const LIPParser := preload("../../../formats/lip_parser.gd")
 const LIPResource := preload("../../../resources/lip_resource.gd")
+const WavMetadata := preload("../../../formats/wav_metadata.gd")
+const LipWaveformView := preload("../widgets/lip_waveform_view.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 
 var _toolbar: HBoxContainer
 var _path_label: Label
+var _audio_label: Label
+var _viseme_label: Label
 var _duration_spin: SpinBox
+var _waveform: LipWaveformView
 var _tree: Tree
 var _summary_label: Label
 var _preflight_dialog: KotorPreflightDialog
+var _audio_player: AudioStreamPlayer
 
 var _mutation_service: RefCounted
 var _resource: LIPResource
@@ -22,6 +28,13 @@ var _file_name := "animation.lip"
 var _dirty := false
 var _status_text := ""
 var _document_key := ""
+
+var _wav_source_path := ""
+var _wav_bytes: PackedByteArray = PackedByteArray()
+var _wav_playable := false
+var _wav_duration := 0.0
+var _scrub_time := 0.0
+var _is_playing := false
 
 var _pending_resource: LIPResource
 var _pending_source_path := ""
@@ -191,6 +204,21 @@ func _build_ui() -> void:
 	install_btn.pressed.connect(_install_lip_to_override)
 	_toolbar.add_child(install_btn)
 
+	var load_wav_btn := Button.new()
+	load_wav_btn.text = "Load WAV..."
+	load_wav_btn.pressed.connect(_load_wav)
+	_toolbar.add_child(load_wav_btn)
+
+	var play_btn := Button.new()
+	play_btn.text = "Play"
+	play_btn.pressed.connect(_play_audio)
+	_toolbar.add_child(play_btn)
+
+	var stop_btn := Button.new()
+	stop_btn.text = "Stop"
+	stop_btn.pressed.connect(_stop_audio)
+	_toolbar.add_child(stop_btn)
+
 	var add_btn := Button.new()
 	add_btn.text = "Add Keyframe"
 	add_btn.pressed.connect(_add_keyframe)
@@ -218,6 +246,25 @@ func _build_ui() -> void:
 	_path_label.clip_text = true
 	_toolbar.add_child(_path_label)
 
+	_audio_label = Label.new()
+	_audio_label.text = "Audio: (none)"
+	add_child(_audio_label)
+
+	_viseme_label = Label.new()
+	_viseme_label.text = "Viseme: —"
+	add_child(_viseme_label)
+
+	_waveform = LipWaveformView.new()
+	_waveform.custom_minimum_size = Vector2(0.0, 96.0)
+	_waveform.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_waveform.seek_requested.connect(_seek_audio)
+	add_child(_waveform)
+
+	_audio_player = AudioStreamPlayer.new()
+	add_child(_audio_player)
+
+	set_process(true)
+
 	_summary_label = Label.new()
 	_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_summary_label)
@@ -233,9 +280,24 @@ func _build_ui() -> void:
 	_refresh_status()
 
 
+func _process(_delta: float) -> void:
+	if _audio_player == null or not _is_playing:
+		return
+	if not _audio_player.playing:
+		_is_playing = false
+		_refresh_playhead()
+		return
+	_scrub_time = _audio_player.get_playback_position()
+	_update_viseme_preview(_scrub_time)
+	if _waveform != null:
+		_waveform.set_playhead(_scrub_time)
+
+
 func _refresh_view() -> void:
 	if _duration_spin != null and _resource != null:
 		_duration_spin.set_value_no_signal(_resource.length)
+	_sync_waveform_keyframes()
+	_refresh_playhead()
 	_refresh_tree()
 	_refresh_status()
 
@@ -306,7 +368,16 @@ func _remove_selected_keyframe() -> void:
 
 
 func _on_tree_item_selected() -> void:
-	pass
+	if _resource == null or _tree == null:
+		return
+	var item := _tree.get_selected()
+	if item == null:
+		return
+	var index := int(item.get_metadata(0))
+	var entry := _resource.get_keyframe(index)
+	if entry.is_empty():
+		return
+	_seek_audio(float(entry.get("time", 0.0)))
 
 
 func _on_tree_item_edited() -> void:
@@ -460,6 +531,7 @@ func _clear_preflight_state() -> void:
 
 
 func _clear_document_state(message: String) -> void:
+	_stop_audio()
 	_disconnect_resource_signal()
 	_resource = null
 	_source_path = ""
@@ -467,6 +539,7 @@ func _clear_document_state(message: String) -> void:
 	_dirty = false
 	_status_text = message
 	_document_key = ""
+	_clear_wav_state()
 	if _tree != null:
 		_tree.clear()
 	if _summary_label != null:
@@ -474,6 +547,219 @@ func _clear_document_state(message: String) -> void:
 	if _duration_spin != null:
 		_duration_spin.set_value_no_signal(0.0)
 	_refresh_status()
+
+
+func _load_wav() -> void:
+	var start_dir := _source_path.get_base_dir() if not _source_path.is_empty() else ""
+	if not _wav_source_path.is_empty():
+		start_dir = _wav_source_path.get_base_dir()
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_FILE,
+		PackedStringArray(["*.wav ; Wave Audio"]),
+		"Load WAV for LIP preview",
+		start_dir
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		_load_wav_file(path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _load_wav_file(path: String) -> void:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		_status_text = "Failed to open %s" % path.get_file()
+		_refresh_status()
+		return
+	var bytes := file.get_buffer(file.get_length())
+	file.close()
+	_apply_wav_bytes(path, bytes)
+
+
+func _apply_wav_bytes(path: String, bytes: PackedByteArray) -> void:
+	_stop_audio()
+	_wav_source_path = path if path.is_absolute_path() else ""
+	_wav_bytes = bytes
+	var meta := WavMetadata.parse_bytes(bytes)
+	if not meta.get("ok", false):
+		_clear_wav_state()
+		_status_text = meta.get("message", "Invalid WAV")
+		_refresh_status()
+		return
+
+	_wav_duration = float(meta.get("duration_seconds", 0.0))
+	_wav_playable = bool(meta.get("playable_pcm", false))
+	if _audio_label != null:
+		_audio_label.text = "Audio: %s (%s)" % [path.get_file(), meta.get("format_label", "?")]
+
+	if _wav_playable and not _wav_source_path.is_empty():
+		var stream := AudioStreamWAV.load_from_file(_wav_source_path)
+		if stream != null:
+			_audio_player.stream = stream
+	else:
+		_audio_player.stream = null
+
+	var peaks_result := WavMetadata.build_pcm_peaks(bytes)
+	if peaks_result.get("ok", false) and _waveform != null:
+		_waveform.set_peaks(
+			peaks_result.get("peaks", PackedFloat32Array()),
+			_wav_duration
+		)
+	elif _waveform != null:
+		_waveform.clear_peaks()
+
+	_scrub_time = 0.0
+	_update_viseme_preview(0.0)
+	_offer_duration_sync(_wav_duration)
+	_status_text = "Loaded WAV %s" % path.get_file()
+	_refresh_view()
+
+
+func _clear_wav_state() -> void:
+	_wav_source_path = ""
+	_wav_bytes = PackedByteArray()
+	_wav_playable = false
+	_wav_duration = 0.0
+	_scrub_time = 0.0
+	if _audio_player != null:
+		_audio_player.stream = null
+	if _audio_label != null:
+		_audio_label.text = "Audio: (none)"
+	if _waveform != null:
+		_waveform.clear_peaks()
+	if _viseme_label != null:
+		_viseme_label.text = "Viseme: —"
+
+
+func _play_audio() -> void:
+	if not _wav_playable or _wav_source_path.is_empty():
+		_status_text = "Load a 16-bit PCM WAV to preview audio."
+		_refresh_status()
+		return
+	if _audio_player.stream == null:
+		_audio_player.stream = AudioStreamWAV.load_from_file(_wav_source_path)
+	if _audio_player.stream == null:
+		_status_text = "Failed to load WAV stream."
+		_refresh_status()
+		return
+	_audio_player.play(_scrub_time)
+	_is_playing = true
+	_refresh_playhead()
+
+
+func _stop_audio() -> void:
+	if _audio_player != null:
+		_audio_player.stop()
+	_is_playing = false
+	_refresh_playhead()
+
+
+func _seek_audio(time_seconds: float) -> void:
+	var duration := _get_preview_duration()
+	if duration <= 0.0:
+		return
+	_scrub_time = clampf(time_seconds, 0.0, duration)
+	if _audio_player != null and _audio_player.playing:
+		_audio_player.seek(_scrub_time)
+	_update_viseme_preview(_scrub_time)
+	if _waveform != null:
+		_waveform.set_playhead(_scrub_time)
+	_select_keyframe_near_time(_scrub_time)
+
+
+func _get_preview_duration() -> float:
+	if _wav_duration > 0.0:
+		return _wav_duration
+	if _resource != null:
+		return _resource.length
+	return 0.0
+
+
+func _refresh_playhead() -> void:
+	if _waveform == null:
+		return
+	_waveform.set_playhead(_scrub_time)
+	_update_viseme_preview(_scrub_time)
+
+
+func _sync_waveform_keyframes() -> void:
+	if _waveform == null or _resource == null:
+		return
+	var times := PackedFloat32Array()
+	for index in _resource.get_keyframe_count():
+		var entry := _resource.get_keyframe(index)
+		times.append(float(entry.get("time", 0.0)))
+	_waveform.set_keyframe_times(times)
+
+
+func _update_viseme_preview(time_seconds: float) -> void:
+	if _viseme_label == null:
+		return
+	if _resource == null or _resource.get_keyframe_count() == 0:
+		_viseme_label.text = "Viseme: —"
+		return
+	var shape := _viseme_at_time(time_seconds)
+	_viseme_label.text = "Viseme: %s (%d)" % [LIPParser.shape_name(shape), shape]
+
+
+func _viseme_at_time(time_seconds: float) -> int:
+	var shape := 0
+	for index in _resource.get_keyframe_count():
+		var entry := _resource.get_keyframe(index)
+		var key_time := float(entry.get("time", 0.0))
+		if key_time <= time_seconds:
+			shape = int(entry.get("shape", 0))
+		else:
+			break
+	return shape
+
+
+func _select_keyframe_near_time(time_seconds: float) -> void:
+	if _tree == null or _resource == null:
+		return
+	var best_index := -1
+	var best_delta := INF
+	for index in _resource.get_keyframe_count():
+		var entry := _resource.get_keyframe(index)
+		var delta := absf(float(entry.get("time", 0.0)) - time_seconds)
+		if delta < best_delta:
+			best_delta = delta
+			best_index = index
+	if best_index < 0:
+		return
+	var root := _tree.get_root()
+	if root == null:
+		return
+	var child := root.get_first_child()
+	while child != null:
+		if int(child.get_metadata(0)) == best_index:
+			child.select(0)
+			break
+		child = child.get_next()
+
+
+func _offer_duration_sync(wav_duration: float) -> void:
+	if _resource == null or wav_duration <= 0.0:
+		return
+	if absf(_resource.length - wav_duration) < 0.01:
+		return
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "Sync LIP duration?"
+	dialog.dialog_text = (
+		"WAV duration is %.3f s; LIP length is %.3f s.\nUpdate LIP length to match the WAV?"
+		% [wav_duration, _resource.length]
+	)
+	dialog.confirmed.connect(func() -> void:
+		if _resource.set_length(wav_duration):
+			_dirty = true
+			_update_controller_dirty_state()
+		_refresh_view()
+	)
+	add_child(dialog)
+	dialog.popup_centered()
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
 
 
 func _register_controller_document() -> void:

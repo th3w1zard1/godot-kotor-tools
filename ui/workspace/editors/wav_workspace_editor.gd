@@ -2,6 +2,7 @@
 extends "./kotor_workspace_editor.gd"
 class_name KotorWAVWorkspaceEditor
 
+const WavMetadata := preload("../../../formats/wav_metadata.gd")
 const KotorMediaToolBridge := preload("../../../resources/scripts/kotor_media_tool_bridge.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
@@ -183,69 +184,18 @@ func _refresh_metadata() -> void:
 	if _bytes.is_empty():
 		_meta_label.text = "[color=gray]No WAV loaded.[/color]"
 		return
-	var meta := _read_wav_metadata(_bytes)
+	var meta := WavMetadata.parse_bytes(_bytes)
 	if not meta.get("ok", false):
 		_meta_label.text = "[color=red]%s[/color]" % meta.get("message", "Invalid WAV")
 		return
-	var lines: PackedStringArray = PackedStringArray([
-		"[b]Format:[/b] %s" % meta.get("format_label", "?"),
-		"[b]Channels:[/b] %d" % meta.get("channels", 0),
-		"[b]Sample rate:[/b] %d Hz" % meta.get("sample_rate", 0),
-		"[b]Bits per sample:[/b] %d" % meta.get("bits_per_sample", 0),
-		"[b]Data size:[/b] %d bytes" % meta.get("data_size", 0),
-		"[b]Duration:[/b] %.2f s" % meta.get("duration_seconds", 0.0),
-	])
+	var lines: PackedStringArray = PackedStringArray()
+	for line in WavMetadata.format_summary(meta):
+		var parts := line.split(": ", false, 1)
+		if parts.size() == 2:
+			lines.append("[b]%s:[/b] %s" % [parts[0], parts[1]])
+		else:
+			lines.append(line)
 	_meta_label.text = "\n".join(lines)
-
-
-func _read_wav_metadata(data: PackedByteArray) -> Dictionary:
-	if data.size() < 44:
-		return {"ok": false, "message": "File too small for WAV header"}
-	if data.decode_ascii(0, 4) != "RIFF" or data.decode_ascii(8, 4) != "WAVE":
-		return {"ok": false, "message": "Missing RIFF/WAVE header"}
-	var fmt_found := false
-	var data_size := 0
-	var channels := 0
-	var sample_rate := 0
-	var bits_per_sample := 0
-	var audio_format := 0
-	var offset := 12
-	while offset + 8 <= data.size():
-		var chunk_id := data.decode_ascii(offset, 4)
-		var chunk_size := data.decode_u32(offset + 4)
-		offset += 8
-		if offset + chunk_size > data.size():
-			break
-		if chunk_id == "fmt ":
-			fmt_found = true
-			audio_format = data.decode_u16(offset)
-			channels = data.decode_u16(offset + 2)
-			sample_rate = data.decode_u32(offset + 4)
-			bits_per_sample = data.decode_u16(offset + 14)
-		elif chunk_id == "data":
-			data_size = chunk_size
-		offset += chunk_size + (chunk_size % 2)
-	if not fmt_found:
-		return {"ok": false, "message": "Missing fmt chunk"}
-	var bytes_per_sample := maxi(bits_per_sample / 8, 1)
-	var duration := 0.0
-	if channels > 0 and sample_rate > 0:
-		duration = float(data_size) / float(channels * sample_rate * bytes_per_sample)
-	var format_label := "PCM"
-	if audio_format == 17:
-		format_label = "IMA ADPCM (KotOR)"
-	elif audio_format != 1:
-		format_label = "Format %d" % audio_format
-	return {
-		"ok": true,
-		"format_label": format_label,
-		"audio_format": audio_format,
-		"channels": channels,
-		"sample_rate": sample_rate,
-		"bits_per_sample": bits_per_sample,
-		"data_size": data_size,
-		"duration_seconds": duration,
-	}
 
 
 func _convert_wav() -> void:
