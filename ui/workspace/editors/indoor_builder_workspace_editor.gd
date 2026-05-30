@@ -5,6 +5,7 @@ class_name KotorIndoorBuilderWorkspaceEditor
 const KotorIndoorDocument := preload("../../../resources/documents/kotor_indoor_document.gd")
 const KotorIndoorMapIO := preload("../../../resources/indoor/kotor_indoor_map_io.gd")
 const KotorIndoorKitLibrary := preload("../../../resources/indoor/kotor_indoor_kit_library.gd")
+const KotorIndoorModExporter := preload("../../../resources/indoor/kotor_indoor_mod_exporter.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const IndoorBuilderMapView := preload("../panels/indoor_builder_map_view.gd")
 
@@ -17,6 +18,7 @@ var _detail_label: Label
 var _room_tree: Tree
 var _map_view: IndoorBuilderMapView
 var _kits_path_edit: LineEdit
+var _pykotor_cli_edit: LineEdit
 var _kit_option: OptionButton
 var _component_list: ItemList
 var _kit_status_label: Label
@@ -133,6 +135,11 @@ func _build_ui() -> void:
 	save_btn.pressed.connect(_save_indoor)
 	_toolbar.add_child(save_btn)
 
+	var export_mod_btn := Button.new()
+	export_mod_btn.text = "Export .mod"
+	export_mod_btn.pressed.connect(_export_mod_dialog)
+	_toolbar.add_child(export_mod_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -175,6 +182,26 @@ func _build_ui() -> void:
 	refresh_kits_btn.text = "Refresh"
 	refresh_kits_btn.pressed.connect(_refresh_kit_library)
 	left_panel.add_child(refresh_kits_btn)
+
+	var cli_label := Label.new()
+	cli_label.text = "PyKotor CLI (optional)"
+	left_panel.add_child(cli_label)
+
+	var cli_path_row := HBoxContainer.new()
+	left_panel.add_child(cli_path_row)
+
+	_pykotor_cli_edit = LineEdit.new()
+	_pykotor_cli_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pykotor_cli_edit.placeholder_text = "pykotorcli or python3 path"
+	if _editor_state != null:
+		_pykotor_cli_edit.text = _editor_state.pykotor_cli_path
+	_pykotor_cli_edit.text_submitted.connect(_on_pykotor_cli_submitted)
+	cli_path_row.add_child(_pykotor_cli_edit)
+
+	var browse_cli_btn := Button.new()
+	browse_cli_btn.text = "Browse"
+	browse_cli_btn.pressed.connect(_browse_pykotor_cli_path)
+	cli_path_row.add_child(browse_cli_btn)
 
 	_kit_option = OptionButton.new()
 	_kit_option.item_selected.connect(_on_kit_selected)
@@ -689,3 +716,82 @@ func _ensure_extension(path: String, extension: String) -> String:
 	if normalized.get_extension().to_lower() == extension:
 		return normalized
 	return "%s.%s" % [normalized, extension]
+
+
+func _on_pykotor_cli_submitted(new_path: String) -> void:
+	_apply_pykotor_cli_path(new_path)
+
+
+func _browse_pykotor_cli_path() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select PyKotor CLI"
+	if _pykotor_cli_edit != null and not _pykotor_cli_edit.text.is_empty():
+		dialog.current_dir = _pykotor_cli_edit.text.get_base_dir()
+	dialog.file_selected.connect(func(path: String) -> void:
+		_apply_pykotor_cli_path(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _apply_pykotor_cli_path(new_path: String) -> void:
+	if _editor_state != null:
+		_editor_state.set_pykotor_cli_path(new_path)
+	if _pykotor_cli_edit != null:
+		_pykotor_cli_edit.text = new_path
+
+
+func _export_mod_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export Indoor Map to .mod"
+	dialog.current_file = "%s.mod" % _document.get_module_id()
+	dialog.add_filter("*.mod", "KotOR Module")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_mod_to_path(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_mod_to_path(path: String) -> void:
+	if _document == null:
+		return
+	var game_path := _editor_state.game_path if _editor_state != null else ""
+	var kits_path := _kits_path_edit.text.strip_edges() if _kits_path_edit != null else ""
+	if kits_path.is_empty() and _editor_state != null:
+		kits_path = _editor_state.indoor_kits_path
+	var cli_path := _pykotor_cli_edit.text.strip_edges() if _pykotor_cli_edit != null else ""
+	if cli_path.is_empty() and _editor_state != null:
+		cli_path = _editor_state.pykotor_cli_path
+
+	var config := {
+		"document": _document,
+		"input_path": _source_path,
+		"output_path": path,
+		"game_path": game_path,
+		"kits_path": kits_path,
+		"pykotor_cli_path": cli_path,
+	}
+	var result := KotorIndoorModExporter.export_indoor_to_mod(config)
+	if not result.get("ok", false):
+		_status_text = str(result.get("message", "Export failed."))
+		_refresh_status()
+		return
+	_status_text = str(result.get("message", "Export complete."))
+	_refresh_status()
