@@ -58,7 +58,7 @@ godot --headless --path . --script tests/editor/test_media_tool_bridge.gd
 
 ## Acceptance
 
-- [ ] SSF parser/writer tests pass
-- [ ] Media bridge command tests pass
-- [ ] `ssf`, `tpc`, `wav` open in dedicated workspace tabs from resource browser
-- [ ] Docs reflect Q27 shipped
+- [x] SSF parser/writer tests pass
+- [x] Media bridge command tests pass
+- [x] `ssf`, `tpc`, `wav` open in dedicated workspace tabs from resource browser
+- [x] Docs reflect Q27 shipped

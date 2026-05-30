@@ -81,6 +81,16 @@ func _assert_dock_workspace_routing() -> void:
 	assert(_delegated)
 	assert(str(_captured.get("extension", "")) == "wav")
 
+	_delegated = false
+	_captured = {}
+	dock.open_gamefs_entry({
+		"resref": "dialog01",
+		"extension": "lip",
+		"source": "override",
+	})
+	assert(_delegated)
+	assert(str(_captured.get("extension", "")) == "lip")
+
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("are"))
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("jrl"))
 	assert(KotorGFFWorkspaceEditor.workspace_gff_extension_allowed("pth"))
