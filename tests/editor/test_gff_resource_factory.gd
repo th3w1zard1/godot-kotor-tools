@@ -4,6 +4,7 @@ extends SceneTree
 const GFFResourceFactory := preload("../../resources/gff_resource_factory.gd")
 const BICResource := preload("../../resources/typed/bic_resource.gd")
 const FACResource := preload("../../resources/typed/fac_resource.gd")
+const GITResource := preload("../../resources/typed/git_resource.gd")
 const IFOResource := preload("../../resources/typed/ifo_resource.gd")
 const JRLResource := preload("../../resources/typed/jrl_resource.gd")
 const PTHResource := preload("../../resources/typed/pth_resource.gd")
@@ -25,6 +26,7 @@ func _run_tests() -> void:
 	_test_bic_factory_mapping()
 	_test_pth_factory_mapping()
 	_test_fac_factory_mapping()
+	_test_git_factory_mapping()
 	_test_ifo_factory_mapping()
 	_test_uti_factory_mapping()
 	_test_utd_factory_mapping()
@@ -123,6 +125,35 @@ func _test_fac_factory_mapping() -> void:
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Sith Academy")
 	assert(document.get_summary_lines().size() >= 4)
+
+
+func _test_git_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "GIT",
+		"root": {
+			"Creature List": [
+				{"TemplateResRef": "n_test", "XPosition": 1.5, "YPosition": -3.0},
+			],
+			"Door List": [],
+			"Encounter List": [],
+			"Placeable List": [],
+			"SoundList": [],
+			"StoreList": [],
+			"TriggerList": [],
+			"WaypointList": [],
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is GITResource)
+	var git_resource := resource as GITResource
+	assert(git_resource.get_total_instance_count() == 1)
+	assert(git_resource.get_instance_records().size() == 1)
+	var bounds: Rect2 = git_resource.get_layout_bounds(1.0)
+	assert(bounds.size.x > 0.0)
+	assert(bounds.size.y > 0.0)
+	var document = resource.create_document()
+	assert(document.get_summary_lines().size() >= 2)
 
 
 func _test_ifo_factory_mapping() -> void:
