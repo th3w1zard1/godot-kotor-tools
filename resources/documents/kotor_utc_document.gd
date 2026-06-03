@@ -38,6 +38,14 @@ func get_on_heartbeat_script() -> String:
 	return get_resref("ScriptHeartbeat")
 
 
+func get_on_notice_script() -> String:
+	return get_resref("ScriptOnNotice")
+
+
+func get_on_disturbed_script() -> String:
+	return get_resref("ScriptDisturbed")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():

@@ -271,6 +271,8 @@ func _test_utc_factory_mapping() -> void:
 			"Conversation": "n_commoner_conv",
 			"ScriptSpawn": "k_test_spawn",
 			"ScriptHeartbeat": "k_test_hb",
+			"ScriptOnNotice": "k_test_notice",
+			"ScriptDisturbed": "k_test_disturbed",
 		},
 	}
 
@@ -284,6 +286,8 @@ func _test_utc_factory_mapping() -> void:
 	assert(resource.get_conversation_resref() == "n_commoner_conv")
 	assert(resource.get_on_spawn_script() == "k_test_spawn")
 	assert(resource.get_on_heartbeat_script() == "k_test_hb")
+	assert(resource.get_on_notice_script() == "k_test_notice")
+	assert(resource.get_on_disturbed_script() == "k_test_disturbed")
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Davin Vek")
 	assert(document.get_summary_lines().size() >= 5)
