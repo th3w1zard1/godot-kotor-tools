@@ -46,6 +46,14 @@ func get_on_disturbed_script() -> String:
 	return get_resref("ScriptDisturbed")
 
 
+func get_on_attacked_script() -> String:
+	return get_resref("ScriptAttacked")
+
+
+func get_on_damaged_script() -> String:
+	return get_resref("ScriptDamaged")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
