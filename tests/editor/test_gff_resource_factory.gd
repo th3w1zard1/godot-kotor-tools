@@ -139,6 +139,9 @@ func _test_pth_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is PTHResource)
+	assert(resource.get_tag() == "module_paths")
+	assert(resource.get_point_field_name() == "Path_Points")
+	assert(resource.get_point_count() == 2)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "module_paths")
 	assert(document.get_summary_lines().size() >= 3)

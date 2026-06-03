@@ -9,6 +9,10 @@ func get_tag() -> String:
 	return (create_document() as KotorPTHDocument).get_tag()
 
 
+func get_point_field_name() -> String:
+	return (create_document() as KotorPTHDocument).get_point_field_name()
+
+
 func get_point_count() -> int:
 	return (create_document() as KotorPTHDocument).get_point_count()
 
