@@ -408,6 +408,24 @@ func _test_utp_factory_mapping() -> void:
 	assert(resource_missing.get_on_click_script() == "")
 	assert(resource_missing.get_on_user_defined_script() == "")
 
+	var parsed_alias := {
+		"file_type": "UTP",
+		"root": {
+			"TemplateResRef": "m12aa_plc03",
+			"Tag": "test_placeable_alias",
+			"LocName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Alias Script Placeable"},
+			},
+			"ScriptHeartbeat": "k_plc_alias_hb",
+			"ScriptUserDefine": "k_plc_alias_user",
+		},
+	}
+	var resource_alias := GFFResourceFactory.create_from_parser_result(parsed_alias)
+	assert(resource_alias is UTPResource)
+	assert(resource_alias.get_on_heartbeat_script() == "k_plc_alias_hb")
+	assert(resource_alias.get_on_user_defined_script() == "k_plc_alias_user")
+
 
 func _test_uti_factory_mapping() -> void:
 	var parsed := {
