@@ -2,6 +2,7 @@
 extends SceneTree
 
 const GFFResourceFactory := preload("../../resources/gff_resource_factory.gd")
+const AREResource := preload("../../resources/typed/are_resource.gd")
 const BICResource := preload("../../resources/typed/bic_resource.gd")
 const FACResource := preload("../../resources/typed/fac_resource.gd")
 const GITResource := preload("../../resources/typed/git_resource.gd")
@@ -23,6 +24,7 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	_test_jrl_factory_mapping()
+	_test_are_factory_mapping()
 	_test_bic_factory_mapping()
 	_test_pth_factory_mapping()
 	_test_fac_factory_mapping()
@@ -37,6 +39,33 @@ func _run_tests() -> void:
 	_test_utw_factory_mapping()
 	print("✓ GFF resource factory tests passed")
 	quit()
+
+
+func _test_are_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "ARE",
+		"root": {
+			"Name": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Taris Upper City"},
+			},
+			"Tag": "tar_m02ab",
+			"OnEnter": "k_ptar_enter",
+			"OnExit": "k_ptar_exit",
+			"OnHeartbeat": "k_ptar_hb",
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is AREResource)
+	assert(resource.get_area_name() == "Taris Upper City")
+	assert(resource.get_tag() == "tar_m02ab")
+	assert(resource.get_on_enter_script() == "k_ptar_enter")
+	assert(resource.get_on_exit_script() == "k_ptar_exit")
+	assert(resource.get_on_heartbeat_script() == "k_ptar_hb")
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Taris Upper City")
+	assert(document.get_summary_lines().size() >= 6)
 
 
 func _test_bic_factory_mapping() -> void:
