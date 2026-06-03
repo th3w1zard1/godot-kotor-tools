@@ -70,6 +70,14 @@ func get_on_end_dialogue_script() -> String:
 	return get_resref("ScriptEndDialogu")
 
 
+func get_on_end_round_script() -> String:
+	return get_resref("ScriptEndRound")
+
+
+func get_on_rested_script() -> String:
+	return get_resref("ScriptRested")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
