@@ -425,6 +425,10 @@ func _test_utp_factory_mapping() -> void:
 	assert(resource_alias is UTPResource)
 	assert(resource_alias.get_on_heartbeat_script() == "k_plc_alias_hb")
 	assert(resource_alias.get_on_user_defined_script() == "k_plc_alias_user")
+	var document_alias = resource_alias.create_document()
+	var summary_alias := document_alias.get_summary_lines()
+	assert(summary_alias.has("OnHeartbeat: k_plc_alias_hb"))
+	assert(summary_alias.has("OnUserDefined: k_plc_alias_user"))
 
 
 func _test_uti_factory_mapping() -> void:
