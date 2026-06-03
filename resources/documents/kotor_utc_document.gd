@@ -30,6 +30,14 @@ func get_conversation_resref() -> String:
 	return get_resref("Conversation")
 
 
+func get_on_spawn_script() -> String:
+	return get_resref("ScriptSpawn")
+
+
+func get_on_heartbeat_script() -> String:
+	return get_resref("ScriptHeartbeat")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
@@ -48,6 +56,8 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Template", get_template_resref())
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Conversation", get_conversation_resref())
+	_append_summary_line(lines, "On Spawn", get_on_spawn_script())
+	_append_summary_line(lines, "On Heartbeat", get_on_heartbeat_script())
 	append_enum_summary_line(lines, "Appearance_Type", "Appearance")
 	_append_summary_line(lines, "Challenge Rating", get_field("ChallengeRating", null))
 	append_script_hook_summary_lines(lines)

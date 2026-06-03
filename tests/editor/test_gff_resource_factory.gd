@@ -269,6 +269,8 @@ func _test_utc_factory_mapping() -> void:
 				"strings": {0: "Vek"},
 			},
 			"Conversation": "n_commoner_conv",
+			"ScriptSpawn": "k_test_spawn",
+			"ScriptHeartbeat": "k_test_hb",
 		},
 	}
 
@@ -280,6 +282,8 @@ func _test_utc_factory_mapping() -> void:
 	assert(resource.get_template_resref() == "n_commoner01")
 	assert(resource.get_tag() == "test_utc")
 	assert(resource.get_conversation_resref() == "n_commoner_conv")
+	assert(resource.get_on_spawn_script() == "k_test_spawn")
+	assert(resource.get_on_heartbeat_script() == "k_test_hb")
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Davin Vek")
 	assert(document.get_summary_lines().size() >= 5)
