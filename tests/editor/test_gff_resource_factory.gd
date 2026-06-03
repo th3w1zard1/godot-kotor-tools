@@ -330,6 +330,27 @@ func _test_utp_factory_mapping() -> void:
 			"Conversation": "plc_security_conv",
 			"HasInventory": 1,
 			"Useable": 1,
+			"TrapFlag": 1,
+			"TrapType": 2,
+			"TrapOneShot": 0,
+			"TrapDetectable": 1,
+			"TrapDetectDC": 18,
+			"TrapDisarmable": 1,
+			"DisarmDC": 20,
+			"KeyName": "plc_key_sec",
+			"OnClick": "k_plc_click",
+			"OnClosed": "k_plc_closed",
+			"OnDamaged": "k_plc_damaged",
+			"OnDeath": "k_plc_death",
+			"OnDisarm": "k_plc_disarm",
+			"OnHeartbeat": "k_plc_hb",
+			"OnLock": "k_plc_lock",
+			"OnMeleeAttacked": "k_plc_melee",
+			"OnOpen": "k_plc_open",
+			"OnSpellCastAt": "k_plc_spell",
+			"OnTrapTriggered": "k_plc_trap",
+			"OnUnlock": "k_plc_unlock",
+			"OnUserDefined": "k_plc_user",
 		},
 	}
 
@@ -341,9 +362,51 @@ func _test_utp_factory_mapping() -> void:
 	assert(resource.get_conversation_resref() == "plc_security_conv")
 	assert(resource.has_inventory() == true)
 	assert(resource.is_useable() == true)
+	assert(resource.is_trap_enabled() == true)
+	assert(resource.get_trap_type_id() == 2)
+	assert(resource.is_trap_one_shot() == false)
+	assert(resource.is_trap_detectable() == true)
+	assert(resource.get_trap_detect_dc() == 18)
+	assert(resource.is_trap_disarmable() == true)
+	assert(resource.get_disarm_dc() == 20)
+	assert(resource.get_key_name_resref() == "plc_key_sec")
+	assert(resource.get_on_click_script() == "k_plc_click")
+	assert(resource.get_on_closed_script() == "k_plc_closed")
+	assert(resource.get_on_damaged_script() == "k_plc_damaged")
+	assert(resource.get_on_death_script() == "k_plc_death")
+	assert(resource.get_on_disarm_script() == "k_plc_disarm")
+	assert(resource.get_on_heartbeat_script() == "k_plc_hb")
+	assert(resource.get_on_lock_script() == "k_plc_lock")
+	assert(resource.get_on_melee_attacked_script() == "k_plc_melee")
+	assert(resource.get_on_open_script() == "k_plc_open")
+	assert(resource.get_on_spell_cast_at_script() == "k_plc_spell")
+	assert(resource.get_on_trap_triggered_script() == "k_plc_trap")
+	assert(resource.get_on_unlock_script() == "k_plc_unlock")
+	assert(resource.get_on_user_defined_script() == "k_plc_user")
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Security Crate")
 	assert(document.get_summary_lines().size() >= 6)
+
+	var parsed_missing := {
+		"file_type": "UTP",
+		"root": {
+			"TemplateResRef": "m12aa_plc02",
+			"Tag": "test_placeable_missing",
+			"LocName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Untrapped Container"},
+			},
+		},
+	}
+	var resource_missing := GFFResourceFactory.create_from_parser_result(parsed_missing)
+	assert(resource_missing is UTPResource)
+	assert(resource_missing.is_trap_enabled() == false)
+	assert(resource_missing.get_trap_type_id() == -1)
+	assert(resource_missing.is_trap_detectable() == false)
+	assert(resource_missing.get_trap_detect_dc() == 0)
+	assert(resource_missing.get_key_name_resref() == "")
+	assert(resource_missing.get_on_click_script() == "")
+	assert(resource_missing.get_on_user_defined_script() == "")
 
 
 func _test_uti_factory_mapping() -> void:
