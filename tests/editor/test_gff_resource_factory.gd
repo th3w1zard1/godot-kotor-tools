@@ -283,6 +283,8 @@ func _test_utc_factory_mapping() -> void:
 			"ScriptRested": "k_test_rested",
 			"ScriptOnBlocked": "k_test_blocked",
 			"ScriptUserDefine": "k_test_userdef",
+			"Appearance_Type": 42,
+			"ChallengeRating": 3.5,
 		},
 	}
 
@@ -308,6 +310,8 @@ func _test_utc_factory_mapping() -> void:
 	assert(resource.get_on_rested_script() == "k_test_rested")
 	assert(resource.get_on_blocked_script() == "k_test_blocked")
 	assert(resource.get_on_user_defined_script() == "k_test_userdef")
+	assert(resource.get_appearance_id() == 42)
+	assert(is_equal_approx(resource.get_challenge_rating(), 3.5))
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Davin Vek")
 	assert(document.get_summary_lines().size() >= 5)

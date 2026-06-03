@@ -85,5 +85,13 @@ func get_on_user_defined_script() -> String:
 	return (create_document() as KotorUTCDocument).get_on_user_defined_script()
 
 
+func get_appearance_id() -> int:
+	return (create_document() as KotorUTCDocument).get_appearance_id()
+
+
+func get_challenge_rating() -> float:
+	return (create_document() as KotorUTCDocument).get_challenge_rating()
+
+
 func _create_document():
 	return KotorUTCDocument.new().setup(file_type, gff_data, self)

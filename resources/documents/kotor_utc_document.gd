@@ -86,6 +86,14 @@ func get_on_user_defined_script() -> String:
 	return get_resref("ScriptUserDefine")
 
 
+func get_appearance_id() -> int:
+	return get_int("Appearance_Type", -1)
+
+
+func get_challenge_rating() -> float:
+	return get_float("ChallengeRating", 0.0)
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
