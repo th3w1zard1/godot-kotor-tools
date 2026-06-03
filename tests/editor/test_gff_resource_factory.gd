@@ -410,6 +410,12 @@ func _test_utp_factory_mapping() -> void:
 	assert(resource_missing.get_key_name_resref() == "")
 	assert(resource_missing.get_on_click_script() == "")
 	assert(resource_missing.get_on_user_defined_script() == "")
+	var document_missing = resource_missing.create_document()
+	var summary_missing := document_missing.get_summary_lines()
+	assert(summary_missing.has("Name: Untrapped Container"))
+	assert(summary_missing.has("Template: m12aa_plc02"))
+	assert(summary_missing.has("OnClick: ") == false)
+	assert(summary_missing.has("TrapDetectDC: 0") == false)
 
 	var parsed_alias := {
 		"file_type": "UTP",
