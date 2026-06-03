@@ -256,6 +256,10 @@ func _test_utd_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is UTDResource)
+	assert(resource.get_name_text() == "Main Security Door")
+	assert(resource.get_conversation_resref() == "door_talk")
+	assert(resource.is_static() == true)
+	assert(resource.is_plot() == false)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Main Security Door")
 	assert(document.get_summary_lines().size() >= 6)
@@ -329,6 +333,9 @@ func _test_uts_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is UTSResource)
+	assert(resource.get_name_text() == "Test Ambient Sound")
+	assert(resource.get_active_count() == 1)
+	assert(resource.is_active() == true)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Test Ambient Sound")
 	assert(document.get_summary_lines().size() >= 6)

@@ -13,8 +13,16 @@ func get_tag() -> String:
 	return (create_document() as KotorUTSDocument).get_tag()
 
 
+func get_name_text() -> String:
+	return (create_document() as KotorUTSDocument).get_name_text()
+
+
 func get_active_count() -> int:
 	return (create_document() as KotorUTSDocument).get_active_count()
+
+
+func is_active() -> bool:
+	return (create_document() as KotorUTSDocument).is_active()
 
 
 func _create_document():

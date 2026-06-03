@@ -19,6 +19,14 @@ func get_conversation_resref() -> String:
 	return get_resref("Conversation")
 
 
+func is_static() -> bool:
+	return get_bool("Static")
+
+
+func is_plot() -> bool:
+	return get_bool("Plot")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
@@ -36,8 +44,8 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Template", get_template_resref())
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Conversation", get_conversation_resref())
-	_append_summary_line(lines, "Static", get_bool("Static"))
-	_append_summary_line(lines, "Plot", get_bool("Plot"))
+	_append_summary_line(lines, "Static", is_static())
+	_append_summary_line(lines, "Plot", is_plot())
 	append_trap_scalar_summary_lines(lines)
 	append_script_hook_summary_lines(lines)
 	return lines

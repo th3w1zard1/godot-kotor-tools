@@ -19,6 +19,10 @@ func get_active_count() -> int:
 	return get_struct_list("Sounds").size()
 
 
+func is_active() -> bool:
+	return get_bool("Active")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
@@ -36,5 +40,5 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Template", get_template_resref())
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Sounds", get_active_count())
-	_append_summary_line(lines, "Active", get_bool("Active"))
+	_append_summary_line(lines, "Active", is_active())
 	return lines
