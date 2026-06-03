@@ -113,6 +113,9 @@ func _test_jrl_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is JRLResource)
+	assert(resource.get_name_text() == "Main Journal")
+	assert(resource.get_tag() == "quest_journal")
+	assert(resource.get_entry_count() == 2)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Main Journal")
 	assert(document.get_summary_lines().size() >= 4)

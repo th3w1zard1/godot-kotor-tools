@@ -9,6 +9,10 @@ func get_name_text() -> String:
 	return (create_document() as KotorJRLDocument).get_name_text()
 
 
+func get_tag() -> String:
+	return (create_document() as KotorJRLDocument).get_tag()
+
+
 func get_entry_count() -> int:
 	return (create_document() as KotorJRLDocument).get_entry_count()
 
