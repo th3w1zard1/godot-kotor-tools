@@ -2,6 +2,7 @@
 extends SceneTree
 
 const GFFResourceFactory := preload("../../resources/gff_resource_factory.gd")
+const BICResource := preload("../../resources/typed/bic_resource.gd")
 const FACResource := preload("../../resources/typed/fac_resource.gd")
 const JRLResource := preload("../../resources/typed/jrl_resource.gd")
 const PTHResource := preload("../../resources/typed/pth_resource.gd")
@@ -20,6 +21,7 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	_test_jrl_factory_mapping()
+	_test_bic_factory_mapping()
 	_test_pth_factory_mapping()
 	_test_fac_factory_mapping()
 	_test_uti_factory_mapping()
@@ -31,6 +33,30 @@ func _run_tests() -> void:
 	_test_utw_factory_mapping()
 	print("✓ GFF resource factory tests passed")
 	quit()
+
+
+func _test_bic_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "BIC",
+		"root": {
+			"TemplateResRef": "p_player",
+			"Tag": "pc_test",
+			"FirstName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Revan"},
+			},
+			"LastName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Unknown"},
+			},
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is BICResource)
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Revan Unknown")
+	assert(document.get_summary_lines().size() >= 1)
 
 
 func _test_jrl_factory_mapping() -> void:
