@@ -53,5 +53,13 @@ func get_on_damaged_script() -> String:
 	return (create_document() as KotorUTCDocument).get_on_damaged_script()
 
 
+func get_on_death_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_death_script()
+
+
+func get_on_spell_at_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_spell_at_script()
+
+
 func _create_document():
 	return KotorUTCDocument.new().setup(file_type, gff_data, self)

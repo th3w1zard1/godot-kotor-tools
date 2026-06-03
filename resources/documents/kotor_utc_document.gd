@@ -54,6 +54,14 @@ func get_on_damaged_script() -> String:
 	return get_resref("ScriptDamaged")
 
 
+func get_on_death_script() -> String:
+	return get_resref("ScriptDeath")
+
+
+func get_on_spell_at_script() -> String:
+	return get_resref("ScriptSpellAt")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
