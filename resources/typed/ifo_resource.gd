@@ -21,5 +21,13 @@ func get_starting_area_count() -> int:
 	return (create_document() as KotorIFODocument).get_starting_area_count()
 
 
+func get_on_load_script() -> String:
+	return (create_document() as KotorIFODocument).get_on_load_script()
+
+
+func get_on_heartbeat_script() -> String:
+	return (create_document() as KotorIFODocument).get_on_heartbeat_script()
+
+
 func _create_document():
 	return KotorIFODocument.new().setup(file_type, gff_data, self)

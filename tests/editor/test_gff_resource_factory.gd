@@ -198,6 +198,8 @@ func _test_ifo_factory_mapping() -> void:
 			},
 			"Mod_Tag": "endar_spire",
 			"Mod_ResRef": "end_m01aa",
+			"OnModLoad": "k_end_load",
+			"Mod_OnHeartbeat": "k_end_hb",
 			"Mod_Area_list": [
 				{"Area_Name": "end_m01aa"},
 				{"Area_Name": "end_m01ab"},
@@ -211,6 +213,8 @@ func _test_ifo_factory_mapping() -> void:
 	assert(resource.get_module_tag() == "endar_spire")
 	assert(resource.get_module_resref() == "end_m01aa")
 	assert(resource.get_starting_area_count() == 2)
+	assert(resource.get_on_load_script() == "k_end_load")
+	assert(resource.get_on_heartbeat_script() == "k_end_hb")
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Endar Spire")
 	assert(document.get_summary_lines().size() >= 5)
