@@ -171,7 +171,13 @@ func _test_git_factory_mapping() -> void:
 		"file_type": "GIT",
 		"root": {
 			"Creature List": [
-				{"TemplateResRef": "n_test", "XPosition": 1.5, "YPosition": -3.0},
+				{
+					"TemplateResRef": "n_test",
+					"XPosition": 1.5,
+					"YPosition": -3.0,
+					"ZPosition": 0.0,
+					"Bearing": 0.0,
+				},
 			],
 			"Door List": [],
 			"Encounter List": [],
@@ -191,6 +197,18 @@ func _test_git_factory_mapping() -> void:
 	var counts := git_resource.get_category_counts()
 	assert(int(counts.get("Creatures", 0)) == 1)
 	assert(int(counts.get("Doors", 0)) == 0)
+	var creature := git_resource.find_instance_record("Creatures", 0)
+	assert(creature.is_empty() == false)
+	assert(String(creature.get("template", "")) == "n_test")
+	assert(git_resource.set_instance_bearing("Creatures", 0, 1.5) == true)
+	assert(git_resource.set_instance_position("Creatures", 0, 8.0, -1.25, 0.75) == true)
+	var root: Dictionary = resource.gff_data
+	var creature_list: Array = root.get("Creature List", []) as Array
+	var updated_creature: Dictionary = creature_list[0] as Dictionary
+	assert(is_equal_approx(float(updated_creature.get("Bearing", 0.0)), 1.5))
+	assert(is_equal_approx(float(updated_creature.get("XPosition", 0.0)), 8.0))
+	assert(is_equal_approx(float(updated_creature.get("YPosition", 0.0)), -1.25))
+	assert(is_equal_approx(float(updated_creature.get("ZPosition", 0.0)), 0.75))
 	var bounds: Rect2 = git_resource.get_layout_bounds(1.0)
 	assert(bounds.size.x > 0.0)
 	assert(bounds.size.y > 0.0)
