@@ -415,6 +415,7 @@ func _test_utp_factory_mapping() -> void:
 	assert(summary_missing.has("Name: Untrapped Container"))
 	assert(summary_missing.has("Template: m12aa_plc02"))
 	assert(summary_missing.has("OnClick: ") == false)
+	assert(summary_missing.has("OnUserDefined: ") == false)
 	assert(summary_missing.has("TrapDetectDC: 0") == false)
 
 	var parsed_alias := {
