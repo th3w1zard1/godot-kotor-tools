@@ -13,6 +13,10 @@ func get_instance_records() -> Array[Dictionary]:
 	return (create_document() as KotorGITDocument).get_instance_records()
 
 
+func get_category_counts() -> Dictionary:
+	return (create_document() as KotorGITDocument).get_category_counts()
+
+
 func get_layout_bounds(padding: float = 2.0) -> Rect2:
 	return (create_document() as KotorGITDocument).get_layout_bounds(padding)
 

@@ -149,6 +149,9 @@ func _test_git_factory_mapping() -> void:
 	var git_resource := resource as GITResource
 	assert(git_resource.get_total_instance_count() == 1)
 	assert(git_resource.get_instance_records().size() == 1)
+	var counts := git_resource.get_category_counts()
+	assert(int(counts.get("Creatures", 0)) == 1)
+	assert(int(counts.get("Doors", 0)) == 0)
 	var bounds: Rect2 = git_resource.get_layout_bounds(1.0)
 	assert(bounds.size.x > 0.0)
 	assert(bounds.size.y > 0.0)

@@ -29,6 +29,13 @@ func get_total_instance_count() -> int:
 	return get_instance_records().size()
 
 
+func get_category_counts() -> Dictionary:
+	var counts := {}
+	for label in LIST_FIELDS:
+		counts[label] = get_struct_list(LIST_FIELDS[label]).size()
+	return counts
+
+
 func get_display_name() -> String:
 	return "%s (%d placed objects)" % [get_type_label(), get_total_instance_count()]
 
@@ -36,8 +43,9 @@ func get_display_name() -> String:
 func get_summary_lines() -> Array[String]:
 	var lines: Array[String] = []
 	_append_summary_line(lines, "Type", get_type_label())
-	for label in LIST_FIELDS:
-		_append_summary_line(lines, label, get_struct_list(LIST_FIELDS[label]).size())
+	var counts := get_category_counts()
+	for label in counts:
+		_append_summary_line(lines, label, counts[label])
 	return lines
 
 
