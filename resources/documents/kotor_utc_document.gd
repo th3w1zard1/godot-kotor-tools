@@ -11,10 +11,18 @@ func get_tag() -> String:
 	return get_string("Tag")
 
 
+func get_first_name_text() -> String:
+	return get_locstring_text("FirstName")
+
+
+func get_last_name_text() -> String:
+	return get_locstring_text("LastName")
+
+
 func get_name_text() -> String:
 	return join_non_empty([
-		get_locstring_text("FirstName"),
-		get_locstring_text("LastName"),
+		get_first_name_text(),
+		get_last_name_text(),
 	])
 
 

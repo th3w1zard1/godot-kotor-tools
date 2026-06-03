@@ -13,6 +13,14 @@ func get_tag() -> String:
 	return (create_document() as KotorUTCDocument).get_tag()
 
 
+func get_first_name_text() -> String:
+	return (create_document() as KotorUTCDocument).get_first_name_text()
+
+
+func get_last_name_text() -> String:
+	return (create_document() as KotorUTCDocument).get_last_name_text()
+
+
 func get_name_text() -> String:
 	return (create_document() as KotorUTCDocument).get_name_text()
 

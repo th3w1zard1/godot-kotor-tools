@@ -274,6 +274,8 @@ func _test_utc_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is UTCResource)
+	assert(resource.get_first_name_text() == "Davin")
+	assert(resource.get_last_name_text() == "Vek")
 	assert(resource.get_name_text() == "Davin Vek")
 	assert(resource.get_template_resref() == "n_commoner01")
 	assert(resource.get_tag() == "test_utc")
