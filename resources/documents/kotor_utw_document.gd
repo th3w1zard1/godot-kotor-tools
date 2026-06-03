@@ -26,6 +26,10 @@ func get_linked_to() -> String:
 	return get_string("LinkedTo")
 
 
+func has_map_note() -> bool:
+	return get_bool("HasMapNote")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
@@ -43,6 +47,6 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Template", get_template_resref())
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Linked To", get_linked_to())
-	_append_summary_line(lines, "Has Map Note", get_bool("HasMapNote"))
+	_append_summary_line(lines, "Has Map Note", has_map_note())
 	_append_summary_line(lines, "Map Note", get_map_note_text())
 	return lines

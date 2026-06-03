@@ -19,6 +19,10 @@ func get_trap_count() -> int:
 	return get_struct_list("TrapList").size()
 
 
+func is_auto_remove_key_enabled() -> bool:
+	return get_bool("AutoRemoveKey")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
@@ -37,6 +41,6 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Traps", get_trap_count())
 	append_trap_scalar_summary_lines(lines)
-	_append_summary_line(lines, "Auto Remove Key", get_bool("AutoRemoveKey"))
+	_append_summary_line(lines, "Auto Remove Key", is_auto_remove_key_enabled())
 	append_script_hook_summary_lines(lines)
 	return lines

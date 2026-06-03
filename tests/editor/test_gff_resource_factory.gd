@@ -353,6 +353,9 @@ func _test_utt_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is UTTResource)
+	assert(resource.get_name_text() == "Test Trigger")
+	assert(resource.get_trap_count() == 1)
+	assert(resource.is_auto_remove_key_enabled() == false)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Test Trigger")
 	assert(document.get_summary_lines().size() >= 6)
@@ -379,6 +382,10 @@ func _test_utw_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is UTWResource)
+	assert(resource.get_name_text() == "Test Waypoint")
+	assert(resource.get_linked_to() == "exit_door")
+	assert(resource.has_map_note() == true)
+	assert(resource.get_map_note_text() == "Secret passage")
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Test Waypoint")
 	assert(document.get_summary_lines().size() >= 6)
