@@ -246,6 +246,7 @@ func _test_ifo_factory_mapping() -> void:
 	assert(resource.get_module_tag() == "endar_spire")
 	assert(resource.get_module_resref() == "end_m01aa")
 	assert(resource.get_starting_area_count() == 2)
+	assert(resource.get_starting_area_names() == ["end_m01aa", "end_m01ab"])
 	assert(resource.get_on_load_script() == "k_end_load")
 	assert(resource.get_on_heartbeat_script() == "k_end_hb")
 	var document = resource.create_document()

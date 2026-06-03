@@ -21,6 +21,10 @@ func get_starting_area_count() -> int:
 	return (create_document() as KotorIFODocument).get_starting_area_count()
 
 
+func get_starting_area_names() -> Array[String]:
+	return (create_document() as KotorIFODocument).get_starting_area_names()
+
+
 func get_on_load_script() -> String:
 	return (create_document() as KotorIFODocument).get_on_load_script()
 

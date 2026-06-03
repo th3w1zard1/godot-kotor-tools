@@ -19,6 +19,15 @@ func get_starting_area_count() -> int:
 	return get_struct_list("Mod_Area_list").size()
 
 
+func get_starting_area_names() -> Array[String]:
+	var names: Array[String] = []
+	for area in get_struct_list("Mod_Area_list"):
+		var area_name := String(area.get("Area_Name", "")).strip_edges()
+		if not area_name.is_empty():
+			names.append(area_name)
+	return names
+
+
 func get_on_load_script() -> String:
 	return get_resref("OnModLoad")
 
