@@ -18,6 +18,13 @@ func get_entry_count() -> int:
 	return 0
 
 
+func get_entry_ids() -> Array[int]:
+	var ids: Array[int] = []
+	for entry in get_struct_list("EntriesList"):
+		ids.append(int(entry.get("ID", 0)))
+	return ids
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():

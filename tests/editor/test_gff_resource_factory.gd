@@ -120,6 +120,7 @@ func _test_jrl_factory_mapping() -> void:
 	assert(resource.get_name_text() == "Main Journal")
 	assert(resource.get_tag() == "quest_journal")
 	assert(resource.get_entry_count() == 2)
+	assert(resource.get_entry_ids() == [10, 20])
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Main Journal")
 	assert(document.get_summary_lines().size() >= 4)

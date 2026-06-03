@@ -17,5 +17,9 @@ func get_entry_count() -> int:
 	return (create_document() as KotorJRLDocument).get_entry_count()
 
 
+func get_entry_ids() -> Array[int]:
+	return (create_document() as KotorJRLDocument).get_entry_ids()
+
+
 func _create_document():
 	return KotorJRLDocument.new().setup(file_type, gff_data, self)
