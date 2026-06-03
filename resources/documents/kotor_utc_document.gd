@@ -62,6 +62,14 @@ func get_on_spell_at_script() -> String:
 	return get_resref("ScriptSpellAt")
 
 
+func get_on_dialogue_script() -> String:
+	return get_resref("ScriptDialogue")
+
+
+func get_on_end_dialogue_script() -> String:
+	return get_resref("ScriptEndDialogu")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():

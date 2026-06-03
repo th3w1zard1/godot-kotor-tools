@@ -277,6 +277,8 @@ func _test_utc_factory_mapping() -> void:
 			"ScriptDamaged": "k_test_damaged",
 			"ScriptDeath": "k_test_death",
 			"ScriptSpellAt": "k_test_spellat",
+			"ScriptDialogue": "k_test_dialogue",
+			"ScriptEndDialogu": "k_test_end_dialogue",
 		},
 	}
 
@@ -296,6 +298,8 @@ func _test_utc_factory_mapping() -> void:
 	assert(resource.get_on_damaged_script() == "k_test_damaged")
 	assert(resource.get_on_death_script() == "k_test_death")
 	assert(resource.get_on_spell_at_script() == "k_test_spellat")
+	assert(resource.get_on_dialogue_script() == "k_test_dialogue")
+	assert(resource.get_on_end_dialogue_script() == "k_test_end_dialogue")
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Davin Vek")
 	assert(document.get_summary_lines().size() >= 5)
