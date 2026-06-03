@@ -9,8 +9,16 @@ func get_module_name() -> String:
 	return (create_document() as KotorIFODocument).get_module_name()
 
 
+func get_module_tag() -> String:
+	return (create_document() as KotorIFODocument).get_module_tag()
+
+
 func get_module_resref() -> String:
 	return (create_document() as KotorIFODocument).get_module_resref()
+
+
+func get_starting_area_count() -> int:
+	return (create_document() as KotorIFODocument).get_starting_area_count()
 
 
 func _create_document():

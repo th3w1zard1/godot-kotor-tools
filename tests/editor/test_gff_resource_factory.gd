@@ -4,6 +4,7 @@ extends SceneTree
 const GFFResourceFactory := preload("../../resources/gff_resource_factory.gd")
 const BICResource := preload("../../resources/typed/bic_resource.gd")
 const FACResource := preload("../../resources/typed/fac_resource.gd")
+const IFOResource := preload("../../resources/typed/ifo_resource.gd")
 const JRLResource := preload("../../resources/typed/jrl_resource.gd")
 const PTHResource := preload("../../resources/typed/pth_resource.gd")
 const UTIResource := preload("../../resources/typed/uti_resource.gd")
@@ -24,6 +25,7 @@ func _run_tests() -> void:
 	_test_bic_factory_mapping()
 	_test_pth_factory_mapping()
 	_test_fac_factory_mapping()
+	_test_ifo_factory_mapping()
 	_test_uti_factory_mapping()
 	_test_utd_factory_mapping()
 	_test_ute_factory_mapping()
@@ -121,6 +123,34 @@ func _test_fac_factory_mapping() -> void:
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Sith Academy")
 	assert(document.get_summary_lines().size() >= 4)
+
+
+func _test_ifo_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "IFO",
+		"root": {
+			"Mod_Name": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Endar Spire"},
+			},
+			"Mod_Tag": "endar_spire",
+			"Mod_ResRef": "end_m01aa",
+			"Mod_Area_list": [
+				{"Area_Name": "end_m01aa"},
+				{"Area_Name": "end_m01ab"},
+			],
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is IFOResource)
+	assert(resource.get_module_name() == "Endar Spire")
+	assert(resource.get_module_tag() == "endar_spire")
+	assert(resource.get_module_resref() == "end_m01aa")
+	assert(resource.get_starting_area_count() == 2)
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Endar Spire")
+	assert(document.get_summary_lines().size() >= 5)
 
 
 func _test_uti_factory_mapping() -> void:
