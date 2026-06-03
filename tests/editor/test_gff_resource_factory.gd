@@ -233,6 +233,9 @@ func _test_uti_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is UTIResource)
+	assert(resource.get_name_text() == "Prototype Saber")
+	assert(resource.get_base_item_id() == 38)
+	assert(resource.get_stack_size() == 1)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Prototype Saber")
 	assert(document.get_summary_lines().size() >= 5)
@@ -285,6 +288,9 @@ func _test_ute_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is UTEResource)
+	assert(resource.get_name_text() == "Test Encounter")
+	assert(resource.get_creature_count() == 2)
+	assert(resource.is_respawning() == true)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Test Encounter")
 	assert(document.get_summary_lines().size() >= 6)
@@ -309,6 +315,9 @@ func _test_utm_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is UTMResource)
+	assert(resource.get_name_text() == "Test Merchant")
+	assert(resource.get_inventory_count() == 1)
+	assert(resource.get_markup_percent() == 100)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Test Merchant")
 	assert(document.get_summary_lines().size() >= 6)

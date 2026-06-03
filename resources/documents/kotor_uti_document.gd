@@ -19,6 +19,10 @@ func get_base_item_id() -> int:
 	return get_int("BaseItem")
 
 
+func get_stack_size() -> int:
+	return get_int("StackSize")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
@@ -36,5 +40,5 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Template", get_template_resref())
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Base Item", get_base_item_id())
-	_append_summary_line(lines, "Stack Size", get_int("StackSize"))
+	_append_summary_line(lines, "Stack Size", get_stack_size())
 	return lines

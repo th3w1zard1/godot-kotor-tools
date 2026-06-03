@@ -13,8 +13,16 @@ func get_tag() -> String:
 	return (create_document() as KotorUTEDocument).get_tag()
 
 
+func get_name_text() -> String:
+	return (create_document() as KotorUTEDocument).get_name_text()
+
+
 func get_creature_count() -> int:
 	return (create_document() as KotorUTEDocument).get_creature_count()
+
+
+func is_respawning() -> bool:
+	return (create_document() as KotorUTEDocument).is_respawning()
 
 
 func _create_document():

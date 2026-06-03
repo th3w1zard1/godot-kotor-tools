@@ -13,8 +13,16 @@ func get_tag() -> String:
 	return (create_document() as KotorUTMDocument).get_tag()
 
 
+func get_name_text() -> String:
+	return (create_document() as KotorUTMDocument).get_name_text()
+
+
 func get_inventory_count() -> int:
 	return (create_document() as KotorUTMDocument).get_inventory_count()
+
+
+func get_markup_percent() -> int:
+	return (create_document() as KotorUTMDocument).get_markup_percent()
 
 
 func _create_document():

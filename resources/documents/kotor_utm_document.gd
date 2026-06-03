@@ -19,6 +19,10 @@ func get_inventory_count() -> int:
 	return get_struct_list("ItemList").size()
 
 
+func get_markup_percent() -> int:
+	return get_int("MarkUp")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
@@ -36,5 +40,5 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Template", get_template_resref())
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Inventory", get_inventory_count())
-	_append_summary_line(lines, "Mark Up", get_int("MarkUp"))
+	_append_summary_line(lines, "Mark Up", get_markup_percent())
 	return lines

@@ -19,6 +19,10 @@ func get_creature_count() -> int:
 	return get_struct_list("CreatureList").size()
 
 
+func is_respawning() -> bool:
+	return get_bool("Respawns")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
@@ -36,5 +40,5 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Template", get_template_resref())
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Creatures", get_creature_count())
-	_append_summary_line(lines, "Respawns", get_bool("Respawns"))
+	_append_summary_line(lines, "Respawns", is_respawning())
 	return lines

@@ -13,8 +13,16 @@ func get_tag() -> String:
 	return (create_document() as KotorUTIDocument).get_tag()
 
 
+func get_name_text() -> String:
+	return (create_document() as KotorUTIDocument).get_name_text()
+
+
 func get_base_item_id() -> int:
 	return (create_document() as KotorUTIDocument).get_base_item_id()
+
+
+func get_stack_size() -> int:
+	return (create_document() as KotorUTIDocument).get_stack_size()
 
 
 func _create_document():
