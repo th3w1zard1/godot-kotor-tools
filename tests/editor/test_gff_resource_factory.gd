@@ -162,6 +162,10 @@ func _test_fac_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is FACResource)
+	assert(resource.get_label() == "Sith Academy")
+	assert(resource.get_tag() == "academy_faction")
+	assert(resource.get_appearance_count() == 1)
+	assert(resource.get_appearance_race_ids() == [1])
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Sith Academy")
 	assert(document.get_summary_lines().size() >= 4)

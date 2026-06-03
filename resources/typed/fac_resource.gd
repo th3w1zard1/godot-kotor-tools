@@ -17,5 +17,9 @@ func get_appearance_count() -> int:
 	return (create_document() as KotorFACDocument).get_appearance_count()
 
 
+func get_appearance_race_ids() -> Array[int]:
+	return (create_document() as KotorFACDocument).get_appearance_race_ids()
+
+
 func _create_document():
 	return KotorFACDocument.new().setup(file_type, gff_data, self)

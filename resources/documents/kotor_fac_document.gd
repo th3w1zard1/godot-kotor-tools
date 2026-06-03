@@ -15,6 +15,13 @@ func get_appearance_count() -> int:
 	return get_struct_list("Appearances").size()
 
 
+func get_appearance_race_ids() -> Array[int]:
+	var ids: Array[int] = []
+	for appearance in get_struct_list("Appearances"):
+		ids.append(int(appearance.get("Race", 0)))
+	return ids
+
+
 func get_display_name() -> String:
 	var label := get_label()
 	if not label.is_empty():
