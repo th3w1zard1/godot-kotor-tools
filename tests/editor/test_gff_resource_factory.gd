@@ -438,6 +438,7 @@ func _test_utp_factory_mapping() -> void:
 	var summary_alias := document_alias.get_summary_lines()
 	assert(summary_alias.has("OnHeartbeat: k_plc_alias_hb"))
 	assert(summary_alias.has("OnUserDefined: k_plc_alias_user"))
+	assert(summary_alias.has("TrapDetectDC: 0") == false)
 
 
 func _test_uti_factory_mapping() -> void:
