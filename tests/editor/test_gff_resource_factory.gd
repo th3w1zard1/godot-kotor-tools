@@ -54,9 +54,12 @@ func _test_bic_factory_mapping() -> void:
 
 	var resource := GFFResourceFactory.create_from_parser_result(parsed)
 	assert(resource is BICResource)
+	assert(resource.get_player_name() == "Revan Unknown")
+	assert(resource.get_first_name_text() == "Revan")
+	assert(resource.get_last_name_text() == "Unknown")
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Revan Unknown")
-	assert(document.get_summary_lines().size() >= 1)
+	assert(document.get_summary_lines().size() >= 5)
 
 
 func _test_jrl_factory_mapping() -> void:
