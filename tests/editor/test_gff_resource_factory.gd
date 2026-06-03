@@ -385,7 +385,10 @@ func _test_utp_factory_mapping() -> void:
 	assert(resource.get_on_user_defined_script() == "k_plc_user")
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Security Crate")
-	assert(document.get_summary_lines().size() >= 6)
+	var summary := document.get_summary_lines()
+	assert(summary.size() >= 6)
+	assert(summary.has("TrapDetectDC: 18"))
+	assert(summary.has("OnTrapTriggered: k_plc_trap"))
 
 	var parsed_missing := {
 		"file_type": "UTP",
