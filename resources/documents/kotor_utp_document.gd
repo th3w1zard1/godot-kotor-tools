@@ -19,6 +19,14 @@ func get_conversation_resref() -> String:
 	return get_resref("Conversation")
 
 
+func has_inventory() -> bool:
+	return get_bool("HasInventory")
+
+
+func is_useable() -> bool:
+	return get_bool("Useable")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():
@@ -36,8 +44,8 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Template", get_template_resref())
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Conversation", get_conversation_resref())
-	_append_summary_line(lines, "Has Inventory", get_bool("HasInventory"))
-	_append_summary_line(lines, "Useable", get_bool("Useable"))
+	_append_summary_line(lines, "Has Inventory", has_inventory())
+	_append_summary_line(lines, "Useable", is_useable())
 	append_trap_scalar_summary_lines(lines)
 	append_script_hook_summary_lines(lines)
 	return lines

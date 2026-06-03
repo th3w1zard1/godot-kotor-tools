@@ -9,6 +9,8 @@ const GITResource := preload("../../resources/typed/git_resource.gd")
 const IFOResource := preload("../../resources/typed/ifo_resource.gd")
 const JRLResource := preload("../../resources/typed/jrl_resource.gd")
 const PTHResource := preload("../../resources/typed/pth_resource.gd")
+const UTCResource := preload("../../resources/typed/utc_resource.gd")
+const UTPResource := preload("../../resources/typed/utp_resource.gd")
 const UTIResource := preload("../../resources/typed/uti_resource.gd")
 const UTDResource := preload("../../resources/typed/utd_resource.gd")
 const UTEResource := preload("../../resources/typed/ute_resource.gd")
@@ -30,6 +32,8 @@ func _run_tests() -> void:
 	_test_fac_factory_mapping()
 	_test_git_factory_mapping()
 	_test_ifo_factory_mapping()
+	_test_utc_factory_mapping()
+	_test_utp_factory_mapping()
 	_test_uti_factory_mapping()
 	_test_utd_factory_mapping()
 	_test_ute_factory_mapping()
@@ -221,6 +225,64 @@ func _test_ifo_factory_mapping() -> void:
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Endar Spire")
 	assert(document.get_summary_lines().size() >= 5)
+
+
+func _test_utc_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "UTC",
+		"root": {
+			"TemplateResRef": "n_commoner01",
+			"Tag": "test_utc",
+			"FirstName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Davin"},
+			},
+			"LastName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Vek"},
+			},
+			"Conversation": "n_commoner_conv",
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is UTCResource)
+	assert(resource.get_name_text() == "Davin Vek")
+	assert(resource.get_template_resref() == "n_commoner01")
+	assert(resource.get_tag() == "test_utc")
+	assert(resource.get_conversation_resref() == "n_commoner_conv")
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Davin Vek")
+	assert(document.get_summary_lines().size() >= 5)
+
+
+func _test_utp_factory_mapping() -> void:
+	var parsed := {
+		"file_type": "UTP",
+		"root": {
+			"TemplateResRef": "m12aa_plc01",
+			"Tag": "test_placeable",
+			"LocName": {
+				"strref": 0xFFFFFFFF,
+				"strings": {0: "Security Crate"},
+			},
+			"Conversation": "plc_security_conv",
+			"HasInventory": 1,
+			"Useable": 1,
+		},
+	}
+
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	assert(resource is UTPResource)
+	assert(resource.get_name_text() == "Security Crate")
+	assert(resource.get_template_resref() == "m12aa_plc01")
+	assert(resource.get_tag() == "test_placeable")
+	assert(resource.get_conversation_resref() == "plc_security_conv")
+	assert(resource.has_inventory() == true)
+	assert(resource.is_useable() == true)
+	var document = resource.create_document()
+	assert(document.get_display_name() == "Security Crate")
+	assert(document.get_summary_lines().size() >= 6)
 
 
 func _test_uti_factory_mapping() -> void:
