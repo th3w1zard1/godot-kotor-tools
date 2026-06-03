@@ -414,6 +414,8 @@ func _test_utp_factory_mapping() -> void:
 	var summary_missing := document_missing.get_summary_lines()
 	assert(summary_missing.has("Name: Untrapped Container"))
 	assert(summary_missing.has("Template: m12aa_plc02"))
+	assert(summary_missing.has("Has Inventory: No"))
+	assert(summary_missing.has("Useable: No"))
 	assert(summary_missing.has("OnClick: ") == false)
 	assert(summary_missing.has("OnUserDefined: ") == false)
 	assert(summary_missing.has("TrapDetectDC: 0") == false)
