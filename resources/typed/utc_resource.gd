@@ -77,5 +77,13 @@ func get_on_rested_script() -> String:
 	return (create_document() as KotorUTCDocument).get_on_rested_script()
 
 
+func get_on_blocked_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_blocked_script()
+
+
+func get_on_user_defined_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_user_defined_script()
+
+
 func _create_document():
 	return KotorUTCDocument.new().setup(file_type, gff_data, self)

@@ -78,6 +78,14 @@ func get_on_rested_script() -> String:
 	return get_resref("ScriptRested")
 
 
+func get_on_blocked_script() -> String:
+	return get_resref("ScriptOnBlocked")
+
+
+func get_on_user_defined_script() -> String:
+	return get_resref("ScriptUserDefine")
+
+
 func get_display_name() -> String:
 	var name := get_name_text()
 	if not name.is_empty():

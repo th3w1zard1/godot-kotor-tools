@@ -281,6 +281,8 @@ func _test_utc_factory_mapping() -> void:
 			"ScriptEndDialogu": "k_test_end_dialogue",
 			"ScriptEndRound": "k_test_end_round",
 			"ScriptRested": "k_test_rested",
+			"ScriptOnBlocked": "k_test_blocked",
+			"ScriptUserDefine": "k_test_userdef",
 		},
 	}
 
@@ -304,6 +306,8 @@ func _test_utc_factory_mapping() -> void:
 	assert(resource.get_on_end_dialogue_script() == "k_test_end_dialogue")
 	assert(resource.get_on_end_round_script() == "k_test_end_round")
 	assert(resource.get_on_rested_script() == "k_test_rested")
+	assert(resource.get_on_blocked_script() == "k_test_blocked")
+	assert(resource.get_on_user_defined_script() == "k_test_userdef")
 	var document = resource.create_document()
 	assert(document.get_display_name() == "Davin Vek")
 	assert(document.get_summary_lines().size() >= 5)
