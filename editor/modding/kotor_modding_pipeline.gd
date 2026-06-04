@@ -18,6 +18,7 @@ const SSFResource := preload("../../resources/ssf_resource.gd")
 const LIPWriter := preload("../../formats/lip_writer.gd")
 const LIPResource := preload("../../resources/lip_resource.gd")
 const TPCWriter := preload("../../formats/tpc_writer.gd")
+const GFFCompare := preload("../../formats/gff_compare.gd")
 
 const SOURCE_OVERRIDE := "override"
 const DETAIL_SAMPLE_LIMIT := 5
@@ -342,6 +343,10 @@ static func _build_difference_report(extension: String, base_bytes: PackedByteAr
 		"tlk":
 			return _build_tlk_difference_report(base_bytes, mod_bytes)
 		_:
+			if GFFCompare.is_gff_extension(extension):
+				var gff_report := GFFCompare.build_difference_report(base_bytes, mod_bytes)
+				if not gff_report.is_empty():
+					return gff_report
 			return _build_binary_difference_report(base_bytes, mod_bytes)
 
 

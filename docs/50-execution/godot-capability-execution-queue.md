@@ -46,12 +46,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q28 | LIP lip-sync tooling | Native LIP V1.0 parser/writer + `LIPResource`; LIP Sync workspace editor (duration, keyframe list, save/install); modding pipeline `lip` serialize; workspace/dock routing for `.lip`. |
 | Q29 | LIP audio + waveform | Shared `formats/wav_metadata.gd`; `LipWaveformView` PCM peaks + keyframe markers; LIP editor Load WAV / Play / Stop / scrub / viseme preview; optional LIP duration sync from WAV; headless `test_wav_metadata.gd`. |
 | Q30 | TPC native write-back | `TPCWriter` passthrough + RGBA encode; TPC editor Import TGA/PNG; pipeline `tpc` serialize validation; headless `test_tpc_writer.gd`. |
+| Q32 | Semantic GFF compare reports | `GFFCompare` field-level diff for GFF-family install compare; DLG list count summaries; headless `test_gff_compare.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q30 shipped TPC write-back, parity master plan active, per-slice verification retained. | Next: native indoor build, DLG depth, batch LIP, or diff tooling per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q32 shipped semantic GFF compare, parity master plan active, per-slice verification retained. | Next: native indoor build, DLG depth, batch LIP merge, or full diff tooling per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
