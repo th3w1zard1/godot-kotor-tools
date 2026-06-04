@@ -229,6 +229,23 @@ func get_hook_connection_counts() -> Dictionary:
 	return KotorIndoorHookConnections.count_connected_hooks(_room_connections)
 
 
+func get_visible_room_indices(index: int) -> Array[int]:
+	var visible := {index: true}
+	for target in _connections_for_room(index):
+		var other_index := int(target)
+		if other_index >= 0:
+			visible[other_index] = true
+	for other_index in _room_connections.size():
+		for target in _connections_for_room(other_index):
+			if int(target) == index:
+				visible[other_index] = true
+	var indices: Array[int] = []
+	for room_index in visible.keys():
+		indices.append(int(room_index))
+	indices.sort()
+	return indices
+
+
 func get_room_hook_summaries(index: int) -> Array[String]:
 	var summaries: Array[String] = []
 	var room := get_room_dictionary(index)

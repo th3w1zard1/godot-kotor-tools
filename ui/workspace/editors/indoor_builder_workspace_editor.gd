@@ -9,6 +9,7 @@ const KotorIndoorModExporter := preload("../../../resources/indoor/kotor_indoor_
 const KotorIndoorBuildManifest := preload("../../../resources/indoor/kotor_indoor_build_manifest.gd")
 const KotorIndoorLyTBuilder := preload("../../../resources/indoor/kotor_indoor_lyt_builder.gd")
 const KotorIndoorIfoBuilder := preload("../../../resources/indoor/kotor_indoor_ifo_builder.gd")
+const KotorIndoorVisBuilder := preload("../../../resources/indoor/kotor_indoor_vis_builder.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const IndoorBuilderMapView := preload("../panels/indoor_builder_map_view.gd")
 
@@ -157,6 +158,11 @@ func _build_ui() -> void:
 	export_ifo_btn.text = "Export IFO Preview"
 	export_ifo_btn.pressed.connect(_export_ifo_preview_dialog)
 	_toolbar.add_child(export_ifo_btn)
+
+	var export_vis_btn := Button.new()
+	export_vis_btn.text = "Export VIS Preview"
+	export_vis_btn.pressed.connect(_export_vis_preview_dialog)
+	_toolbar.add_child(export_vis_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -868,6 +874,48 @@ func _export_ifo_preview_to_path(path: String, ifo: Dictionary) -> void:
 	file.store_buffer(bytes)
 	file.close()
 	_status_text = "IFO preview saved to %s" % target_path.get_file()
+	_refresh_status()
+
+
+func _export_vis_preview_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting VIS."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var vis := KotorIndoorVisBuilder.build_from_document(_document)
+	if not vis.get("ok", false):
+		var errors: Array = vis.get("errors", [])
+		_status_text = "VIS export failed: %s" % (str(errors[0]) if errors.size() > 0 else "unknown error")
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export VIS Preview"
+	dialog.current_file = "%s.vis" % _document.get_module_id()
+	dialog.add_filter("*.vis", "KotOR Visibility")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_vis_preview_to_path(path, vis)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_vis_preview_to_path(path: String, vis: Dictionary) -> void:
+	var target_path := _ensure_extension(path, "vis")
+	var bytes: PackedByteArray = vis.get("bytes", PackedByteArray())
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write VIS preview."
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "VIS preview saved to %s" % target_path.get_file()
 	_refresh_status()
 
 

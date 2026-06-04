@@ -6,6 +6,7 @@ const KotorIndoorLayoutValidator := preload("./kotor_indoor_layout_validator.gd"
 const KotorIndoorMapIO := preload("./kotor_indoor_map_io.gd")
 const KotorIndoorLyTBuilder := preload("./kotor_indoor_lyt_builder.gd")
 const KotorIndoorIfoBuilder := preload("./kotor_indoor_ifo_builder.gd")
+const KotorIndoorVisBuilder := preload("./kotor_indoor_vis_builder.gd")
 
 const CORE_MODULE_EXTENSIONS := ["are", "git", "ifo", "lyt", "vis"]
 const MODULE_ID_MAX_LEN := 16
@@ -71,6 +72,7 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 	var hook_counts := document.get_hook_connection_counts()
 	var lyt := KotorIndoorLyTBuilder.build_from_document(document)
 	var ifo := KotorIndoorIfoBuilder.build_from_document(document)
+	var vis := KotorIndoorVisBuilder.build_from_document(document)
 	return {
 		"ok": true,
 		"module_id": module_id,
@@ -81,6 +83,7 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 		"warnings": validation.get("warnings", []),
 		"lyt": lyt,
 		"ifo": ifo,
+		"vis": vis,
 	}
 
 
@@ -125,6 +128,12 @@ static func format_report(manifest: Dictionary) -> String:
 	else:
 		for error_text in ifo.get("errors", []):
 			lines.append("IFO preview unavailable: %s" % str(error_text))
+	var vis: Dictionary = manifest.get("vis", {})
+	if vis.get("ok", false):
+		lines.append("VIS preview: %d room visibility block(s)" % int(vis.get("room_count", 0)))
+	else:
+		for error_text in vis.get("errors", []):
+			lines.append("VIS preview unavailable: %s" % str(error_text))
 	lines.append("Core module resources:")
 	for resource in manifest.get("resources", []):
 		if typeof(resource) != TYPE_DICTIONARY:
