@@ -6,6 +6,7 @@ const KotorIndoorDocument := preload("../../../resources/documents/kotor_indoor_
 const KotorIndoorMapIO := preload("../../../resources/indoor/kotor_indoor_map_io.gd")
 const KotorIndoorKitLibrary := preload("../../../resources/indoor/kotor_indoor_kit_library.gd")
 const KotorIndoorModExporter := preload("../../../resources/indoor/kotor_indoor_mod_exporter.gd")
+const KotorIndoorBuildManifest := preload("../../../resources/indoor/kotor_indoor_build_manifest.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const IndoorBuilderMapView := preload("../panels/indoor_builder_map_view.gd")
 
@@ -139,6 +140,11 @@ func _build_ui() -> void:
 	export_mod_btn.text = "Export .mod"
 	export_mod_btn.pressed.connect(_export_mod_dialog)
 	_toolbar.add_child(export_mod_btn)
+
+	var build_preview_btn := Button.new()
+	build_preview_btn.text = "Build Preview"
+	build_preview_btn.pressed.connect(_show_build_preview)
+	_toolbar.add_child(build_preview_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -745,6 +751,28 @@ func _apply_pykotor_cli_path(new_path: String) -> void:
 		_editor_state.set_pykotor_cli_path(new_path)
 	if _pykotor_cli_edit != null:
 		_pykotor_cli_edit.text = new_path
+
+
+func _show_build_preview() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before previewing a build."
+		_refresh_status()
+		return
+	if _document.get_kit_library() != _kit_library:
+		_document.set_kit_library(_kit_library)
+	var manifest := KotorIndoorBuildManifest.build(_document, _kit_library)
+	if _detail_label != null:
+		_detail_label.text = KotorIndoorBuildManifest.format_report(manifest)
+	if not manifest.get("ok", false):
+		var errors: Array = manifest.get("errors", [])
+		if errors.is_empty():
+			_status_text = "Build preview failed validation."
+		else:
+			_status_text = "Build preview failed: %s" % str(errors[0])
+		_refresh_status()
+		return
+	_status_text = "Build preview ready for module '%s'." % str(manifest.get("module_id", ""))
+	_refresh_status()
 
 
 func _export_mod_dialog() -> void:

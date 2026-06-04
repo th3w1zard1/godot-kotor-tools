@@ -81,7 +81,8 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 14. **Q39 (shipped 2026-06-04):** Indoor layout validation — module/kit/hook preflight before `.mod` export; see `docs/plans/2026-06-04-012-feat-q39-indoor-layout-validation-plan.md`.
 15. **Q40 (shipped 2026-06-04):** Batch override compare — install-wide override scan in dock; see `docs/plans/2026-06-04-013-feat-q40-override-batch-compare-plan.md`.
 16. **Q41 (shipped 2026-06-04):** Compare report export — save compare output to `.txt`; see `docs/plans/2026-06-04-014-feat-q41-compare-report-export-plan.md`.
-17. Module/area designer parity wave (native indoor build port, 3D rotate gizmo, LYT/walkmesh depth).
+17. **Q42 (shipped 2026-06-04):** Native indoor build manifest — module/room asset preview before native build; see `docs/plans/2026-06-04-015-feat-q42-indoor-build-manifest-plan.md`.
+18. Module/area designer parity wave (native indoor resource writers, 3D rotate gizmo, LYT/walkmesh depth).
 
 ## Evidence Notes
 
