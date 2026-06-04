@@ -78,7 +78,8 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 11. **Q36 (shipped 2026-06-04):** LIP semantic compare — duration/keyframe install diff; see `docs/plans/2026-06-04-009-feat-q36-lip-semantic-compare-plan.md`.
 12. **Q37 (shipped 2026-06-04):** TPC semantic compare — header/payload install diff; see `docs/plans/2026-06-04-010-feat-q37-tpc-semantic-compare-plan.md`.
 13. **Q38 (shipped 2026-06-04):** WAV semantic compare — format/duration install diff; see `docs/plans/2026-06-04-011-feat-q38-wav-semantic-compare-plan.md`.
-14. Module/area designer parity wave (native indoor build port, 3D rotate gizmo, LYT/walkmesh depth).
+14. **Q39 (shipped 2026-06-04):** Indoor layout validation — module/kit/hook preflight before `.mod` export; see `docs/plans/2026-06-04-012-feat-q39-indoor-layout-validation-plan.md`.
+15. Module/area designer parity wave (native indoor build port, 3D rotate gizmo, LYT/walkmesh depth).
 
 ## Evidence Notes
 

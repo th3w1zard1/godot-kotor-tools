@@ -54,6 +54,14 @@ func set_kit_library(library: RefCounted) -> void:
 	_kit_library = library
 
 
+func get_kit_library() -> RefCounted:
+	return _kit_library
+
+
+func has_embedded_component(component_id: String) -> bool:
+	return _embedded_by_id.has(component_id.strip_edges())
+
+
 func get_summary_lines() -> Array[String]:
 	var lines: Array[String] = []
 	lines.append("Module ID: %s" % get_module_id())
