@@ -35,7 +35,7 @@ Current status: `[REPO]` parser + writer + workspace editor + pipeline serialize
 
 - [ ] EditorImportPlugin for project-asset lip files
 - [ ] ResourceFormatSaver for direct save dialog support
-- [ ] Batch LIP tooling (OpenKotOR parity backlog)
+- [x] Batch LIP tooling — Q31 `LipBatchGenerator` + LIP editor folder action
 
 ## Shared notes `[SYNTH]`
 

@@ -3,6 +3,7 @@ extends "./kotor_workspace_editor.gd"
 class_name KotorLIPWorkspaceEditor
 
 const LIPParser := preload("../../../formats/lip_parser.gd")
+const LipBatchGenerator := preload("../../../formats/lip_batch_generator.gd")
 const LIPResource := preload("../../../resources/lip_resource.gd")
 const WavMetadata := preload("../../../formats/wav_metadata.gd")
 const LipWaveformView := preload("../widgets/lip_waveform_view.gd")
@@ -208,6 +209,11 @@ func _build_ui() -> void:
 	load_wav_btn.text = "Load WAV..."
 	load_wav_btn.pressed.connect(_load_wav)
 	_toolbar.add_child(load_wav_btn)
+
+	var batch_btn := Button.new()
+	batch_btn.text = "Batch Generate LIP..."
+	batch_btn.pressed.connect(_batch_generate_lip)
+	_toolbar.add_child(batch_btn)
 
 	var play_btn := Button.new()
 	play_btn.text = "Play"
@@ -434,6 +440,33 @@ func _connect_resource_signal() -> void:
 func _disconnect_resource_signal() -> void:
 	if _resource != null and _resource.changed.is_connected(_on_resource_changed):
 		_resource.changed.disconnect(_on_resource_changed)
+
+
+func _batch_generate_lip() -> void:
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.title = "Batch Generate LIP from WAV folder"
+	var editor_state := get_editor_state()
+	if editor_state != null and editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(dir_path: String) -> void:
+		_run_batch_generate(dir_path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_generate(dir_path: String) -> void:
+	var result := LipBatchGenerator.batch_directory(dir_path)
+	_status_text = str(result.get("summary", "Batch LIP finished."))
+	var failed: Array = result.get("failed", [])
+	if not failed.is_empty():
+		var first: Dictionary = failed[0]
+		_status_text += " First error: %s (%s)" % [
+			first.get("message", "?"),
+			str(first.get("wav_path", "")).get_file(),
+		]
+	_refresh_status()
 
 
 func _open_lip() -> void:
