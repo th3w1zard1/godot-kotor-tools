@@ -276,6 +276,11 @@ func _build_workspace_sidebar(parent: Control) -> void:
 	compare_btn.pressed.connect(_compare_selected_workspace_entry)
 	toolbar.add_child(compare_btn)
 
+	var compare_all_btn := Button.new()
+	compare_all_btn.text = "Compare All"
+	compare_all_btn.pressed.connect(_compare_all_overrides)
+	toolbar.add_child(compare_all_btn)
+
 	var install_btn := Button.new()
 	install_btn.text = "Install"
 	install_btn.pressed.connect(_install_selected_workspace_entry)
@@ -495,6 +500,11 @@ func _build_gamefs_tab() -> void:
 	compare_btn.text = "Compare Override"
 	compare_btn.pressed.connect(_compare_selected_gamefs_entry)
 	toolbar.add_child(compare_btn)
+
+	var compare_all_btn := Button.new()
+	compare_all_btn.text = "Compare All Overrides"
+	compare_all_btn.pressed.connect(_compare_all_overrides)
+	toolbar.add_child(compare_all_btn)
 
 	_gamefs_status_label = Label.new()
 	_gamefs_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1187,6 +1197,16 @@ func _compare_gamefs_entry(entry: Dictionary) -> void:
 		int(entry.get("resource_type", -1))
 	)
 	_show_gamefs_report(_format_compare_result(result))
+
+
+func _compare_all_overrides() -> void:
+	if _editor_state == null or _editor_state.gamefs == null:
+		_show_gamefs_report("Configure a game install path first.")
+		return
+	var result: Dictionary = _modding_pipeline.compare_all_overrides(_editor_state.gamefs)
+	var report := _format_batch_compare_result(result)
+	_show_gamefs_report(report)
+	_append_activity(report)
 
 
 func _open_gamefs_entry(entry: Dictionary) -> void:
@@ -3557,6 +3577,14 @@ func _format_compare_result(result: Dictionary) -> String:
 		lines.append("")
 		lines.append(String(result.get("details", "")))
 	return "\n".join(lines)
+
+
+func _format_batch_compare_result(result: Dictionary) -> String:
+	if result.is_empty():
+		return "No batch comparison result."
+	if result.has("details"):
+		return String(result.get("details", ""))
+	return _format_compare_result(result)
 
 
 func _append_activity(text: String) -> void:

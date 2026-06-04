@@ -135,6 +135,104 @@ static func compare_gamefs_resource(gamefs: RefCounted, resref: String, resource
 	})
 
 
+static func compare_all_overrides(gamefs: RefCounted) -> Dictionary:
+	if gamefs == null:
+		return _result(false, "invalid", "Game install is not available")
+	if not gamefs.has_method("list_core_resources"):
+		return _result(false, "invalid", "Game install index is unavailable")
+
+	var override_entries: Array = gamefs.list_core_resources("", null, SOURCE_OVERRIDE, 0)
+	if override_entries.is_empty():
+		var empty_counts := {
+			"total": 0,
+			"identical": 0,
+			"different": 0,
+			"override_only": 0,
+		}
+		return _result(true, "empty", "No override resources found.", {
+			"counts": empty_counts,
+			"entries": [],
+			"details": "No override resources found.",
+		})
+
+	var counts := {
+		"total": override_entries.size(),
+		"identical": 0,
+		"different": 0,
+		"override_only": 0,
+	}
+	var entry_results: Array = []
+	for entry: Dictionary in override_entries:
+		var resref := str(entry.get("resref", ""))
+		var resource_type := int(entry.get("resource_type", -1))
+		var extension := str(entry.get("extension", ""))
+		var compare := compare_gamefs_resource(gamefs, resref, resource_type)
+		var status := str(compare.get("status", "unknown"))
+		match status:
+			"identical":
+				counts["identical"] = int(counts.get("identical", 0)) + 1
+			"different":
+				counts["different"] = int(counts.get("different", 0)) + 1
+			"override_only":
+				counts["override_only"] = int(counts.get("override_only", 0)) + 1
+		entry_results.append({
+			"label": "%s.%s" % [resref, extension],
+			"status": status,
+			"message": str(compare.get("message", "")),
+			"details": str(compare.get("details", "")),
+			"core_entry": compare.get("core_entry", {}),
+			"override_entry": compare.get("override_entry", {}),
+		})
+
+	var report := build_override_compare_report(counts, entry_results)
+	var summary := (
+		"Override scan: %d total, %d different, %d identical, %d override-only."
+		% [
+			int(counts.get("total", 0)),
+			int(counts.get("different", 0)),
+			int(counts.get("identical", 0)),
+			int(counts.get("override_only", 0)),
+		]
+	)
+	return _result(true, "scanned", summary, {
+		"counts": counts,
+		"entries": entry_results,
+		"details": report,
+	})
+
+
+static func build_override_compare_report(counts: Dictionary, entry_results: Array) -> String:
+	var lines: Array[String] = []
+	lines.append("Override compare scan (%d resources)" % int(counts.get("total", 0)))
+	lines.append(
+		"  Identical: %d | Different: %d | Override-only: %d"
+		% [
+			int(counts.get("identical", 0)),
+			int(counts.get("different", 0)),
+			int(counts.get("override_only", 0)),
+		]
+	)
+	lines.append("")
+
+	for raw_entry in entry_results:
+		if typeof(raw_entry) != TYPE_DICTIONARY:
+			continue
+		var item: Dictionary = raw_entry
+		var status := str(item.get("status", ""))
+		if status == "identical":
+			continue
+		lines.append("[%s] %s" % [status.to_upper(), str(item.get("label", ""))])
+		var message := str(item.get("message", "")).strip_edges()
+		if not message.is_empty():
+			lines.append(message)
+		var details := str(item.get("details", "")).strip_edges()
+		if status == "different" and not details.is_empty():
+			lines.append(details)
+		lines.append("")
+
+	return "\n".join(lines).strip_edges()
+
+
 static func _entry_file_name(entry: Dictionary) -> String:
 	return "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
 
