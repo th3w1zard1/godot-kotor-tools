@@ -3,6 +3,7 @@ extends "./kotor_workspace_editor.gd"
 class_name KotorTPCWorkspaceEditor
 
 const TPCReader := preload("../../../formats/tpc_reader.gd")
+const TPCWriter := preload("../../../formats/tpc_writer.gd")
 const KotorMediaToolBridge := preload("../../../resources/scripts/kotor_media_tool_bridge.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
@@ -137,6 +138,11 @@ func _build_ui() -> void:
 	open_btn.pressed.connect(_open_tpc)
 	_toolbar.add_child(open_btn)
 
+	var import_image_btn := Button.new()
+	import_image_btn.text = "Import TGA/PNG..."
+	import_image_btn.pressed.connect(_import_image_as_tpc)
+	_toolbar.add_child(import_image_btn)
+
 	var export_tga_btn := Button.new()
 	export_tga_btn.text = "Export TGA..."
 	export_tga_btn.pressed.connect(_export_tga)
@@ -210,6 +216,54 @@ func _refresh_metadata() -> void:
 		"[b]TXI length:[/b] %d bytes" % _metadata.get("txi_length", 0),
 	])
 	_meta_label.text = "\n".join(lines)
+
+
+func _import_image_as_tpc() -> void:
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_FILE,
+		PackedStringArray(["*.tga ; Targa Image", "*.png ; PNG Image"]),
+		"Import Image as TPC"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		_load_image_as_rgba_tpc(path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _load_image_as_rgba_tpc(path: String) -> void:
+	var image := Image.new()
+	var extension := path.get_extension().to_lower()
+	var load_error := ERR_FILE_UNRECOGNIZED
+	match extension:
+		"png":
+			load_error = image.load_png(path)
+		"tga":
+			load_error = image.load(path)
+		_:
+			load_error = image.load(path)
+	if load_error != OK:
+		_status_text = "Failed to load image: %s" % path.get_file()
+		_refresh_status()
+		return
+
+	var alpha_test := float(_metadata.get("alpha_test", 0.0)) if _metadata.get("ok", false) else 0.0
+	var bytes := TPCWriter.serialize_rgba(image, alpha_test)
+	if bytes.is_empty():
+		_status_text = "Failed to encode RGBA TPC from %s" % path.get_file()
+		_refresh_status()
+		return
+
+	_bytes = bytes
+	_metadata = TPCReader.read_metadata(_bytes)
+	if not _file_name.is_empty():
+		_file_name = _file_name.get_basename() + ".tpc"
+	else:
+		_file_name = path.get_file().get_basename() + ".tpc"
+	_dirty = true
+	_status_text = "Imported %s as RGBA TPC" % path.get_file()
+	_register_controller_document()
+	_refresh_view()
 
 
 func _export_tga() -> void:

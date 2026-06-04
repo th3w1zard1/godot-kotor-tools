@@ -17,6 +17,7 @@ const SSFWriter := preload("../../formats/ssf_writer.gd")
 const SSFResource := preload("../../resources/ssf_resource.gd")
 const LIPWriter := preload("../../formats/lip_writer.gd")
 const LIPResource := preload("../../resources/lip_resource.gd")
+const TPCWriter := preload("../../formats/tpc_writer.gd")
 
 const SOURCE_OVERRIDE := "override"
 const DETAIL_SAMPLE_LIMIT := 5
@@ -196,6 +197,18 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"type": "bytes",
 					"payload": lip_bytes,
 					"size": lip_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+		"tpc":
+			if payload is PackedByteArray:
+				var tpc_bytes := TPCWriter.serialize_passthrough(payload as PackedByteArray)
+				if tpc_bytes.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": tpc_bytes,
+					"size": tpc_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
 		"are", "dlg", "gff", "git", "ifo", "jrl", "utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw":

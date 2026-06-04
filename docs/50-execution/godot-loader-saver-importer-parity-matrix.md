@@ -31,7 +31,7 @@ Add a `ResourceFormatLoader` only when direct on-disk loading without import ind
 | 2DA | 2da | Yes (`kotor.twoda`) | Yes (`TwodaResourceFormatSaver`) | Yes (`TwoDaWriter`) | Yes | Yes |
 | TLK | tlk | Yes (`kotor.tlk`) | Yes (`TlkResourceFormatSaver`) | Yes (`TLKWriter`) | Yes | Yes |
 | ERF/RIM/MOD | erf, rim, mod | Yes (`kotor.erf`) | No | Yes (`ErfWriter` via pipeline) | Yes | Partial (write-back shipped Q4) |
-| TPC | tpc, tga | Yes (`kotor.tpc`) | No | No | Yes | Partial (import/read; TPC write-back backlog) |
+| TPC | tpc, tga | Yes (`kotor.tpc`) | No | Yes (`TPCWriter` passthrough/RGBA + pipeline validate) | Yes | Partial (Q30 write-back; DXT encode deferred) |
 | SSF | ssf | No | No | Yes (`SSFWriter`) | Yes | Yes (`test_ssf_parser.gd`) |
 | LIP | lip | No | No | Yes (`LIPWriter`) | Yes | Yes (`test_lip_parser.gd`) |
 | NSS | nss | No | No | No (text) | N/A | Partial (script editor; PyKotor CLI bridge Q26) |
