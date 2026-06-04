@@ -52,12 +52,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q35 | SSF semantic compare reports | `SSFCompare` slot-level StrRef diff for install compare; pipeline `ssf` arm; headless `test_ssf_compare.gd`. |
 | Q36 | LIP semantic compare reports | `LIPCompare` duration/keyframe diff for install compare; pipeline `lip` arm; headless `test_lip_compare.gd`. |
 | Q37 | TPC semantic compare reports | `TPCCompare` header/payload diff for install compare; pipeline `tpc` arm; headless `test_tpc_compare.gd`. |
+| Q38 | WAV semantic compare reports | `WavCompare` format/duration/payload diff for install compare; pipeline `wav` arm; headless `test_wav_compare.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q37 shipped TPC semantic compare; media diff tooling wave complete on parity stack. | Next: native indoor build or KotorDiff UI depth per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q38 shipped WAV semantic compare; full media diff wave complete on parity stack. | Next: native indoor build or KotorDiff UI depth per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
