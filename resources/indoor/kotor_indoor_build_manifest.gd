@@ -4,6 +4,7 @@ class_name KotorIndoorBuildManifest
 const KotorIndoorDocument := preload("../documents/kotor_indoor_document.gd")
 const KotorIndoorLayoutValidator := preload("./kotor_indoor_layout_validator.gd")
 const KotorIndoorMapIO := preload("./kotor_indoor_map_io.gd")
+const KotorIndoorLyTBuilder := preload("./kotor_indoor_lyt_builder.gd")
 
 const CORE_MODULE_EXTENSIONS := ["are", "git", "ifo", "lyt", "vis"]
 const MODULE_ID_MAX_LEN := 16
@@ -67,6 +68,7 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 			})
 
 	var hook_counts := document.get_hook_connection_counts()
+	var lyt := KotorIndoorLyTBuilder.build_from_document(document)
 	return {
 		"ok": true,
 		"module_id": module_id,
@@ -75,6 +77,7 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 		"room_assets": room_assets,
 		"hook_counts": hook_counts,
 		"warnings": validation.get("warnings", []),
+		"lyt": lyt,
 	}
 
 
@@ -104,6 +107,12 @@ static func format_report(manifest: Dictionary) -> String:
 		"Hook connections: %d connected, %d open"
 		% [int(hook_counts.get("connected", 0)), int(hook_counts.get("open", 0))]
 	)
+	var lyt: Dictionary = manifest.get("lyt", {})
+	if lyt.get("ok", false):
+		lines.append("LYT preview: %d room model(s) ready" % int(lyt.get("room_count", 0)))
+	else:
+		for error_text in lyt.get("errors", []):
+			lines.append("LYT preview unavailable: %s" % str(error_text))
 	lines.append("Core module resources:")
 	for resource in manifest.get("resources", []):
 		if typeof(resource) != TYPE_DICTIONARY:

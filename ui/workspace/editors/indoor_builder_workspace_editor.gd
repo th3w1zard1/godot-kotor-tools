@@ -7,6 +7,7 @@ const KotorIndoorMapIO := preload("../../../resources/indoor/kotor_indoor_map_io
 const KotorIndoorKitLibrary := preload("../../../resources/indoor/kotor_indoor_kit_library.gd")
 const KotorIndoorModExporter := preload("../../../resources/indoor/kotor_indoor_mod_exporter.gd")
 const KotorIndoorBuildManifest := preload("../../../resources/indoor/kotor_indoor_build_manifest.gd")
+const KotorIndoorLyTBuilder := preload("../../../resources/indoor/kotor_indoor_lyt_builder.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const IndoorBuilderMapView := preload("../panels/indoor_builder_map_view.gd")
 
@@ -145,6 +146,11 @@ func _build_ui() -> void:
 	build_preview_btn.text = "Build Preview"
 	build_preview_btn.pressed.connect(_show_build_preview)
 	_toolbar.add_child(build_preview_btn)
+
+	var export_lyt_btn := Button.new()
+	export_lyt_btn.text = "Export LYT Preview"
+	export_lyt_btn.pressed.connect(_export_lyt_preview_dialog)
+	_toolbar.add_child(export_lyt_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -772,6 +778,48 @@ func _show_build_preview() -> void:
 		_refresh_status()
 		return
 	_status_text = "Build preview ready for module '%s'." % str(manifest.get("module_id", ""))
+	_refresh_status()
+
+
+func _export_lyt_preview_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting LYT."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var lyt := KotorIndoorLyTBuilder.build_from_document(_document)
+	if not lyt.get("ok", false):
+		var errors: Array = lyt.get("errors", [])
+		_status_text = "LYT export failed: %s" % (str(errors[0]) if errors.size() > 0 else "unknown error")
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export LYT Preview"
+	dialog.current_file = "%s.lyt" % _document.get_module_id()
+	dialog.add_filter("*.lyt", "KotOR Layout")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_lyt_preview_to_path(path, lyt)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_lyt_preview_to_path(path: String, lyt: Dictionary) -> void:
+	var target_path := _ensure_extension(path, "lyt")
+	var bytes: PackedByteArray = lyt.get("bytes", PackedByteArray())
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write LYT preview."
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "LYT preview saved to %s" % target_path.get_file()
 	_refresh_status()
 
 

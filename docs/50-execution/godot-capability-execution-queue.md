@@ -57,12 +57,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q40 | Batch override compare | `compare_all_overrides` install scan with semantic diff aggregation; dock Compare All Overrides; headless `test_override_batch_compare.gd`. |
 | Q41 | Compare report export | Save single/batch compare output to `.txt` via dock Export Compare Report; headless `test_compare_report_export.gd`. |
 | Q42 | Native indoor build manifest | `KotorIndoorBuildManifest` core module + room asset preview; Indoor Builder Build Preview; headless `test_indoor_build_manifest.gd`. |
+| Q43 | Native indoor LYT builder | `KotorIndoorLyTBuilder` roommodel `.lyt` generation; manifest + Export LYT Preview; headless `test_indoor_lyt_builder.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q42 shipped indoor build manifest preview as first native build planning step. | Next: native indoor resource writers or full KotorDiff CLI per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q43 shipped native LYT writer as first indoor resource generator. | Next: IFO/ARE/GIT native writers or full KotorDiff CLI per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
