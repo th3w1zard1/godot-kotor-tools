@@ -9,6 +9,7 @@ const KotorIndoorIfoBuilder := preload("./kotor_indoor_ifo_builder.gd")
 const KotorIndoorVisBuilder := preload("./kotor_indoor_vis_builder.gd")
 const KotorIndoorAreBuilder := preload("./kotor_indoor_are_builder.gd")
 const KotorIndoorGitBuilder := preload("./kotor_indoor_git_builder.gd")
+const KotorIndoorModBuilder := preload("./kotor_indoor_mod_builder.gd")
 
 const CORE_MODULE_EXTENSIONS := ["are", "git", "ifo", "lyt", "vis"]
 const MODULE_ID_MAX_LEN := 16
@@ -77,6 +78,24 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 	var vis := KotorIndoorVisBuilder.build_from_document(document)
 	var are := KotorIndoorAreBuilder.build_from_document(document)
 	var git := KotorIndoorGitBuilder.build_from_document(document)
+	var mod := KotorIndoorModBuilder.build_from_manifest(
+		{
+			"ok": true,
+			"module_id": module_id,
+			"warp": str(document.get_data().get("warp", module_id)),
+			"resources": resources,
+			"room_assets": room_assets,
+			"hook_counts": hook_counts,
+			"warnings": validation.get("warnings", []),
+			"lyt": lyt,
+			"ifo": ifo,
+			"vis": vis,
+			"are": are,
+			"git": git,
+		},
+		document,
+		kit_library
+	)
 	return {
 		"ok": true,
 		"module_id": module_id,
@@ -90,6 +109,7 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 		"vis": vis,
 		"are": are,
 		"git": git,
+		"mod": mod,
 	}
 
 
@@ -158,6 +178,15 @@ static func format_report(manifest: Dictionary) -> String:
 	else:
 		for error_text in git.get("errors", []):
 			lines.append("GIT preview unavailable: %s" % str(error_text))
+	var mod: Dictionary = manifest.get("mod", {})
+	if mod.get("ok", false):
+		lines.append(
+			"MOD preview: %d archive entries for module '%s'"
+			% [int(mod.get("entry_count", 0)), str(manifest.get("module_id", ""))]
+		)
+	else:
+		for error_text in mod.get("errors", []):
+			lines.append("MOD preview unavailable: %s" % str(error_text))
 	lines.append("Core module resources:")
 	for resource in manifest.get("resources", []):
 		if typeof(resource) != TYPE_DICTIONARY:

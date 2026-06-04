@@ -87,7 +87,8 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 20. **Q45 (shipped 2026-06-04):** Native indoor VIS builder — hook-based `.vis` visibility generation; see `docs/plans/2026-06-04-018-feat-q45-indoor-vis-builder-plan.md`.
 21. **Q46 (shipped 2026-06-04):** Native indoor ARE builder — module `.are` GFF from layout lighting/skybox; see `docs/plans/2026-06-04-019-feat-q46-indoor-are-builder-plan.md`.
 22. **Q47 (shipped 2026-06-04):** Native indoor GIT builder — door instances at hook connections; see `docs/plans/2026-06-04-020-feat-q47-indoor-git-builder-plan.md`.
-23. Module/area designer parity wave (full `.mod` assembly, KotorDiff CLI, 3D rotate gizmo, LYT/walkmesh depth).
+23. **Q48 (shipped 2026-06-04):** Native indoor MOD builder — ERF `.mod` assembly from native writers + kit assets; see `docs/plans/2026-06-04-021-feat-q48-indoor-mod-builder-plan.md`.
+24. Module/area designer parity wave (KotorDiff CLI, embedded MDL/WOK generation, 3D rotate gizmo, LYT/walkmesh depth).
 
 ## Evidence Notes
 

@@ -12,6 +12,7 @@ const KotorIndoorIfoBuilder := preload("../../../resources/indoor/kotor_indoor_i
 const KotorIndoorVisBuilder := preload("../../../resources/indoor/kotor_indoor_vis_builder.gd")
 const KotorIndoorAreBuilder := preload("../../../resources/indoor/kotor_indoor_are_builder.gd")
 const KotorIndoorGitBuilder := preload("../../../resources/indoor/kotor_indoor_git_builder.gd")
+const KotorIndoorModBuilder := preload("../../../resources/indoor/kotor_indoor_mod_builder.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const IndoorBuilderMapView := preload("../panels/indoor_builder_map_view.gd")
 
@@ -175,6 +176,11 @@ func _build_ui() -> void:
 	export_git_btn.text = "Export GIT Preview"
 	export_git_btn.pressed.connect(_export_git_preview_dialog)
 	_toolbar.add_child(export_git_btn)
+
+	var export_native_mod_btn := Button.new()
+	export_native_mod_btn.text = "Export Native MOD Preview"
+	export_native_mod_btn.pressed.connect(_export_native_mod_preview_dialog)
+	_toolbar.add_child(export_native_mod_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1012,6 +1018,48 @@ func _export_git_preview_to_path(path: String, git: Dictionary) -> void:
 	file.store_buffer(bytes)
 	file.close()
 	_status_text = "GIT preview saved to %s" % target_path.get_file()
+	_refresh_status()
+
+
+func _export_native_mod_preview_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting a native MOD."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var mod := KotorIndoorModBuilder.build_from_document(_document, _kit_library)
+	if not mod.get("ok", false):
+		var errors: Array = mod.get("errors", [])
+		_status_text = "Native MOD export failed: %s" % (str(errors[0]) if errors.size() > 0 else "unknown error")
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export Native MOD Preview"
+	dialog.current_file = "%s.mod" % str(mod.get("module_id", _document.get_module_id()))
+	dialog.add_filter("*.mod", "KotOR Module")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_native_mod_preview_to_path(path, mod)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_native_mod_preview_to_path(path: String, mod: Dictionary) -> void:
+	var target_path := _ensure_extension(path, "mod")
+	var bytes: PackedByteArray = mod.get("bytes", PackedByteArray())
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write native MOD preview."
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "Native MOD preview saved to %s" % target_path.get_file()
 	_refresh_status()
 
 
