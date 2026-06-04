@@ -235,6 +235,7 @@ func _build_ui() -> void:
 
 	_viewport_3d = ModuleDesignerViewport3D.new()
 	_viewport_3d.instance_selected.connect(_on_viewport_instance_selected)
+	_viewport_3d.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
 	right_split.add_child(_viewport_3d)
 
 	split.add_child(right_split)

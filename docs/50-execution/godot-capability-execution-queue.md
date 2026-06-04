@@ -66,12 +66,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q49 | KotorDiff CLI bridge | `KotorDiffToolBridge` standalone kotordiff / PyKotor `diff` invocation; GameFS **Run KotorDiff CLI…**; headless `test_kotor_diff_tool_bridge.gd`. |
 | Q50 | Embedded component asset generation | `KotorIndoorEmbeddedAssetGenerator` base64 BWM/MDL/MDX → MOD room assets; manifest flags; headless `test_indoor_embedded_asset_generator.gd`. |
 | Q51 | HoloPatcher CLI bridge | `HoloPatcherToolBridge` validate/install TSL patches; GameFS **Validate TSL Patch…** / **Install TSL Patch…**; headless `test_holo_patcher_tool_bridge.gd`. |
+| Q52 | GIT 3D rotate gizmo | Module Designer viewport bearing ring + Shift+right-drag rotate; shared `KotorWorldCoordinates` bearing helpers; headless `test_git_viewport_bearing.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q51 shipped HoloPatcher CLI bridge from GameFS dock. | Next: 3D rotate gizmo or LYT/walkmesh depth per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q52 shipped 3D bearing rotate gizmo in Module Designer. | Next: LYT/walkmesh depth or indoor native build parity per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
