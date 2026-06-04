@@ -274,7 +274,15 @@ func _refresh_bundle_label() -> void:
 func _refresh_summary() -> void:
 	if _summary_label == null or _document == null:
 		return
-	_summary_label.text = _document.build_summary_text()
+	var lines: Array[String] = [_document.build_summary_text()]
+	if not _parsed_layout.is_empty():
+		lines.append(KotorModuleContext.format_layout_summary(_parsed_layout))
+	if not _parsed_walkmesh.is_empty():
+		lines.append(
+			"Walkmesh: %d face(s), %d vertex/vertices"
+			% [int(_parsed_walkmesh.get("face_count", 0)), int(_parsed_walkmesh.get("vertex_count", 0))]
+		)
+	_summary_label.text = "\n".join(lines)
 
 
 func _refresh_instance_tree() -> void:

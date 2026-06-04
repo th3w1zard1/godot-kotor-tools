@@ -67,12 +67,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q50 | Embedded component asset generation | `KotorIndoorEmbeddedAssetGenerator` base64 BWM/MDL/MDX → MOD room assets; manifest flags; headless `test_indoor_embedded_asset_generator.gd`. |
 | Q51 | HoloPatcher CLI bridge | `HoloPatcherToolBridge` validate/install TSL patches; GameFS **Validate TSL Patch…** / **Install TSL Patch…**; headless `test_holo_patcher_tool_bridge.gd`. |
 | Q52 | GIT 3D rotate gizmo | Module Designer viewport bearing ring + Shift+right-drag rotate; shared `KotorWorldCoordinates` bearing helpers; headless `test_git_viewport_bearing.gd`. |
+| Q53 | LYT depth overlay + writer | `LYTWriter` round-trip; Module Designer tracks/obstacles/doorhooks 3D markers; layout/walkmesh summary; headless `test_lyt_writer.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q52 shipped 3D bearing rotate gizmo in Module Designer. | Next: LYT/walkmesh depth or indoor native build parity per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q53 shipped LYT depth overlay and writer. | Next: walkmesh write-back or indoor native build parity per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
