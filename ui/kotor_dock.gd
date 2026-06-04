@@ -65,6 +65,7 @@ var _workspace_search_field: LineEdit
 var _workspace_tree: Tree
 var _workspace_detail: TextEdit
 var _activity_log: TextEdit
+var _last_compare_report := ""
 
 # GameFS tab
 var _gamefs_status_label: Label
@@ -280,6 +281,11 @@ func _build_workspace_sidebar(parent: Control) -> void:
 	compare_all_btn.text = "Compare All"
 	compare_all_btn.pressed.connect(_compare_all_overrides)
 	toolbar.add_child(compare_all_btn)
+
+	var export_compare_btn := Button.new()
+	export_compare_btn.text = "Export Report…"
+	export_compare_btn.pressed.connect(_export_compare_report_dialog)
+	toolbar.add_child(export_compare_btn)
 
 	var install_btn := Button.new()
 	install_btn.text = "Install"
@@ -505,6 +511,11 @@ func _build_gamefs_tab() -> void:
 	compare_all_btn.text = "Compare All Overrides"
 	compare_all_btn.pressed.connect(_compare_all_overrides)
 	toolbar.add_child(compare_all_btn)
+
+	var export_compare_btn := Button.new()
+	export_compare_btn.text = "Export Compare Report…"
+	export_compare_btn.pressed.connect(_export_compare_report_dialog)
+	toolbar.add_child(export_compare_btn)
 
 	_gamefs_status_label = Label.new()
 	_gamefs_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1196,7 +1207,9 @@ func _compare_gamefs_entry(entry: Dictionary) -> void:
 		str(entry.get("resref", "")),
 		int(entry.get("resource_type", -1))
 	)
-	_show_gamefs_report(_format_compare_result(result))
+	var report := _format_compare_result(result)
+	_last_compare_report = report
+	_show_gamefs_report(report)
 
 
 func _compare_all_overrides() -> void:
@@ -1205,8 +1218,34 @@ func _compare_all_overrides() -> void:
 		return
 	var result: Dictionary = _modding_pipeline.compare_all_overrides(_editor_state.gamefs)
 	var report := _format_batch_compare_result(result)
+	_last_compare_report = report
 	_show_gamefs_report(report)
 	_append_activity(report)
+
+
+func _export_compare_report_dialog() -> void:
+	if _last_compare_report.strip_edges().is_empty():
+		_show_gamefs_report("Run Compare or Compare All Overrides first.")
+		return
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_SAVE_FILE,
+		PackedStringArray(["*.txt ; Text Report"]),
+		"Export Compare Report",
+		_editor_state.game_path if _has_valid_game_path() else "",
+		"override-compare-report.txt"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		var target_path := _ensure_extension(path, "txt")
+		var result: Dictionary = _modding_pipeline.export_text_report_to_path(
+			target_path,
+			_last_compare_report
+		)
+		_show_gamefs_report(str(result.get("message", "Export failed.")))
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
 
 
 func _open_gamefs_entry(entry: Dictionary) -> void:

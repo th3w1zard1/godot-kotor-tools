@@ -233,6 +233,47 @@ static func build_override_compare_report(counts: Dictionary, entry_results: Arr
 	return "\n".join(lines).strip_edges()
 
 
+static func format_compare_result_text(result: Dictionary) -> String:
+	if result.is_empty():
+		return ""
+	var lines: Array[String] = []
+	var message := str(result.get("message", "")).strip_edges()
+	if not message.is_empty():
+		lines.append(message)
+	if result.has("core_entry"):
+		var core_entry: Dictionary = result.get("core_entry", {})
+		lines.append("Core: %s" % str(core_entry.get("location", "")))
+	if result.has("override_entry"):
+		var override_entry: Dictionary = result.get("override_entry", {})
+		lines.append("Override: %s" % str(override_entry.get("location", "")))
+	var details := str(result.get("details", "")).strip_edges()
+	if not details.is_empty():
+		if not lines.is_empty():
+			lines.append("")
+		lines.append(details)
+	return "\n".join(lines).strip_edges()
+
+
+static func export_text_report_to_path(target_path: String, text: String) -> Dictionary:
+	var path := target_path.strip_edges()
+	if path.is_empty():
+		return _result(false, "invalid", "Choose a report file path.")
+	var body := text.strip_edges()
+	if body.is_empty():
+		return _result(false, "invalid", "No compare report text to write.")
+	var bytes := body.to_utf8_buffer()
+	if write_bytes(path, bytes) != OK:
+		return _result(false, "write_failed", "Could not write compare report: %s" % path)
+	return _result(true, "exported", "Compare report saved to %s" % path, {
+		"path": path,
+		"size": bytes.size(),
+	})
+
+
+static func export_compare_result_to_path(target_path: String, result: Dictionary) -> Dictionary:
+	return export_text_report_to_path(target_path, format_compare_result_text(result))
+
+
 static func _entry_file_name(entry: Dictionary) -> String:
 	return "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
 

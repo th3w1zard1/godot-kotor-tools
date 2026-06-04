@@ -55,12 +55,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q38 | WAV semantic compare reports | `WavCompare` format/duration/payload diff for install compare; pipeline `wav` arm; headless `test_wav_compare.gd`. |
 | Q39 | Indoor layout validation | `KotorIndoorLayoutValidator` module/room/kit/hook checks; merged into mod export preflight; headless `test_indoor_layout_validator.gd`. |
 | Q40 | Batch override compare | `compare_all_overrides` install scan with semantic diff aggregation; dock Compare All Overrides; headless `test_override_batch_compare.gd`. |
+| Q41 | Compare report export | Save single/batch compare output to `.txt` via dock Export Compare Report; headless `test_compare_report_export.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q40 shipped batch override compare; KotorDiff-style install scan in dock. | Next: native indoor build or KotorDiff report export per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q41 shipped compare report export; KotorDiff-style scan output can be saved from dock. | Next: native indoor build or full KotorDiff CLI per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
