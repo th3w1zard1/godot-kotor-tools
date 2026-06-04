@@ -97,6 +97,23 @@ func get_link_target_index(link: Dictionary) -> int:
 	return int(link.get("Index", -1))
 
 
+## Return tree-selection metadata for the node a link points to, or {} if invalid.
+func get_link_target_metadata(owner_kind: String, owner_index: int, link_index: int) -> Dictionary:
+	var link := get_link(owner_kind, owner_index, link_index)
+	if link.is_empty():
+		return {}
+	var target_index := get_link_target_index(link)
+	if target_index < 0:
+		return {}
+	var target_kind := get_link_target_kind(owner_kind)
+	if target_index >= get_node_list(target_kind).size():
+		return {}
+	return {
+		"kind": target_kind,
+		"index": target_index,
+	}
+
+
 func get_link_target_kind(kind: String) -> String:
 	return get_node_target_kind(kind)
 
