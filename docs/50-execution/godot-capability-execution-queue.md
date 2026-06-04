@@ -60,12 +60,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q43 | Native indoor LYT builder | `KotorIndoorLyTBuilder` roommodel `.lyt` generation; manifest + Export LYT Preview; headless `test_indoor_lyt_builder.gd`. |
 | Q44 | Native indoor IFO builder | `KotorIndoorIfoBuilder` module `.ifo` GFF generation; manifest + Export IFO Preview; headless `test_indoor_ifo_builder.gd`. |
 | Q45 | Native indoor VIS builder | `VISParser` + `KotorIndoorVisBuilder` hook-based `.vis` generation; manifest + Export VIS Preview; headless `test_indoor_vis_builder.gd`. |
+| Q46 | Native indoor ARE builder | `KotorIndoorAreBuilder` module `.are` GFF generation; manifest + Export ARE Preview; headless `test_indoor_are_builder.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q45 shipped native VIS writer from hook adjacency. | Next: ARE/GIT native writers or full KotorDiff CLI per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q46 shipped native ARE writer from indoor layout metadata. | Next: GIT native writer or full KotorDiff CLI per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
