@@ -62,7 +62,7 @@ func _test_embedded_core_only() -> void:
 	var document := _document_with_embedded_room()
 	var result := KotorIndoorModBuilder.build_from_document(document)
 	assert(result.get("ok", false))
-	assert(int(result.get("entry_count", 0)) == 5)
+	assert(int(result.get("entry_count", 0)) == 6)
 	var parsed := ERFParser.parse_bytes(result.get("bytes", PackedByteArray()))
 	assert(str(parsed.get("file_type", "")) == "MOD ")
 	var names := KotorIndoorModBuilder.list_entry_names(parsed)
@@ -71,6 +71,7 @@ func _test_embedded_core_only() -> void:
 	assert(names.has("test01.ifo"))
 	assert(names.has("test01.lyt"))
 	assert(names.has("test01.vis"))
+	assert(names.has("room_a.wok"))
 	print("✓ Indoor MOD builder embedded core resources passed")
 
 
@@ -119,6 +120,11 @@ func _library_for(kits_root: String) -> KotorIndoorKitLibrary:
 
 
 func _document_with_embedded_room() -> KotorIndoorDocument:
+	var wok_bytes := _build_minimal_wok(
+		[Vector3(0.0, 0.0, 0.0), Vector3(4.0, 0.0, 0.0), Vector3(0.0, 3.0, 0.0)],
+		[0, 1, 2],
+		[1]
+	)
 	var document := KotorIndoorDocument.new()
 	document.load_from_dictionary({
 		"module_id": "test01",
@@ -127,7 +133,12 @@ func _document_with_embedded_room() -> KotorIndoorDocument:
 		"lighting": [0.5, 0.5, 0.5],
 		"skybox": "",
 		"embedded_components": [
-			{"id": "room_a", "name": "room_a", "bwm": "", "hooks": []},
+			{
+				"id": "room_a",
+				"name": "room_a",
+				"bwm": Marshalls.raw_to_base64(wok_bytes),
+				"hooks": [],
+			},
 		],
 		"rooms": [
 			{
