@@ -25,6 +25,7 @@ const TLKResource := preload("../resources/tlk_resource.gd")
 const KotorDLGDocument := preload("../resources/documents/kotor_dlg_document.gd")
 const KotorEditorState := preload("../editor/core/kotor_editor_state.gd")
 const KotorScriptToolBridge := preload("../resources/scripts/kotor_script_tool_bridge.gd")
+const KotorDiffToolBridge := preload("../resources/diff/kotor_diff_tool_bridge.gd")
 const KotorModdingPipeline := preload("../editor/modding/kotor_modding_pipeline.gd")
 const KotorMutationService := preload("../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("./workspace/dialogs/kotor_preflight_dialog.gd")
@@ -66,6 +67,8 @@ var _workspace_tree: Tree
 var _workspace_detail: TextEdit
 var _activity_log: TextEdit
 var _last_compare_report := ""
+var _kotordiff_path1 := ""
+var _kotordiff_path2 := ""
 
 # GameFS tab
 var _gamefs_status_label: Label
@@ -516,6 +519,11 @@ func _build_gamefs_tab() -> void:
 	export_compare_btn.text = "Export Compare Report…"
 	export_compare_btn.pressed.connect(_export_compare_report_dialog)
 	toolbar.add_child(export_compare_btn)
+
+	var kotordiff_btn := Button.new()
+	kotordiff_btn.text = "Run KotorDiff CLI…"
+	kotordiff_btn.pressed.connect(_run_kotordiff_cli_dialog)
+	toolbar.add_child(kotordiff_btn)
 
 	_gamefs_status_label = Label.new()
 	_gamefs_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1246,6 +1254,60 @@ func _export_compare_report_dialog() -> void:
 	dialog.canceled.connect(dialog.queue_free)
 	add_child(dialog)
 	dialog.popup_centered_ratio(0.7)
+
+
+func _run_kotordiff_cli_dialog() -> void:
+	if not _has_valid_game_path():
+		_show_gamefs_report("Configure a game install path first.")
+		return
+	_kotordiff_path1 = _editor_state.game_path
+	_kotordiff_path2 = ""
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_DIR,
+		PackedStringArray(),
+		"KotorDiff path2 (install, directory, or parent folder)",
+		_kotordiff_path1
+	)
+	dialog.dir_selected.connect(func(path: String) -> void:
+		_kotordiff_path2 = path
+		dialog.queue_free()
+		_prompt_kotordiff_output_log()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _prompt_kotordiff_output_log() -> void:
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_SAVE_FILE,
+		PackedStringArray(["*.log ; Log files"]),
+		"KotorDiff output log",
+		_kotordiff_path1 if not _kotordiff_path1.is_empty() else "",
+		"kotordiff.log"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		_execute_kotordiff_cli(_ensure_extension(path, "log"))
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _execute_kotordiff_cli(output_log: String) -> void:
+	var result := KotorDiffToolBridge.run_tool({
+		"path1": _kotordiff_path1,
+		"path2": _kotordiff_path2,
+		"output_log": output_log,
+		"game_path": _kotordiff_path1,
+		"pykotor_cli_path": _editor_state.pykotor_cli_path if _editor_state != null else "",
+	})
+	var report := str(result.get("message", "KotorDiff failed."))
+	if not str(result.get("stdout", "")).strip_edges().is_empty():
+		report += "\n\n" + str(result.get("stdout", "")).strip_edges()
+	_show_gamefs_report(report)
+	_append_activity(report)
 
 
 func _open_gamefs_entry(entry: Dictionary) -> void:

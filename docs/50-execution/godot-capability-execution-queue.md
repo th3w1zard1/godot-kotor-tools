@@ -63,12 +63,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q46 | Native indoor ARE builder | `KotorIndoorAreBuilder` module `.are` GFF generation; manifest + Export ARE Preview; headless `test_indoor_are_builder.gd`. |
 | Q47 | Native indoor GIT builder | `KotorIndoorGitBuilder` hook-connection door `.git` generation; manifest + Export GIT Preview; headless `test_indoor_git_builder.gd`. |
 | Q48 | Native indoor MOD builder | `KotorIndoorModBuilder` ERF `.mod` assembly from native writers + kit assets; manifest + Export Native MOD Preview; headless `test_indoor_mod_builder.gd`. |
+| Q49 | KotorDiff CLI bridge | `KotorDiffToolBridge` standalone kotordiff / PyKotor `diff` invocation; GameFS **Run KotorDiff CLI…**; headless `test_kotor_diff_tool_bridge.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q48 shipped native MOD assembly from indoor writers. | Next: KotorDiff CLI or embedded-component asset generation per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q49 shipped KotorDiff CLI bridge from GameFS dock. | Next: embedded-component asset generation or HoloPatcher per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
