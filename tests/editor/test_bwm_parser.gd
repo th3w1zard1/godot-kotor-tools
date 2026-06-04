@@ -2,6 +2,7 @@
 extends SceneTree
 
 const BWMParser := preload("../../formats/bwm_parser.gd")
+const BWMWriter := preload("../../formats/bwm_writer.gd")
 
 
 func _initialize() -> void:
@@ -63,55 +64,4 @@ func _test_invalid_header() -> void:
 
 
 static func _build_minimal_wok(vertices: Array, face_indices: Array, materials: Array) -> PackedByteArray:
-	var vertex_count := vertices.size()
-	var face_count := materials.size()
-	assert(face_indices.size() == face_count * 3)
-
-	var vertices_offset := BWMParser.HEADER_SIZE
-	var indices_offset := vertices_offset + vertex_count * 12
-	var materials_offset := indices_offset + face_count * 12
-	var total_size := materials_offset + face_count * 4
-
-	var stream := StreamPeerBuffer.new()
-	stream.big_endian = false
-	stream.resize(total_size)
-
-	_write_fixed_string(stream, BWMParser.MAGIC, 4)
-	_write_fixed_string(stream, BWMParser.VERSION, 4)
-	stream.put_u32(0)
-	for _i in range(5):
-		_write_vector3(stream, Vector3.ZERO)
-	stream.put_u32(vertex_count)
-	stream.put_u32(vertices_offset)
-	stream.put_u32(face_count)
-	stream.put_u32(indices_offset)
-	stream.put_u32(materials_offset)
-
-	stream.seek(vertices_offset)
-	for vertex in vertices:
-		_write_vector3(stream, vertex)
-
-	stream.seek(indices_offset)
-	for index in face_indices:
-		stream.put_u32(index)
-
-	stream.seek(materials_offset)
-	for material_id in materials:
-		stream.put_u32(material_id)
-
-	return stream.data_array
-
-
-static func _write_vector3(stream: StreamPeerBuffer, value: Vector3) -> void:
-	stream.put_float(value.x)
-	stream.put_float(value.y)
-	stream.put_float(value.z)
-
-
-static func _write_fixed_string(stream: StreamPeerBuffer, text: String, length: int) -> void:
-	var bytes := text.to_ascii_buffer()
-	for index in range(length):
-		if index < bytes.size():
-			stream.put_u8(bytes[index])
-		else:
-			stream.put_u8(0)
+	return BWMWriter.build_minimal(vertices, face_indices, materials)
