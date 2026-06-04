@@ -442,6 +442,7 @@ func _build_hook_markers(room_index: int, room: Dictionary) -> Array:
 			"hook_index": hook_index,
 			"x": world.x,
 			"y": world.y,
+			"z": world.z,
 			"connected_room": connected,
 		})
 	return markers

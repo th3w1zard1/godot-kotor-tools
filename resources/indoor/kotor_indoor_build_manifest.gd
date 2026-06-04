@@ -8,6 +8,7 @@ const KotorIndoorLyTBuilder := preload("./kotor_indoor_lyt_builder.gd")
 const KotorIndoorIfoBuilder := preload("./kotor_indoor_ifo_builder.gd")
 const KotorIndoorVisBuilder := preload("./kotor_indoor_vis_builder.gd")
 const KotorIndoorAreBuilder := preload("./kotor_indoor_are_builder.gd")
+const KotorIndoorGitBuilder := preload("./kotor_indoor_git_builder.gd")
 
 const CORE_MODULE_EXTENSIONS := ["are", "git", "ifo", "lyt", "vis"]
 const MODULE_ID_MAX_LEN := 16
@@ -75,6 +76,7 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 	var ifo := KotorIndoorIfoBuilder.build_from_document(document)
 	var vis := KotorIndoorVisBuilder.build_from_document(document)
 	var are := KotorIndoorAreBuilder.build_from_document(document)
+	var git := KotorIndoorGitBuilder.build_from_document(document)
 	return {
 		"ok": true,
 		"module_id": module_id,
@@ -87,6 +89,7 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 		"ifo": ifo,
 		"vis": vis,
 		"are": are,
+		"git": git,
 	}
 
 
@@ -146,6 +149,15 @@ static func format_report(manifest: Dictionary) -> String:
 	else:
 		for error_text in are.get("errors", []):
 			lines.append("ARE preview unavailable: %s" % str(error_text))
+	var git: Dictionary = manifest.get("git", {})
+	if git.get("ok", false):
+		lines.append(
+			"GIT preview: %d door instance(s), %d total instance(s)"
+			% [int(git.get("door_count", 0)), int(git.get("instance_count", 0))]
+		)
+	else:
+		for error_text in git.get("errors", []):
+			lines.append("GIT preview unavailable: %s" % str(error_text))
 	lines.append("Core module resources:")
 	for resource in manifest.get("resources", []):
 		if typeof(resource) != TYPE_DICTIONARY:

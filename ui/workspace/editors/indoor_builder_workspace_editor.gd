@@ -11,6 +11,7 @@ const KotorIndoorLyTBuilder := preload("../../../resources/indoor/kotor_indoor_l
 const KotorIndoorIfoBuilder := preload("../../../resources/indoor/kotor_indoor_ifo_builder.gd")
 const KotorIndoorVisBuilder := preload("../../../resources/indoor/kotor_indoor_vis_builder.gd")
 const KotorIndoorAreBuilder := preload("../../../resources/indoor/kotor_indoor_are_builder.gd")
+const KotorIndoorGitBuilder := preload("../../../resources/indoor/kotor_indoor_git_builder.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const IndoorBuilderMapView := preload("../panels/indoor_builder_map_view.gd")
 
@@ -169,6 +170,11 @@ func _build_ui() -> void:
 	export_are_btn.text = "Export ARE Preview"
 	export_are_btn.pressed.connect(_export_are_preview_dialog)
 	_toolbar.add_child(export_are_btn)
+
+	var export_git_btn := Button.new()
+	export_git_btn.text = "Export GIT Preview"
+	export_git_btn.pressed.connect(_export_git_preview_dialog)
+	_toolbar.add_child(export_git_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -964,6 +970,48 @@ func _export_are_preview_to_path(path: String, are: Dictionary) -> void:
 	file.store_buffer(bytes)
 	file.close()
 	_status_text = "ARE preview saved to %s" % target_path.get_file()
+	_refresh_status()
+
+
+func _export_git_preview_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting GIT."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var git := KotorIndoorGitBuilder.build_from_document(_document)
+	if not git.get("ok", false):
+		var errors: Array = git.get("errors", [])
+		_status_text = "GIT export failed: %s" % (str(errors[0]) if errors.size() > 0 else "unknown error")
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export GIT Preview"
+	dialog.current_file = "%s.git" % _document.get_module_id()
+	dialog.add_filter("*.git", "KotOR Area Layout")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_git_preview_to_path(path, git)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_git_preview_to_path(path: String, git: Dictionary) -> void:
+	var target_path := _ensure_extension(path, "git")
+	var bytes: PackedByteArray = git.get("bytes", PackedByteArray())
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write GIT preview."
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "GIT preview saved to %s" % target_path.get_file()
 	_refresh_status()
 
 
