@@ -5,6 +5,7 @@ const KotorIndoorDocument := preload("../documents/kotor_indoor_document.gd")
 const KotorIndoorLayoutValidator := preload("./kotor_indoor_layout_validator.gd")
 const KotorIndoorMapIO := preload("./kotor_indoor_map_io.gd")
 const KotorIndoorLyTBuilder := preload("./kotor_indoor_lyt_builder.gd")
+const KotorIndoorIfoBuilder := preload("./kotor_indoor_ifo_builder.gd")
 
 const CORE_MODULE_EXTENSIONS := ["are", "git", "ifo", "lyt", "vis"]
 const MODULE_ID_MAX_LEN := 16
@@ -69,6 +70,7 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 
 	var hook_counts := document.get_hook_connection_counts()
 	var lyt := KotorIndoorLyTBuilder.build_from_document(document)
+	var ifo := KotorIndoorIfoBuilder.build_from_document(document)
 	return {
 		"ok": true,
 		"module_id": module_id,
@@ -78,6 +80,7 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 		"hook_counts": hook_counts,
 		"warnings": validation.get("warnings", []),
 		"lyt": lyt,
+		"ifo": ifo,
 	}
 
 
@@ -113,6 +116,15 @@ static func format_report(manifest: Dictionary) -> String:
 	else:
 		for error_text in lyt.get("errors", []):
 			lines.append("LYT preview unavailable: %s" % str(error_text))
+	var ifo: Dictionary = manifest.get("ifo", {})
+	if ifo.get("ok", false):
+		lines.append(
+			"IFO preview: module '%s' with %d starting area(s)"
+			% [str(ifo.get("module_id", "")), int(ifo.get("area_count", 0))]
+		)
+	else:
+		for error_text in ifo.get("errors", []):
+			lines.append("IFO preview unavailable: %s" % str(error_text))
 	lines.append("Core module resources:")
 	for resource in manifest.get("resources", []):
 		if typeof(resource) != TYPE_DICTIONARY:

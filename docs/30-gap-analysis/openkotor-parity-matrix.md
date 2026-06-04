@@ -83,7 +83,8 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 16. **Q41 (shipped 2026-06-04):** Compare report export — save compare output to `.txt`; see `docs/plans/2026-06-04-014-feat-q41-compare-report-export-plan.md`.
 17. **Q42 (shipped 2026-06-04):** Native indoor build manifest — module/room asset preview before native build; see `docs/plans/2026-06-04-015-feat-q42-indoor-build-manifest-plan.md`.
 18. **Q43 (shipped 2026-06-04):** Native indoor LYT builder — `.lyt` roommodel generation from layouts; see `docs/plans/2026-06-04-016-feat-q43-indoor-lyt-builder-plan.md`.
-19. Module/area designer parity wave (IFO/ARE/GIT native writers, 3D rotate gizmo, LYT/walkmesh depth).
+19. **Q44 (shipped 2026-06-04):** Native indoor IFO builder — module `.ifo` GFF generation from layouts; see `docs/plans/2026-06-04-017-feat-q44-indoor-ifo-builder-plan.md`.
+20. Module/area designer parity wave (ARE/GIT/VIS native writers, 3D rotate gizmo, LYT/walkmesh depth).
 
 ## Evidence Notes
 
