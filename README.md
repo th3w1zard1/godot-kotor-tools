@@ -31,7 +31,7 @@ Fast path:
 ## Features
 
 | Format | Parser | Importer | Resource wrapper | Write-back |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | GFF (`.utc` `.dlg` `.gff` `.utp` .utt …) | `GffParser` | ✅ | `GFFResource` + typed GFF docs/resources | ✅ typed GFF serializer + DLG editing |
 | ERF / RIM / MOD archives | `ErfParser` | ✅ | `ErfResource` | — |
 | 2DA spreadsheets | `TwoDaParser` | ✅ | `TwoDaResource` | ✅ `.2da` serializer + dock editing |
@@ -40,6 +40,7 @@ Fast path:
 | KEY / BIF archives | `KeyBifParser` | — | — | — |
 
 **KotOR Tools** workspace (main editor screen + optional bottom dock during migration):
+
 - Game path picker + install status for the active K1/K2/JE workspace
 - Install-aware resource browser with search, grouped resource tree, and open/export/install/compare actions
 - Document-style editors for DLG, 2DA, TLK, and NSS with shared dirty/session/stale handling
@@ -49,19 +50,61 @@ Fast path:
 - Area Tools with indexed module ARE discovery, linked GIT/IFO/LYT inspection, and room-model checks (MDL/MDX/WOK)
 - Activity log for modding writes, compare output, and editor actions
 
+### Current functionality catalog
+
+The plugin currently includes the following in-editor functionality:
+
+- Install indexing for KotOR 1, KotOR 2, and Jade Empire resource trees
+- Open/edit/save/install/compare flows for GFF-family resources via workspace editor (`utc`, `utp`, `uti`, `utd`, `ute`, `utm`, `uts`, `utt`, `utw`, `are`, `git`, `ifo`, `jrl`, `pth`, `fac`)
+- Open/edit/save/install/compare flows for DLG resources with struct/array mutation support
+- Open/edit/save/install/compare flows for 2DA resources with write-back
+- Open/edit/save/install/compare flows for TLK resources with write-back
+- Open/edit/save/install/compare flows for NSS script resources
+- Archive and format support for ERF/RIM/MOD parse and write-back parity
+- Archive and format support for KEY/BIF index and extraction
+- Archive and format support for TPC import/read pipeline
+- Transaction safety via preflight previews, install/export mutation history, and rollback/restore operations
+
+### OpenKotOR parity program
+
+This repository now tracks parity against both upstream toolsets:
+
+- [PyKotor](https://github.com/OpenKotOR/PyKotor)
+- [HolocronToolset](https://github.com/OpenKotOR/HolocronToolset)
+
+Parity status and remaining capability backlog are maintained in:
+
+- [docs/30-gap-analysis/openkotor-parity-matrix.md](docs/30-gap-analysis/openkotor-parity-matrix.md)
+
+The parity matrix is updated slice-by-slice as functionality lands in Godot editor workflows.
+
 ---
 
 ## Installation
 
 ### Asset Library (recommended)
+
 Search **KotOR Tools** in the Godot Asset Library and click Install.
 
 ### Manual
-```
+
+```bash
 cd your_project/addons
 git clone https://github.com/OpenKotOR/godot-kotor-tools.git kotor_tools
 ```
+
 Then **Project → Project Settings → Plugins → KotOR Tools → Enable**.
+
+## Using the plugin in Godot editor
+
+1. Enable the plugin.
+2. Open the KotOR Tools workspace from the editor UI.
+3. Configure the game install path and wait for index completion.
+4. Browse resources and open files in the corresponding workspace editor.
+5. Edit fields, run compare, and use install/export actions.
+6. Use transaction history to inspect and restore previous mutation operations.
+
+For full first-run instructions and troubleshooting, see [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 ---
 
@@ -89,10 +132,24 @@ find . -name '*.gd' -print0 | xargs -0 -I{} godot --headless --quiet --check-onl
 - **Architecture and implementation orientation:** [docs/00-intent/godot-serialization-kb-intent.md](docs/00-intent/godot-serialization-kb-intent.md)
 - **Product direction and active tracks:** [STRATEGY.md](STRATEGY.md)
 - **Support coverage + implementation gaps:** [docs/30-gap-analysis/godot-support-gaps.md](docs/30-gap-analysis/godot-support-gaps.md)
+- **Prioritized capability execution queue (Phase 2 shipped + deferred slices):** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md)
 - **Next implementation-wave requirements (brainstorm):** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md)
-- **Prioritized capability execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md)
 - **Godot API source references used by this repo:** [docs/90-meta/godot-doc-source-map.md](docs/90-meta/godot-doc-source-map.md)
 - **Implementation playbook for contributors:** [docs/50-execution/godot-kotor-implementation-playbook.md](docs/50-execution/godot-kotor-implementation-playbook.md)
+
+---
+
+## Contributing and Planning Next Work
+
+**For contributors selecting next-wave work:**
+
+The execution queue ([docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md)) tracks both **shipped slices (Q1–Q5)** and **deferred next slices (Q6–Q8)** with readiness criteria and dependencies. Start there to understand:
+
+- What's already shipped and working
+- What deferred work is ready to plan when criteria are met
+- How the next slice depends on priors
+
+Then reference [STRATEGY.md](STRATEGY.md) for the broader capability families and multi-year direction, and [docs/30-gap-analysis/godot-support-gaps.md](docs/30-gap-analysis/godot-support-gaps.md) for gap coverage mapping.
 
 ---
 
@@ -180,6 +237,7 @@ var image: Image = TpcReader.read(raw_bytes: PackedByteArray) -> Image
 Importers produce these `Resource` subclasses, loadable via `load()` at runtime.
 
 ### `GFFResource`
+
 ```gdscript
 var res: GFFResource = load("res://path/to/file.utc")
 var value = res.get_field("Tag")        # → Variant
@@ -187,6 +245,7 @@ var struct = res.get_struct("Stats")    # → Dictionary
 ```
 
 ### `ErfResource`
+
 ```gdscript
 var erf: ErfResource = load("res://path/to/file.erf")
 var names: Array = erf.resource_names()              # → Array[String]
@@ -194,6 +253,7 @@ var bytes: PackedByteArray = erf.get_resource("k_ptar_inc", 0x03ED)
 ```
 
 ### `TLKResource`
+
 ```gdscript
 var tlk: TLKResource = load("res://path/to/dialog.tlk")
 var text: String = tlk.get_string(1234)   # StrRef → text
@@ -204,6 +264,7 @@ ResourceSaver.save(tlk, "/absolute/path/to/dialog.tlk")
 ```
 
 ### `TwoDaResource`
+
 ```gdscript
 var sheet: TwoDaResource = load("res://path/to/feat.2da")
 var val: String = sheet.get_cell(row_index: int, column_name: String) -> String

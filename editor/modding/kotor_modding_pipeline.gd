@@ -13,6 +13,10 @@ const GFFWriter := preload("../../formats/gff_writer.gd")
 const TwoDaResource := preload("../../resources/twoda_resource.gd")
 const TLKResource := preload("../../resources/tlk_resource.gd")
 const GFFResource := preload("../../resources/gff_resource.gd")
+const SSFWriter := preload("../../formats/ssf_writer.gd")
+const SSFResource := preload("../../resources/ssf_resource.gd")
+const LIPWriter := preload("../../formats/lip_writer.gd")
+const LIPResource := preload("../../resources/lip_resource.gd")
 
 const SOURCE_OVERRIDE := "override"
 const DETAIL_SAMPLE_LIMIT := 5
@@ -168,6 +172,30 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"type": "bytes",
 					"payload": tlk_bytes,
 					"size": tlk_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+		"ssf":
+			if payload is SSFResource:
+				var ssf_bytes := SSFWriter.serialize(payload as SSFResource)
+				if ssf_bytes.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": ssf_bytes,
+					"size": ssf_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+		"lip":
+			if payload is LIPResource:
+				var lip_bytes := LIPWriter.serialize(payload as LIPResource)
+				if lip_bytes.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": lip_bytes,
+					"size": lip_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
 		"are", "dlg", "gff", "git", "ifo", "jrl", "utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw":

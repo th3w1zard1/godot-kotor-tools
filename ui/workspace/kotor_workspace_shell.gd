@@ -10,7 +10,13 @@ const KotorDLGWorkspaceEditor := preload("./editors/dlg_workspace_editor.gd")
 const KotorTwoDaWorkspaceEditor := preload("./editors/twoda_workspace_editor.gd")
 const KotorTLKWorkspaceEditor := preload("./editors/tlk_workspace_editor.gd")
 const KotorScriptWorkspaceEditor := preload("./editors/script_workspace_editor.gd")
+const KotorSSFWorkspaceEditor := preload("./editors/ssf_workspace_editor.gd")
+const KotorTPCWorkspaceEditor := preload("./editors/tpc_workspace_editor.gd")
+const KotorWAVWorkspaceEditor := preload("./editors/wav_workspace_editor.gd")
+const KotorLIPWorkspaceEditor := preload("./editors/lip_workspace_editor.gd")
 const KotorGFFWorkspaceEditor := preload("./editors/gff_workspace_editor.gd")
+const KotorModuleDesignerWorkspaceEditor := preload("./editors/module_designer_workspace_editor.gd")
+const KotorIndoorBuilderWorkspaceEditor := preload("./editors/indoor_builder_workspace_editor.gd")
 const KotorResourceBrowserPanel := preload("./panels/resource_browser_panel.gd")
 const KotorTransactionHistoryPanel := preload("./panels/transaction_history_panel.gd")
 
@@ -25,7 +31,13 @@ var _dlg_editor: Control
 var _twoda_editor: Control
 var _tlk_editor: Control
 var _script_editor: Control
+var _ssf_editor: Control
+var _tpc_editor: Control
+var _wav_editor: Control
+var _lip_editor: Control
 var _gff_editor: Control
+var _module_designer: Control
+var _indoor_builder: Control
 
 
 func _init(controller: RefCounted = null) -> void:
@@ -117,12 +129,54 @@ func _ensure_shell() -> void:
 	_script_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs.add_child(_script_editor)
 
+	_ssf_editor = KotorSSFWorkspaceEditor.new()
+	_ssf_editor.name = "SSF Editor"
+	_ssf_editor.setup(_resolve_editor_state(), _controller)
+	_ssf_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ssf_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_ssf_editor)
+
+	_tpc_editor = KotorTPCWorkspaceEditor.new()
+	_tpc_editor.name = "Texture Editor"
+	_tpc_editor.setup(_resolve_editor_state(), _controller)
+	_tpc_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tpc_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_tpc_editor)
+
+	_wav_editor = KotorWAVWorkspaceEditor.new()
+	_wav_editor.name = "Sound Editor"
+	_wav_editor.setup(_resolve_editor_state(), _controller)
+	_wav_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_wav_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_wav_editor)
+
+	_lip_editor = KotorLIPWorkspaceEditor.new()
+	_lip_editor.name = "LIP Sync Editor"
+	_lip_editor.setup(_resolve_editor_state(), _controller)
+	_lip_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lip_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_lip_editor)
+
 	_gff_editor = KotorGFFWorkspaceEditor.new()
 	_gff_editor.name = "GFF Entity Editor"
 	_gff_editor.setup(_resolve_editor_state(), _controller)
 	_gff_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_gff_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs.add_child(_gff_editor)
+
+	_module_designer = KotorModuleDesignerWorkspaceEditor.new()
+	_module_designer.name = "Module Designer"
+	_module_designer.setup(_resolve_editor_state(), _controller)
+	_module_designer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_module_designer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_module_designer)
+
+	_indoor_builder = KotorIndoorBuilderWorkspaceEditor.new()
+	_indoor_builder.name = "Indoor Builder"
+	_indoor_builder.setup(_resolve_editor_state(), _controller)
+	_indoor_builder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_indoor_builder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_indoor_builder)
 	_restore_workspace_session()
 
 
@@ -168,8 +222,32 @@ func get_script_workspace_editor() -> Control:
 	return _script_editor
 
 
+func get_ssf_workspace_editor() -> Control:
+	return _ssf_editor
+
+
+func get_tpc_workspace_editor() -> Control:
+	return _tpc_editor
+
+
+func get_wav_workspace_editor() -> Control:
+	return _wav_editor
+
+
+func get_lip_workspace_editor() -> Control:
+	return _lip_editor
+
+
 func get_gff_workspace_editor() -> Control:
 	return _gff_editor
+
+
+func get_module_designer_workspace_editor() -> Control:
+	return _module_designer
+
+
+func get_indoor_builder_workspace_editor() -> Control:
+	return _indoor_builder
 
 
 func _restore_workspace_session() -> void:
@@ -208,10 +286,34 @@ func _restore_workspace_session() -> void:
 				_script_editor.call("open_script_file", source_path)
 				if str(document_entry.get("key", "")) == active_key:
 					_tabs.current_tab = _script_editor.get_index()
+			"ssf":
+				_ssf_editor.call("open_ssf_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _ssf_editor.get_index()
+			"tpc":
+				_tpc_editor.call("open_tpc_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _tpc_editor.get_index()
+			"wav":
+				_wav_editor.call("open_wav_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _wav_editor.get_index()
+			"lip":
+				_lip_editor.call("open_lip_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _lip_editor.get_index()
 			"gff":
 				_gff_editor.call("open_gff_file", source_path)
 				if str(document_entry.get("key", "")) == active_key:
 					_tabs.current_tab = _gff_editor.get_index()
+			"module":
+				_module_designer.call("open_git_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _module_designer.get_index()
+			"indoor":
+				_indoor_builder.call("open_indoor_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _indoor_builder.get_index()
 			_:
 				pass
 
@@ -257,6 +359,36 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 		_tlk_editor.call("open_tlk_bytes", tlk_label, tlk_bytes, source_path)
 		_tabs.current_tab = _tlk_editor.get_index()
 		return
+	if extension == "ssf":
+		var ssf_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		var ssf_label := "%s [%s]" % [
+			"%s.%s" % [entry.get("resref", ""), entry.get("extension", "")],
+			entry.get("source", ""),
+		]
+		_ssf_editor.call("open_ssf_bytes", ssf_label, ssf_bytes, source_path)
+		_tabs.current_tab = _ssf_editor.get_index()
+		return
+	if extension == "tpc":
+		var tpc_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		var tpc_file_name := "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+		_tpc_editor.call("open_tpc_bytes", tpc_bytes, source_path, tpc_file_name)
+		_tabs.current_tab = _tpc_editor.get_index()
+		return
+	if extension == "wav":
+		var wav_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		var wav_file_name := "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+		_wav_editor.call("open_wav_bytes", wav_bytes, source_path, wav_file_name)
+		_tabs.current_tab = _wav_editor.get_index()
+		return
+	if extension == "lip":
+		var lip_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		var lip_label := "%s [%s]" % [
+			"%s.%s" % [entry.get("resref", ""), entry.get("extension", "")],
+			entry.get("source", ""),
+		]
+		_lip_editor.call("open_lip_bytes", lip_label, lip_bytes, source_path)
+		_tabs.current_tab = _lip_editor.get_index()
+		return
 	if extension == "nss" or extension == "ncs":
 		var script_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
 		var script_label := "%s [%s]" % [
@@ -266,6 +398,15 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 		_script_editor.call("open_script_bytes", script_label, script_bytes, extension, source_path)
 		_tabs.current_tab = _script_editor.get_index()
 		return
+	if KotorModuleDesignerWorkspaceEditor.module_designer_extension_allowed(extension):
+		var git_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		var git_label := "%s [%s]" % [
+			"%s.%s" % [entry.get("resref", ""), entry.get("extension", "")],
+			entry.get("source", ""),
+		]
+		_module_designer.call("open_git_bytes", git_label, git_bytes, source_path)
+		_tabs.current_tab = _module_designer.get_index()
+		return
 	if KotorGFFWorkspaceEditor.workspace_gff_extension_allowed(extension):
 		var gff_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
 		var gff_label := "%s [%s]" % [
@@ -274,6 +415,18 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 		]
 		_gff_editor.call("open_gff_bytes", gff_label, gff_bytes, source_path)
 		_tabs.current_tab = _gff_editor.get_index()
+		return
+	if KotorIndoorBuilderWorkspaceEditor.indoor_extension_allowed(extension):
+		if not source_path.is_empty() and FileAccess.file_exists(source_path):
+			_indoor_builder.call("open_indoor_file", source_path)
+		else:
+			var indoor_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+			var indoor_label := "%s [%s]" % [
+				"%s.%s" % [entry.get("resref", ""), entry.get("extension", "")],
+				entry.get("source", ""),
+			]
+			_indoor_builder.call("open_indoor_bytes", indoor_label, indoor_bytes, source_path)
+		_tabs.current_tab = _indoor_builder.get_index()
 		return
 	if _shell != null and _shell.has_method("open_gamefs_entry"):
 		_shell.call("open_gamefs_entry", entry)

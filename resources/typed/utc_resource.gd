@@ -13,8 +13,84 @@ func get_tag() -> String:
 	return (create_document() as KotorUTCDocument).get_tag()
 
 
+func get_first_name_text() -> String:
+	return (create_document() as KotorUTCDocument).get_first_name_text()
+
+
+func get_last_name_text() -> String:
+	return (create_document() as KotorUTCDocument).get_last_name_text()
+
+
+func get_name_text() -> String:
+	return (create_document() as KotorUTCDocument).get_name_text()
+
+
 func get_conversation_resref() -> String:
 	return (create_document() as KotorUTCDocument).get_conversation_resref()
+
+
+func get_on_spawn_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_spawn_script()
+
+
+func get_on_heartbeat_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_heartbeat_script()
+
+
+func get_on_notice_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_notice_script()
+
+
+func get_on_disturbed_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_disturbed_script()
+
+
+func get_on_attacked_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_attacked_script()
+
+
+func get_on_damaged_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_damaged_script()
+
+
+func get_on_death_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_death_script()
+
+
+func get_on_spell_at_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_spell_at_script()
+
+
+func get_on_dialogue_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_dialogue_script()
+
+
+func get_on_end_dialogue_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_end_dialogue_script()
+
+
+func get_on_end_round_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_end_round_script()
+
+
+func get_on_rested_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_rested_script()
+
+
+func get_on_blocked_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_blocked_script()
+
+
+func get_on_user_defined_script() -> String:
+	return (create_document() as KotorUTCDocument).get_on_user_defined_script()
+
+
+func get_appearance_id() -> int:
+	return (create_document() as KotorUTCDocument).get_appearance_id()
+
+
+func get_challenge_rating() -> float:
+	return (create_document() as KotorUTCDocument).get_challenge_rating()
 
 
 func _create_document():

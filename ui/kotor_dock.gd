@@ -24,17 +24,19 @@ const TwoDaResource := preload("../resources/twoda_resource.gd")
 const TLKResource := preload("../resources/tlk_resource.gd")
 const KotorDLGDocument := preload("../resources/documents/kotor_dlg_document.gd")
 const KotorEditorState := preload("../editor/core/kotor_editor_state.gd")
+const KotorScriptToolBridge := preload("../resources/scripts/kotor_script_tool_bridge.gd")
 const KotorModdingPipeline := preload("../editor/modding/kotor_modding_pipeline.gd")
 const KotorMutationService := preload("../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("./workspace/dialogs/kotor_preflight_dialog.gd")
 const KotorGFFWorkspaceEditor := preload("./workspace/editors/gff_workspace_editor.gd")
+const KotorModuleDesignerWorkspaceEditor := preload("./workspace/editors/module_designer_workspace_editor.gd")
 const GAME_TLK_NAME := KotorEditorState.GAME_TLK_NAME
 const GAMEFS_RESULT_LIMIT := 500
 const AREA_RESULT_LIMIT := 256
 const GFF_EXTENSIONS := {
 	"utc": true, "utd": true, "ute": true, "uti": true, "utp": true,
 	"uts": true, "utt": true, "utw": true, "utm": true, "jrl": true,
-	"dlg": true, "git": true, "are": true, "ifo": true, "gff": true,
+	"dlg": true, "are": true, "ifo": true, "gff": true,
 }
 const AREA_TOOL_EXTENSIONS := {
 	"lyt": true,
@@ -146,6 +148,9 @@ var _script_dirty := false
 var _script_status_text := ""
 var _script_bytes := PackedByteArray()
 var _script_loading := false
+var _script_compile_btn: Button
+var _script_decompile_btn: Button
+var _script_disassemble_btn: Button
 
 
 func _init() -> void:
@@ -969,6 +974,21 @@ func _build_script_tab() -> void:
 	validate_btn.pressed.connect(_validate_script)
 	toolbar.add_child(validate_btn)
 
+	_script_compile_btn = Button.new()
+	_script_compile_btn.text = "Compile"
+	_script_compile_btn.pressed.connect(_compile_script)
+	toolbar.add_child(_script_compile_btn)
+
+	_script_decompile_btn = Button.new()
+	_script_decompile_btn.text = "Decompile"
+	_script_decompile_btn.pressed.connect(_decompile_script)
+	toolbar.add_child(_script_decompile_btn)
+
+	_script_disassemble_btn = Button.new()
+	_script_disassemble_btn.text = "Disassemble"
+	_script_disassemble_btn.pressed.connect(_disassemble_script)
+	toolbar.add_child(_script_disassemble_btn)
+
 	var counterpart_btn := Button.new()
 	counterpart_btn.text = "Open Counterpart"
 	counterpart_btn.pressed.connect(_open_script_counterpart)
@@ -1198,6 +1218,8 @@ func _open_gamefs_entry(entry: Dictionary) -> void:
 	elif SCRIPT_EXTENSIONS.has(extension):
 		_load_script_bytes(label, bytes, extension)
 		_tabs.current_tab = _script_tab.get_index()
+	elif KotorModuleDesignerWorkspaceEditor.module_designer_extension_allowed(extension):
+		_append_activity("Open %s in the Module Designer workspace tab" % label)
 	elif GFF_EXTENSIONS.has(extension):
 		_load_gff_bytes(label, bytes)
 		_tabs.current_tab = _gff_tab.get_index()
@@ -1753,7 +1775,7 @@ func _install_selected_erf_entry() -> void:
 
 func _open_gff() -> void:
 	var gff_exts := "*.utc,*.utd,*.ute,*.uti,*.utp,*.uts,*.utt,*.utw,*.utm,"
-	gff_exts += "*.jrl,*.dlg,*.git,*.are,*.ifo,*.gff ; KotOR GFF"
+	gff_exts += "*.jrl,*.dlg,*.are,*.ifo,*.gff ; KotOR GFF"
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
 		PackedStringArray([gff_exts]),
@@ -2725,6 +2747,7 @@ func _load_script_bytes(label: String, bytes: PackedByteArray, extension_hint: S
 
 	_refresh_script_summary()
 	_validate_script()
+	_refresh_script_tool_buttons()
 	_append_activity("Loaded script %s" % _script_file_name)
 
 
@@ -2823,16 +2846,241 @@ func _open_script_counterpart() -> void:
 		_load_script(str(companion.get("path", "")))
 
 
+func _compile_script() -> void:
+	if _script_extension != "nss" or _script_file_name.is_empty():
+		return
+	var input := _prepare_script_nss_input_path()
+	if not input.get("ok", false):
+		_write_script_tool_report(false, str(input.get("message", "Failed to prepare NSS input.")), [])
+		return
+
+	var resref := _current_script_file_name().get_basename()
+	var output_path := _script_tool_output_path(resref, "ncs")
+	var result := KotorScriptToolBridge.run_tool(
+		_script_tool_run_config(
+			KotorScriptToolBridge.Operation.ASSEMBLE,
+			{
+				"input_path": str(input.get("path", "")),
+				"output_path": output_path,
+			}
+		)
+	)
+	_cleanup_temp_script_path(input)
+	_handle_script_tool_result(
+		result,
+		"Compile",
+		func() -> void:
+			var file := FileAccess.open(output_path, FileAccess.READ)
+			if file == null:
+				_write_script_tool_report(false, "Compiled NCS could not be read.", result.get("warnings", []))
+				return
+			var bytes := file.get_buffer(file.get_length())
+			file.close()
+			_load_script_bytes(output_path, bytes, "ncs")
+			_script_status_text = "Compiled to %s" % output_path.get_file()
+			_refresh_script_summary()
+			_append_activity("Compiled %s to %s" % [_current_script_file_name(), output_path.get_file()])
+	)
+
+
+func _decompile_script() -> void:
+	if _script_extension != "ncs" or _script_file_name.is_empty():
+		return
+	var input := _prepare_script_ncs_input_path()
+	if not input.get("ok", false):
+		_write_script_tool_report(false, str(input.get("message", "Failed to prepare NCS input.")), [])
+		return
+
+	var resref := _current_script_file_name().get_basename()
+	var output_path := _script_tool_output_path(resref, "nss")
+	var result := KotorScriptToolBridge.run_tool(
+		_script_tool_run_config(
+			KotorScriptToolBridge.Operation.DECOMPILE,
+			{
+				"input_path": str(input.get("path", "")),
+				"output_path": output_path,
+			}
+		)
+	)
+	_cleanup_temp_script_path(input)
+	_handle_script_tool_result(
+		result,
+		"Decompile",
+		func() -> void:
+			var file := FileAccess.open(output_path, FileAccess.READ)
+			if file == null:
+				_write_script_tool_report(false, "Decompiled NSS could not be read.", result.get("warnings", []))
+				return
+			var bytes := file.get_buffer(file.get_length())
+			file.close()
+			_load_script_bytes(output_path, bytes, "nss")
+			_script_status_text = "Decompiled to %s" % output_path.get_file()
+			_refresh_script_summary()
+			_validate_script()
+			_append_activity("Decompiled %s to %s" % [_current_script_file_name(), output_path.get_file()])
+	)
+
+
+func _disassemble_script() -> void:
+	if _script_extension != "ncs" or _script_file_name.is_empty():
+		return
+	var input := _prepare_script_ncs_input_path()
+	if not input.get("ok", false):
+		_write_script_tool_report(false, str(input.get("message", "Failed to prepare NCS input.")), [])
+		return
+
+	var resref := _current_script_file_name().get_basename()
+	var output_path := _script_tool_output_path(resref, "txt")
+	var result := KotorScriptToolBridge.run_tool(
+		_script_tool_run_config(
+			KotorScriptToolBridge.Operation.DISASSEMBLE,
+			{
+				"input_path": str(input.get("path", "")),
+				"output_path": output_path,
+				"compact": true,
+			}
+		)
+	)
+	_cleanup_temp_script_path(input)
+	_handle_script_tool_result(
+		result,
+		"Disassemble",
+		func() -> void:
+			var file := FileAccess.open(output_path, FileAccess.READ)
+			if file == null:
+				_write_script_tool_report(false, "Disassembly output could not be read.", result.get("warnings", []))
+				return
+			var text := file.get_as_text()
+			file.close()
+			_script_status_text = "Disassembled %s" % _current_script_file_name()
+			_write_script_tool_report(true, text, result.get("warnings", []))
+			_refresh_script_summary()
+			_append_activity("Disassembled %s" % _current_script_file_name())
+	)
+
+
+func _script_tool_config_base(operation: int) -> Dictionary:
+	return {
+		"operation": operation,
+		"game_path": _editor_state.game_path if _editor_state != null else "",
+		"pykotor_cli_path": _editor_state.pykotor_cli_path if _editor_state != null else "",
+	}
+
+
+func _script_tool_run_config(operation: int, extra: Dictionary) -> Dictionary:
+	var config := _script_tool_config_base(operation)
+	for key in extra.keys():
+		config[key] = extra[key]
+	return config
+
+
+func _script_tool_output_path(resref: String, extension: String) -> String:
+	var cache_dir := OS.get_cache_dir().path_join("kotor_tools_script_tools")
+	DirAccess.make_dir_recursive_absolute(cache_dir)
+	return cache_dir.path_join("%s_%d.%s" % [resref, Time.get_ticks_usec(), extension])
+
+
+func _prepare_script_ncs_input_path() -> Dictionary:
+	if (
+		not _script_source_path.is_empty()
+		and FileAccess.file_exists(_script_source_path)
+	):
+		return {"ok": true, "path": _script_source_path, "temporary": false}
+	if _script_bytes.is_empty():
+		return {"ok": false, "message": "No NCS bytecode is loaded."}
+	var temp := KotorScriptToolBridge.write_temp_ncs(
+		_script_bytes,
+		_current_script_file_name().get_basename()
+	)
+	if not temp.get("ok", false):
+		return temp
+	return {"ok": true, "path": str(temp.get("path", "")), "temporary": true}
+
+
+func _prepare_script_nss_input_path() -> Dictionary:
+	if (
+		not _script_dirty
+		and not _script_source_path.is_empty()
+		and FileAccess.file_exists(_script_source_path)
+	):
+		return {"ok": true, "path": _script_source_path, "temporary": false}
+	var temp := KotorScriptToolBridge.write_temp_nss(
+		_script_text_edit.text,
+		_current_script_file_name().get_basename()
+	)
+	if not temp.get("ok", false):
+		return temp
+	return {"ok": true, "path": str(temp.get("path", "")), "temporary": true}
+
+
+func _cleanup_temp_script_path(input: Dictionary) -> void:
+	if not bool(input.get("temporary", false)):
+		return
+	var path := str(input.get("path", "")).strip_edges()
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return
+	DirAccess.remove_absolute(path)
+
+
+func _handle_script_tool_result(result: Dictionary, label: String, on_success: Callable) -> void:
+	if not result.get("ok", false):
+		_script_status_text = "%s failed" % label
+		_write_script_tool_report(
+			false,
+			str(result.get("message", "%s failed." % label)),
+			result.get("warnings", [])
+		)
+		_refresh_script_summary()
+		_append_activity("%s failed for %s" % [label, _current_script_file_name()])
+		return
+	on_success.call()
+	var warnings: Array = result.get("warnings", [])
+	if warnings.is_empty():
+		return
+	var warning_lines: Array[String] = []
+	for warning in warnings:
+		warning_lines.append(str(warning))
+	var existing := _script_report.text if _script_report != null else ""
+	if not existing.is_empty():
+		_script_report.text = existing + "\n\nWarnings:\n- " + "\n- ".join(warning_lines)
+
+
+func _write_script_tool_report(success: bool, body: String, warnings: Variant) -> void:
+	if _script_report == null:
+		return
+	var lines: Array[String] = []
+	if not body.is_empty():
+		lines.append(body)
+	if typeof(warnings) == TYPE_ARRAY:
+		var warning_lines: Array[String] = []
+		for warning in warnings as Array:
+			warning_lines.append(str(warning))
+		if not warning_lines.is_empty():
+			lines.append("Warnings:\n- %s" % "\n- ".join(warning_lines))
+	_script_report.text = "\n".join(lines)
+
+
+func _refresh_script_tool_buttons() -> void:
+	var has_script := not _script_file_name.is_empty()
+	if _script_compile_btn != null:
+		_script_compile_btn.disabled = not has_script or _script_extension != "nss"
+	if _script_decompile_btn != null:
+		_script_decompile_btn.disabled = not has_script or _script_extension != "ncs"
+	if _script_disassemble_btn != null:
+		_script_disassemble_btn.disabled = not has_script or _script_extension != "ncs"
+
+
 func _validate_script() -> void:
 	if _script_report == null:
 		return
 	if _script_extension == "ncs":
 		var lines: Array[String] = [
-			"NCS binaries are view-only in this slice.",
+			"Compiled NWScript binary loaded.",
 			"Matching source: %s" % _script_counterpart_label(),
-			"Compile/decompile support is not implemented yet.",
+			"Use Decompile to recover NSS source or Disassemble for bytecode listing.",
 		]
 		_script_report.text = "\n".join(lines)
+		_refresh_script_tool_buttons()
 		return
 
 	var issues: Array[String] = []
@@ -2858,6 +3106,7 @@ func _validate_script() -> void:
 		_script_report.text = "Source validation passed.\nMatching compiled script: %s" % _script_counterpart_label()
 	else:
 		_script_report.text = "Source validation issues:\n- %s" % "\n- ".join(issues)
+	_refresh_script_tool_buttons()
 
 
 func _refresh_game_path_status(override_text: String = "") -> void:
@@ -2956,6 +3205,7 @@ func _refresh_script_summary() -> void:
 			_format_size(size),
 			_script_counterpart_label(),
 		]
+	_refresh_script_tool_buttons()
 
 
 func _script_counterpart_label() -> String:
@@ -3326,9 +3576,11 @@ func _should_delegate_to_workspace_editor(extension: String) -> bool:
 	var normalized := extension.strip_edges().to_lower()
 	if normalized == "dlg":
 		return true
-	if normalized == "2da" or normalized == "tlk":
+	if normalized == "2da" or normalized == "tlk" or normalized == "ssf" or normalized == "tpc" or normalized == "wav" or normalized == "lip":
 		return true
 	if SCRIPT_EXTENSIONS.has(normalized):
+		return true
+	if KotorModuleDesignerWorkspaceEditor.module_designer_extension_allowed(normalized):
 		return true
 	return KotorGFFWorkspaceEditor.workspace_gff_extension_allowed(normalized)
 
@@ -3336,6 +3588,8 @@ func _should_delegate_to_workspace_editor(extension: String) -> bool:
 func _viewer_for_extension(extension: String) -> String:
 	if extension == "dlg":
 		return "DLG Editor"
+	if KotorModuleDesignerWorkspaceEditor.module_designer_extension_allowed(extension):
+		return "Module Designer"
 	if SCRIPT_EXTENSIONS.has(extension):
 		return "Script Editor"
 	if GFF_EXTENSIONS.has(extension):
@@ -3346,7 +3600,15 @@ func _viewer_for_extension(extension: String) -> String:
 		return "2DA Viewer"
 	if extension == "tlk":
 		return "TLK Search"
-	if ARCHIVE_EXTENSIONS.has(extension) or extension == "tpc":
+	if extension == "ssf":
+		return "SSF Editor"
+	if extension == "tpc":
+		return "Texture Editor"
+	if extension == "wav":
+		return "Sound Editor"
+	if extension == "lip":
+		return "LIP Sync Editor"
+	if ARCHIVE_EXTENSIONS.has(extension):
 		return "ERF Browser"
 	return "No viewer yet"
 

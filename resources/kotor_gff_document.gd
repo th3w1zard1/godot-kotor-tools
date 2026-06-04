@@ -2,6 +2,8 @@
 extends RefCounted
 class_name KotorGFFDocument
 
+const TypedFieldHelpers := preload("../ui/workspace/typed_field_helpers.gd")
+
 signal changed
 
 const TYPE_LABELS := {
@@ -21,6 +23,88 @@ const TYPE_LABELS := {
 	"UTT": "Trigger Blueprint",
 	"UTW": "Waypoint Blueprint",
 }
+
+const SCRIPT_HOOK_FIELDS_BY_TYPE := {
+	"UTT": [
+		"OnClick",
+		"OnDisarm",
+		"OnEnter",
+		"OnExit",
+		"OnHeartbeat",
+		"OnUserDefined",
+		"OnTrapTriggered",
+	],
+	"UTD": [
+		"OnClick",
+		"OnClosed",
+		"OnDamaged",
+		"OnDeath",
+		"OnDisarm",
+		"OnHeartbeat",
+		"OnLock",
+		"OnMeleeAttacked",
+		"OnOpen",
+		"OnSpellCastAt",
+		"OnTrapTriggered",
+		"OnUnlock",
+		"OnUserDefined",
+	],
+	"UTP": [
+		"OnClick",
+		"OnClosed",
+		"OnDamaged",
+		"OnDeath",
+		"OnDisarm",
+		"OnHeartbeat",
+		"OnLock",
+		"OnMeleeAttacked",
+		"OnOpen",
+		"OnSpellCastAt",
+		"OnTrapTriggered",
+		"OnUnlock",
+		"OnUserDefined",
+	],
+	"UTC": [
+		"ScriptAttacked",
+		"ScriptDamaged",
+		"ScriptDeath",
+		"ScriptDialogue",
+		"ScriptDisturbed",
+		"ScriptEndDialogu",
+		"ScriptEndRound",
+		"ScriptHeartbeat",
+		"ScriptOnBlocked",
+		"ScriptOnNotice",
+		"ScriptRested",
+		"ScriptSpawn",
+		"ScriptSpellAt",
+		"ScriptUserDefine",
+	],
+	"ARE": [
+		"OnEnter",
+		"OnExit",
+		"OnHeartbeat",
+		"OnUserDefined",
+	],
+}
+
+const SCRIPT_FIELD_ALIASES := {
+	"OnEnter": "ScriptOnEnter",
+	"OnExit": "ScriptOnExit",
+	"OnHeartbeat": "ScriptHeartbeat",
+	"OnUserDefined": "ScriptUserDefine",
+}
+
+const TRAP_SCALAR_FIELDS := [
+	"TrapFlag",
+	"TrapType",
+	"TrapOneShot",
+	"TrapDetectable",
+	"TrapDetectDC",
+	"TrapDisarmable",
+	"DisarmDC",
+	"KeyName",
+]
 
 var file_type: String = ""
 var _root: Dictionary = {}
@@ -150,6 +234,52 @@ func set_field_at_path(path: Array, value: Variant) -> bool:
 	return false
 
 
+func insert_struct_at_array(array_field_name: String, index: int, struct_value: Dictionary) -> bool:
+	if not _root.has(array_field_name):
+		return false
+	var array = _root[array_field_name]
+	if typeof(array) != TYPE_ARRAY:
+		return false
+	var arr := array as Array
+	if index < 0 or index > arr.size():
+		return false
+	arr.insert(index, struct_value)
+	_notify_changed()
+	return true
+
+
+func remove_struct_from_array(array_field_name: String, index: int) -> bool:
+	if not _root.has(array_field_name):
+		return false
+	var array = _root[array_field_name]
+	if typeof(array) != TYPE_ARRAY:
+		return false
+	var arr := array as Array
+	if index < 0 or index >= arr.size():
+		return false
+	arr.remove_at(index)
+	_notify_changed()
+	return true
+
+
+func reorder_array_item(array_field_name: String, from_index: int, to_index: int) -> bool:
+	if not _root.has(array_field_name):
+		return false
+	var array = _root[array_field_name]
+	if typeof(array) != TYPE_ARRAY:
+		return false
+	var arr := array as Array
+	if from_index < 0 or from_index >= arr.size() or to_index < 0 or to_index >= arr.size():
+		return false
+	if from_index == to_index:
+		return false
+	var item = arr[from_index]
+	arr.remove_at(from_index)
+	arr.insert(to_index, item)
+	_notify_changed()
+	return true
+
+
 func coerce_scalar_edit_text(text: String, current: Variant) -> Variant:
 	match typeof(current):
 		TYPE_INT:
@@ -198,6 +328,14 @@ func set_locstring_text(name: String, text: String, language_id: int = 0) -> boo
 		strings[language_id] = normalized
 	locstring["strings"] = strings
 	return set_field(name, locstring)
+
+
+func validate_resref(text: String) -> String:
+	var trimmed := text.strip_edges()
+	const MAX_RESREF_LENGTH := 16
+	if trimmed.length() <= MAX_RESREF_LENGTH:
+		return trimmed
+	return trimmed.substr(0, MAX_RESREF_LENGTH)
 
 
 func get_type_label() -> String:
@@ -261,6 +399,67 @@ static func join_non_empty(parts: Array[String], separator: String = " ") -> Str
 		if not text.is_empty():
 			filtered.append(text)
 	return separator.join(filtered)
+
+
+func get_script_resref(field_name: String) -> String:
+	var primary := get_resref(field_name)
+	if not primary.is_empty():
+		return primary
+	if SCRIPT_FIELD_ALIASES.has(field_name):
+		return get_resref(SCRIPT_FIELD_ALIASES[field_name])
+	return ""
+
+
+func append_script_hook_summary_lines(lines: Array[String]) -> void:
+	var fields: Array = SCRIPT_HOOK_FIELDS_BY_TYPE.get(file_type, [])
+	for field_name_variant in fields:
+		var field_name := String(field_name_variant)
+		var script_ref := get_script_resref(field_name)
+		if script_ref.is_empty():
+			continue
+		_append_summary_line(lines, field_name, script_ref)
+
+
+func append_trap_scalar_summary_lines(lines: Array[String]) -> void:
+	for field_name in TRAP_SCALAR_FIELDS:
+		if not has_field(field_name):
+			continue
+		var value: Variant = get_field(field_name, null)
+		if value == null:
+			continue
+		if typeof(value) == TYPE_STRING and String(value).strip_edges().is_empty():
+			continue
+		if field_name == "TrapType" and typeof(value) in [TYPE_INT, TYPE_FLOAT]:
+			var trap_index := int(value)
+			var label := TypedFieldHelpers.get_enum_display_name("TrapType", trap_index)
+			if label.begins_with("Unknown"):
+				_append_summary_line(lines, field_name, trap_index)
+			else:
+				_append_summary_line(lines, field_name, "%d (%s)" % [trap_index, label])
+			continue
+		_append_summary_line(lines, field_name, value)
+
+
+func append_enum_summary_line(
+	lines: Array[String],
+	field_name: String,
+	label: String = ""
+) -> void:
+	if not has_field(field_name):
+		return
+	var value: Variant = get_field(field_name, null)
+	if value == null:
+		return
+	if typeof(value) not in [TYPE_INT, TYPE_FLOAT]:
+		_append_summary_line(lines, label if not label.is_empty() else field_name, value)
+		return
+	var enum_index := int(value)
+	var display := TypedFieldHelpers.get_enum_display_name(field_name, enum_index)
+	var summary_label := label if not label.is_empty() else field_name
+	if display.begins_with("Unknown"):
+		_append_summary_line(lines, summary_label, enum_index)
+	else:
+		_append_summary_line(lines, summary_label, "%d (%s)" % [enum_index, display])
 
 
 func _append_summary_line(lines: Array[String], label: String, value: Variant) -> void:

@@ -2,21 +2,40 @@
 extends RefCounted
 
 const KotorGameFS := preload("../../gamefs/kotor_gamefs.gd")
+const KotorEnumRegistry := preload("../workspace/kotor_enum_registry.gd")
 const PREF_KEY := "kotor_tools/game_path"
+const INDOOR_KITS_PREF_KEY := "kotor_tools/indoor_kits_path"
+const PYKOTOR_CLI_PREF_KEY := "kotor_tools/pykotor_cli_path"
 const GAME_TLK_NAME := "dialog.tlk"
 
 signal game_path_changed(game_path: String)
+signal indoor_kits_path_changed(indoor_kits_path: String)
+signal pykotor_cli_path_changed(pykotor_cli_path: String)
 signal gamefs_reindexed(status_text: String)
 
 var game_path: String = ""
+var indoor_kits_path: String = ""
+var pykotor_cli_path: String = ""
 var gamefs: RefCounted
+var enum_registry: RefCounted
 
 
 func load_settings() -> void:
 	if gamefs == null:
 		gamefs = KotorGameFS.new()
+	_ensure_enum_registry()
 	var editor_settings := EditorInterface.get_editor_settings()
 	game_path = editor_settings.get_setting(PREF_KEY) if editor_settings.has_setting(PREF_KEY) else ""
+	indoor_kits_path = (
+		editor_settings.get_setting(INDOOR_KITS_PREF_KEY)
+		if editor_settings.has_setting(INDOOR_KITS_PREF_KEY)
+		else ""
+	)
+	pykotor_cli_path = (
+		editor_settings.get_setting(PYKOTOR_CLI_PREF_KEY)
+		if editor_settings.has_setting(PYKOTOR_CLI_PREF_KEY)
+		else ""
+	)
 	refresh_gamefs()
 
 
@@ -27,9 +46,26 @@ func set_game_path(new_path: String) -> void:
 	refresh_gamefs()
 
 
+func set_indoor_kits_path(new_path: String) -> void:
+	indoor_kits_path = new_path.strip_edges()
+	EditorInterface.get_editor_settings().set_setting(INDOOR_KITS_PREF_KEY, indoor_kits_path)
+	indoor_kits_path_changed.emit(indoor_kits_path)
+
+
+func set_pykotor_cli_path(new_path: String) -> void:
+	pykotor_cli_path = new_path.strip_edges()
+	EditorInterface.get_editor_settings().set_setting(PYKOTOR_CLI_PREF_KEY, pykotor_cli_path)
+	pykotor_cli_path_changed.emit(pykotor_cli_path)
+
+
+func has_valid_indoor_kits_path() -> bool:
+	return not indoor_kits_path.is_empty() and DirAccess.dir_exists_absolute(indoor_kits_path)
+
+
 func refresh_gamefs() -> void:
 	if gamefs == null:
 		gamefs = KotorGameFS.new()
+	_ensure_enum_registry()
 	if not has_valid_game_path():
 		gamefs.clear()
 		gamefs_reindexed.emit(get_game_path_status())
@@ -69,6 +105,11 @@ func find_dialog_tlk() -> String:
 		if FileAccess.file_exists(candidate):
 			return candidate
 	return ""
+
+
+func _ensure_enum_registry() -> void:
+	if enum_registry == null:
+		enum_registry = KotorEnumRegistry.new().configure(self)
 
 
 func find_first_existing_dir(candidates: Array[String]) -> String:

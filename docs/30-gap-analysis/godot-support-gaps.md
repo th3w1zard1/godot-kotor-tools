@@ -11,25 +11,27 @@ Project target: **Godot 4.6**.
 
 ## Current Support Snapshot
 
-| Capability Area | Status | Notes |
-| --- | --- | --- |
-| Custom format parsing (GFF, ERF/RIM, 2DA, TLK, TPC, KEY/BIF, LYT) | **Supported** | Core parser stack exists in `formats/`. |
-| Resource wrappers for editor/runtime access | **Supported** | `resources/` provides generic and typed wrappers for key formats. |
-| Editor import integration | **Supported** | Importer plugins exist for major user-facing formats. |
-| Save/write-back for editable formats | **Partial** | 2DA/TLK/GFF-family write-back supported; archive-style write-back paths are limited. |
-| Install-aware browsing and precedence | **Supported** | `KotorGameFS` indexes install sources and applies override precedence. |
-| Workspace editors (DLG, 2DA, TLK, NSS, area tools) | **Supported** | Core workspace surfaces are shipped and routable. |
-| Browser-like visual verification for UI surfaces | **Missing** | Repo has no web surface; UI validation relies on Godot script tests and editor flows. |
+| Capability Area | Status | Execution Status | Notes |
+| --- | --- | --- | --- |
+| Custom format parsing (GFF, ERF/RIM, 2DA, TLK, TPC, KEY/BIF, LYT) | **Supported** | Shipped (Q1–Q5) | Core parser stack exists in `formats/`. |
+| Resource wrappers for editor/runtime access | **Supported** | Shipped (Q1–Q5) | `resources/` provides generic and typed wrappers for key formats. |
+| Editor import integration | **Supported** | Shipped (Q1–Q5) | Importer plugins exist for major user-facing formats. |
+| Save/write-back for editable formats | **Partial** | Shipped (Q4) | 2DA/TLK/GFF-family write-back supported; archive write-back complete via Q4. |
+| Install-aware browsing and precedence | **Supported** | Shipped (Q1–Q5) | `KotorGameFS` indexes install sources and applies override precedence. |
+| Workspace editors (DLG, 2DA, TLK, NSS, area tools) | **Supported** | Shipped (Q1–Q5) | Core workspace surfaces are shipped and routable. |
+| Browser-like visual verification for UI surfaces | **Missing** | Deferred | Repo has no web surface; UI validation relies on Godot script tests and editor flows. |
 
 ## High-Priority Gaps
 
-| Priority | Gap | Why it matters | Suggested implementation slice |
-| --- | --- | --- | --- |
-| P1 | Archive write-back parity (ERF/RIM/MOD workflows) | Limits full round-trip mod packaging workflows. | Add serializer + saver parity plan for archive families using existing `ResourceFormatSaver` and pipeline write/export flows. |
-| P1 | Cross-format dependency tooling expansion | Current helpers cover selected contexts; broader dependency-edit support improves reliability. | Expand dependency-list and rename utilities to additional typed document flows with shared document mutation primitives. |
-| P1 | Stronger reload/consistency scenarios | Prevents subtle state drift after install/restore/edit loops. | Add targeted cache/reload behavior tests around mutation pipeline, session restore, and install-aware reindex boundaries. |
-| P2 | Authoring ergonomics for complex typed docs | Reduces manual error risk in larger content edits. | Add typed validation helpers plus EditorInspector-backed editors for common GFF structs/locstrings. |
-| P2 | Contributor-facing parity matrix maintenance process | Keeps roadmap clear as format support grows. | Maintain this document and plan links whenever a new format/editor capability lands. |
+| Priority | Gap | Execution Status | Why it matters | Suggested implementation slice |
+| --- | --- | --- | --- | --- |
+| P1 | Archive write-back parity (ERF/RIM/MOD workflows) | Shipped (Q4) | Unlocks full round-trip mod packaging workflows. | Serializer + saver parity plan for archive families using existing `ResourceFormatSaver` and pipeline write/export flows. |
+| P1 | Cross-format dependency tooling expansion | Shipped (Q1–Q5) | Current helpers cover selected contexts; broader dependency-edit support improves reliability. | Expand dependency-list and rename utilities to additional typed document flows with shared document mutation primitives. |
+| P1 | Stronger reload/consistency scenarios | Shipped (Q2) | Prevents subtle state drift after install/restore/edit loops. | Add targeted cache/reload behavior tests around mutation pipeline, session restore, and install-aware reindex boundaries. |
+| P2 | Authoring ergonomics for complex typed docs | Shipped (Q6–Q12) | Reduces manual error risk in larger content edits. | Struct/array editing, typed pickers, enum registry, inventory/skill/feat arrays, feat/skill 2DA labels. |
+| P2 | Contributor-facing parity matrix maintenance process | Shipped (Q1–Q5) | Keeps roadmap clear as format support grows. | Maintain this document and plan links whenever a new format/editor capability lands. |
+
+For detailed readiness criteria and dependencies, see [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md).
 
 ## What Else Godot Supports (Relevant Next Opportunities)
 
@@ -53,8 +55,11 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 
 ## Next Planning Seeds
 
-- Use `docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md` as the direct requirement source for the next implementation wave.
-- Use `docs/50-execution/godot-capability-execution-queue.md` for prioritized implementation ordering and readiness criteria.
+For Phase 2 and beyond, use these reference documents in order:
+
+1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices (Q1–Q12) and deferred next slices with readiness criteria and dependencies.
+2. **Requirement source:** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md) — Detailed requirement grounding for the next implementation wave (when Q6+ readiness criteria are met).
+3. **This document:** Gap inventory and Godot capability opportunities for strategic context.
 
 ## Refresh Triggers
 

@@ -19,6 +19,23 @@ func get_starting_area_count() -> int:
 	return get_struct_list("Mod_Area_list").size()
 
 
+func get_starting_area_names() -> Array[String]:
+	var names: Array[String] = []
+	for area in get_struct_list("Mod_Area_list"):
+		var area_name := String(area.get("Area_Name", "")).strip_edges()
+		if not area_name.is_empty():
+			names.append(area_name)
+	return names
+
+
+func get_on_load_script() -> String:
+	return get_resref("OnModLoad")
+
+
+func get_on_heartbeat_script() -> String:
+	return get_resref("Mod_OnHeartbeat")
+
+
 func get_display_name() -> String:
 	var module_name := get_module_name()
 	if not module_name.is_empty():
@@ -34,6 +51,6 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "ResRef", get_module_resref())
 	_append_summary_line(lines, "Tag", get_module_tag())
 	_append_summary_line(lines, "Areas", get_starting_area_count())
-	_append_summary_line(lines, "On Load", get_resref("OnModLoad"))
-	_append_summary_line(lines, "On Heartbeat", get_resref("Mod_OnHeartbeat"))
+	_append_summary_line(lines, "On Load", get_on_load_script())
+	_append_summary_line(lines, "On Heartbeat", get_on_heartbeat_script())
 	return lines

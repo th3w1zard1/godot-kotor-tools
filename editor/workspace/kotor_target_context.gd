@@ -33,10 +33,19 @@ func has_ready_target() -> bool:
 
 
 func list_resources(query: String = "", limit: int = DEFAULT_RESULT_LIMIT) -> Array[Dictionary]:
+	return list_resources_filtered(query, "", limit)
+
+
+func list_resources_filtered(
+	query: String = "",
+	resource_type: String = "",
+	limit: int = DEFAULT_RESULT_LIMIT
+) -> Array[Dictionary]:
 	var gamefs := _resolve_gamefs()
 	if gamefs == null:
 		return []
-	return gamefs.list_core_resources(query, null, "", limit)
+	var type_filter: Variant = resource_type.strip_edges().to_lower() if not resource_type.is_empty() else null
+	return gamefs.list_core_resources(query, type_filter, "", limit)
 
 
 func list_variants(entry: Dictionary) -> Array[Dictionary]:

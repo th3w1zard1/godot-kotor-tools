@@ -11,6 +11,9 @@ const KotorModdingPipeline := preload("../../../editor/modding/kotor_modding_pip
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorValidationPanel := preload("../panels/validation_panel.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
+const TypedFieldHelpers := preload("../typed_field_helpers.gd")
+const GFFTreePopulator := preload("../gff_tree_populator.gd")
+const KotorResRefPickerDialog := preload("../dialogs/kotor_resref_picker_dialog.gd")
 
 var _toolbar: HBoxContainer
 var _path_label: Label
@@ -18,6 +21,7 @@ var _dlg_tree: Tree
 var _dlg_details: VBoxContainer
 var _validation_panel: KotorValidationPanel
 var _preflight_dialog: KotorPreflightDialog
+var _array_context_menu: PopupMenu
 
 var _modding_pipeline: RefCounted
 var _dlg_resource: DLGResource
@@ -28,6 +32,10 @@ var _dlg_dirty := false
 var _dlg_status_text := ""
 var _dlg_selection: Dictionary = {}
 var _document_key := ""
+
+# Context menu state
+var _context_array_field := ""
+var _context_array_index := -1
 
 var _pending_resource: DLGResource
 var _pending_source_path := ""
@@ -350,7 +358,13 @@ func _build_ui() -> void:
 	_dlg_tree.set_column_title(1, "Preview")
 	_dlg_tree.column_titles_visible = true
 	_dlg_tree.item_selected.connect(_on_dlg_item_selected)
+	_dlg_tree.item_mouse_selected.connect(_on_dlg_item_mouse_selected)
 	split.add_child(_dlg_tree)
+
+	# Setup context menu for array operations
+	_array_context_menu = PopupMenu.new()
+	_array_context_menu.id_pressed.connect(_on_array_context_menu_selected)
+	_dlg_tree.add_child(_array_context_menu)
 
 	var detail_panel := VBoxContainer.new()
 	detail_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -489,6 +503,82 @@ func _on_dlg_item_selected() -> void:
 	_refresh_dlg_detail()
 
 
+func _on_dlg_item_mouse_selected(item: TreeItem, column: int, at_position: Vector2) -> void:
+	# Right-click (button 2) shows context menu for DLG array items
+	var button_index = _dlg_tree.get_button_index_at_position(at_position)
+	if button_index != 2:
+		return
+	if item == null or not item.has_meta(GFFTreePopulator.META_IS_DLG_ARRAY_ITEM):
+		return
+	
+	_context_array_field = item.get_meta(GFFTreePopulator.META_ARRAY_FIELD)
+	_context_array_index = item.get_meta(GFFTreePopulator.META_ARRAY_INDEX)
+	
+	_show_array_context_menu(_context_array_field, _context_array_index, at_position)
+
+
+func _show_array_context_menu(array_field: String, index: int, position: Vector2) -> void:
+	if _array_context_menu == null:
+		return
+	_array_context_menu.clear()
+	
+	# Add Reply / Remove / Move Up / Move Down options
+	_array_context_menu.add_item("Add Item", 0)
+	_array_context_menu.add_item("Remove Item", 1)
+	_array_context_menu.add_separator()
+	
+	# Check if we can move up (not first item)
+	if index > 0:
+		_array_context_menu.add_item("Move Up", 2)
+	else:
+		_array_context_menu.add_item("Move Up", 2)
+		_array_context_menu.set_item_disabled(_array_context_menu.get_item_count() - 1, true)
+	
+	# Check if we can move down (not last item)
+	var array_field_obj = _dlg_document.get_field(array_field)
+	var can_move_down = false
+	if typeof(array_field_obj) == TYPE_ARRAY:
+		var arr := array_field_obj as Array
+		can_move_down = index < arr.size() - 1
+	
+	if can_move_down:
+		_array_context_menu.add_item("Move Down", 3)
+	else:
+		_array_context_menu.add_item("Move Down", 3)
+		_array_context_menu.set_item_disabled(_array_context_menu.get_item_count() - 1, true)
+	
+	_array_context_menu.popup_rect(Rect2(position, Vector2.ZERO))
+
+
+func _on_array_context_menu_selected(menu_id: int) -> void:
+	if _context_array_field.is_empty() or _context_array_index < 0:
+		return
+	
+	match menu_id:
+		0:  # Add Item
+			var new_struct = {
+				"Index": -1,
+				"Comment": "",
+				"Active": "",
+				"IsChild": 0,
+			}
+			_apply_array_insert(_context_array_field, _context_array_index + 1, new_struct)
+		1:  # Remove Item
+			_apply_array_remove(_context_array_field, _context_array_index)
+		2:  # Move Up
+			if _context_array_index > 0:
+				_apply_array_reorder(_context_array_field, _context_array_index, _context_array_index - 1)
+		3:  # Move Down
+			var array_field_obj = _dlg_document.get_field(_context_array_field)
+			if typeof(array_field_obj) == TYPE_ARRAY:
+				var arr := array_field_obj as Array
+				if _context_array_index < arr.size() - 1:
+					_apply_array_reorder(_context_array_field, _context_array_index, _context_array_index + 1)
+	
+	_context_array_field = ""
+	_context_array_index = -1
+
+
 func _refresh_dlg_detail() -> void:
 	if _dlg_details == null:
 		return
@@ -619,23 +709,31 @@ func _add_dlg_string_editor(struct_value: Dictionary, field_name: String, value:
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(label)
 
+	if TypedFieldHelpers.is_resref_field(field_name):
+		var browse_btn := Button.new()
+		browse_btn.text = "Browse…"
+		browse_btn.pressed.connect(func() -> void:
+			_open_resref_picker_for_field(struct_value, field_name, value)
+		)
+		header.add_child(browse_btn)
+
 	var multiline := field_name in ["Comment", "LinkComment"] or value.contains("\n") or value.length() > 72
 	if multiline:
 		var edit := TextEdit.new()
 		edit.custom_minimum_size = Vector2(0, 84)
 		edit.text = value
 		edit.focus_exited.connect(func() -> void:
-			_dlg_document.set_struct_field(struct_value, field_name, edit.text)
+			_apply_string_edit(struct_value, field_name, edit.text)
 		)
 		container.add_child(edit)
 	else:
 		var edit := LineEdit.new()
 		edit.text = value
 		edit.text_submitted.connect(func(new_text: String) -> void:
-			_dlg_document.set_struct_field(struct_value, field_name, new_text)
+			_apply_string_edit(struct_value, field_name, new_text)
 		)
 		edit.focus_exited.connect(func() -> void:
-			_dlg_document.set_struct_field(struct_value, field_name, edit.text)
+			_apply_string_edit(struct_value, field_name, edit.text)
 		)
 		container.add_child(edit)
 
@@ -648,21 +746,71 @@ func _add_dlg_locstring_editor(struct_value: Dictionary, field_name: String, val
 	label.text = field_name
 	container.add_child(label)
 
+	var language_row := HBoxContainer.new()
+	container.add_child(language_row)
+
+	var language_label := Label.new()
+	language_label.text = "Language ID"
+	language_row.add_child(language_label)
+
+	var language_option := OptionButton.new()
+	for language_id in TypedFieldHelpers.LOCSTRING_LANGUAGE_IDS:
+		language_option.add_item("Language %d" % language_id, language_id)
+	language_row.add_child(language_option)
+
+	var strref_row := HBoxContainer.new()
+	container.add_child(strref_row)
+
+	var strref_label := Label.new()
+	strref_label.text = "StrRef"
+	strref_row.add_child(strref_label)
+
+	var strref_spin := SpinBox.new()
+	strref_spin.min_value = -1
+	strref_spin.max_value = 2147483647
+	strref_spin.value = int(value.get("strref", 0xFFFFFFFF))
+	strref_row.add_child(strref_spin)
+
 	var edit := TextEdit.new()
 	edit.custom_minimum_size = Vector2(0, 110)
-	edit.text = _dlg_locstring_text(value)
 	edit.placeholder_text = _dlg_resolved_locstring_text(value)
-	edit.focus_exited.connect(func() -> void:
-		_dlg_document.set_struct_locstring_text(struct_value, field_name, edit.text)
-	)
 	container.add_child(edit)
 
-	var strref := int(value.get("strref", 0xFFFFFFFF))
-	if strref >= 0 and strref != 0xFFFFFFFF:
-		var info := Label.new()
-		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		info.text = "StrRef %d -> %s" % [strref, _dlg_resolved_locstring_text(value)]
-		container.add_child(info)
+	var info := Label.new()
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	container.add_child(info)
+
+	var refresh_locstring_ui := func() -> void:
+		var current_locstring = struct_value.get(field_name, value)
+		var language_id := language_option.get_selected_id()
+		var strings = current_locstring.get("strings", {})
+		if typeof(strings) != TYPE_DICTIONARY:
+			strings = {}
+		edit.text = String(strings.get(language_id, ""))
+		var strref := int(current_locstring.get("strref", 0xFFFFFFFF))
+		strref_spin.set_value_no_signal(float(strref))
+		if strref >= 0 and strref != 0xFFFFFFFF:
+			info.text = "StrRef %d -> %s" % [strref, _dlg_resolved_locstring_text(current_locstring)]
+		else:
+			info.text = "Language %d text edit" % language_id
+
+	refresh_locstring_ui.call()
+
+	language_option.item_selected.connect(func(_index: int) -> void:
+		refresh_locstring_ui.call()
+	)
+	edit.focus_exited.connect(func() -> void:
+		_apply_locstring_edit(
+			struct_value,
+			field_name,
+			edit.text,
+			language_option.get_selected_id()
+		)
+	)
+	strref_spin.value_changed.connect(func(new_value: float) -> void:
+		_apply_locstring_strref_edit(struct_value, field_name, int(new_value))
+		refresh_locstring_ui.call()
+	)
 
 
 func _add_dlg_bool_editor(struct_value: Dictionary, field_name: String, value: bool) -> void:
@@ -670,7 +818,7 @@ func _add_dlg_bool_editor(struct_value: Dictionary, field_name: String, value: b
 	check.text = field_name
 	check.button_pressed = value
 	check.toggled.connect(func(pressed: bool) -> void:
-		_dlg_document.set_struct_field(struct_value, field_name, pressed)
+		_apply_bool_edit(struct_value, field_name, pressed)
 	)
 	_dlg_details.add_child(check)
 
@@ -684,6 +832,25 @@ func _add_dlg_number_editor(struct_value: Dictionary, field_name: String, value:
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
 
+	if integer and TypedFieldHelpers.has_enum_hints(field_name, _get_enum_registry()):
+		var registry := _get_enum_registry()
+		var option := OptionButton.new()
+		var options := TypedFieldHelpers.get_enum_options_as_array(field_name, registry)
+		for option_text in options:
+			option.add_item(option_text)
+		var selected_index := TypedFieldHelpers.find_enum_option_index(field_name, int(value), registry)
+		if selected_index >= 0:
+			option.select(selected_index)
+		elif not TypedFieldHelpers.validate_enum_value(field_name, int(value), registry):
+			push_warning("Field '%s' has out-of-range enum value %d" % [field_name, int(value)])
+		option.item_selected.connect(func(index: int) -> void:
+			var parsed := TypedFieldHelpers.parse_enum_option_index(option.get_item_text(index))
+			if parsed >= 0:
+				_apply_int_edit(struct_value, field_name, parsed)
+		)
+		row.add_child(option)
+		return
+
 	var spin := SpinBox.new()
 	spin.min_value = -2147483648.0
 	spin.max_value = 2147483647.0
@@ -691,8 +858,7 @@ func _add_dlg_number_editor(struct_value: Dictionary, field_name: String, value:
 	spin.value = value
 	spin.rounded = integer
 	spin.value_changed.connect(func(new_value: float) -> void:
-		var normalized = int(new_value) if integer else new_value
-		_dlg_document.set_struct_field(struct_value, field_name, normalized)
+		_apply_int_edit(struct_value, field_name, new_value)
 	)
 	row.add_child(spin)
 
@@ -1049,3 +1215,270 @@ func _remove_previous_controller_document(previous_key: String) -> void:
 	if controller == null or previous_key.is_empty() or previous_key == _document_key or not controller.has_method("remove_document"):
 		return
 	controller.call("remove_document", previous_key)
+
+
+func _get_undo_redo() -> EditorUndoRedoManager:
+	if not Engine.is_editor_hint():
+		return null
+	return EditorInterface.get_editor_undo_redo()
+
+
+func _apply_string_edit(struct_value: Dictionary, field_name: String, new_text: String) -> void:
+	if _dlg_document == null or struct_value.is_empty():
+		return
+	var current: Variant = struct_value.get(field_name, "")
+	var validated_text := new_text
+	
+	if TypedFieldHelpers.is_resref_field(field_name):
+		validated_text = _dlg_document.validate_resref(new_text)
+	
+	# Check for required field validation (blocking)
+	if TypedFieldHelpers.is_required_field(field_name):
+		# For Index field, we need to know the target list size
+		# This is a simplified check; full validation happens at save time
+		var entry_list_size := _dlg_document.get_struct_list("EntryList").size()
+		if not TypedFieldHelpers.validate_required_field(field_name, validated_text, entry_list_size):
+			push_error("Required field '%s' has invalid value '%s'. Must be 0-%d." % [field_name, validated_text, entry_list_size - 1])
+			return
+	
+	# Check for optional field warnings
+	var warning := TypedFieldHelpers.get_validation_warning(field_name, validated_text)
+	if not warning.is_empty():
+		push_warning("Field '%s': %s" % [field_name, warning])
+	
+	if String(current) == validated_text:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit DLG string field", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_string_edit", struct_value, field_name, validated_text)
+		ur.add_undo_method(self, "_exec_string_edit", struct_value, field_name, current)
+		ur.commit_action()
+	else:
+		_exec_string_edit(struct_value, field_name, validated_text)
+
+
+func _exec_string_edit(struct_value: Dictionary, field_name: String, value: String) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.set_struct_field(struct_value, field_name, value)
+
+
+func _apply_locstring_edit(
+	struct_value: Dictionary,
+	field_name: String,
+	new_text: String,
+	language_id: int = 0
+) -> void:
+	if _dlg_document == null or struct_value.is_empty():
+		return
+	var current_locstring = struct_value.get(field_name, {})
+	var strings = current_locstring.get("strings", {})
+	if typeof(strings) != TYPE_DICTIONARY:
+		strings = {}
+	var current_text := String(strings.get(language_id, ""))
+	if current_text == new_text:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit DLG locstring field", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_locstring_edit", struct_value, field_name, new_text, language_id)
+		ur.add_undo_method(self, "_exec_locstring_edit", struct_value, field_name, current_text, language_id)
+		ur.commit_action()
+	else:
+		_exec_locstring_edit(struct_value, field_name, new_text, language_id)
+
+
+func _exec_locstring_edit(
+	struct_value: Dictionary,
+	field_name: String,
+	value: String,
+	language_id: int = 0
+) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.set_struct_locstring_text(struct_value, field_name, value, language_id)
+
+
+func _apply_locstring_strref_edit(struct_value: Dictionary, field_name: String, new_strref: int) -> void:
+	if _dlg_document == null or struct_value.is_empty():
+		return
+	var current_locstring = struct_value.get(field_name, {})
+	var current_strref := int(current_locstring.get("strref", 0xFFFFFFFF))
+	if current_strref == new_strref:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit DLG locstring strref", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_locstring_strref_edit", struct_value, field_name, new_strref)
+		ur.add_undo_method(self, "_exec_locstring_strref_edit", struct_value, field_name, current_strref)
+		ur.commit_action()
+	else:
+		_exec_locstring_strref_edit(struct_value, field_name, new_strref)
+
+
+func _exec_locstring_strref_edit(struct_value: Dictionary, field_name: String, strref: int) -> void:
+	if _dlg_document == null:
+		return
+	var locstring = struct_value.get(field_name, {})
+	if typeof(locstring) != TYPE_DICTIONARY:
+		return
+	locstring["strref"] = strref
+	_dlg_document.set_struct_field(struct_value, field_name, locstring)
+
+
+func _open_resref_picker_for_field(struct_value: Dictionary, field_name: String, current_value: String) -> void:
+	var dialog := KotorResRefPickerDialog.new()
+	dialog.configure(
+		_editor_state,
+		TypedFieldHelpers.get_resref_type_hint(field_name),
+		current_value
+	)
+	add_child(dialog)
+	dialog.resref_selected.connect(func(selected: String) -> void:
+		if not selected.is_empty():
+			_apply_string_edit(struct_value, field_name, selected)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func() -> void:
+		dialog.queue_free()
+	)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _apply_bool_edit(struct_value: Dictionary, field_name: String, pressed: bool) -> void:
+	if _dlg_document == null or struct_value.is_empty():
+		return
+	var current: Variant = struct_value.get(field_name, false)
+	if typeof(current) == TYPE_BOOL and bool(current) == pressed:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit DLG bool field", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_bool_edit", struct_value, field_name, pressed)
+		ur.add_undo_method(self, "_exec_bool_edit", struct_value, field_name, current)
+		ur.commit_action()
+	else:
+		_exec_bool_edit(struct_value, field_name, pressed)
+
+
+func _exec_bool_edit(struct_value: Dictionary, field_name: String, value: Variant) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.set_struct_field(struct_value, field_name, value)
+
+
+func _get_enum_registry() -> RefCounted:
+	var editor_state := get_editor_state()
+	if editor_state != null and editor_state.get("enum_registry") != null:
+		return editor_state.enum_registry
+	return null
+
+
+func _apply_int_edit(struct_value: Dictionary, field_name: String, new_value: float) -> void:
+	if _dlg_document == null or struct_value.is_empty():
+		return
+	var normalized := int(new_value)
+	
+	if TypedFieldHelpers.has_enum_hints(field_name, _get_enum_registry()):
+		if not TypedFieldHelpers.validate_enum_value(field_name, normalized, _get_enum_registry()):
+			push_warning("Field '%s' has out-of-range enum value %d" % [field_name, normalized])
+	
+	# Check for required field validation (blocking)
+	if TypedFieldHelpers.is_required_field(field_name):
+		var entry_list_size := _dlg_document.get_struct_list("EntryList").size()
+		if not TypedFieldHelpers.validate_required_field(field_name, normalized, entry_list_size):
+			push_error("Required field '%s' must be 0-%d, got %d" % [field_name, entry_list_size - 1, normalized])
+			return
+	
+	var current: Variant = struct_value.get(field_name, 0)
+	if typeof(current) == TYPE_INT and int(current) == normalized:
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Edit DLG int field", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_int_edit", struct_value, field_name, normalized)
+		ur.add_undo_method(self, "_exec_int_edit", struct_value, field_name, current)
+		ur.commit_action()
+	else:
+		_exec_int_edit(struct_value, field_name, normalized)
+
+
+func _exec_int_edit(struct_value: Dictionary, field_name: String, value: Variant) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.set_struct_field(struct_value, field_name, value)
+
+
+func _apply_array_insert(array_field_name: String, index: int, new_struct: Dictionary) -> void:
+	if _dlg_document == null or array_field_name.is_empty():
+		return
+	if new_struct.is_empty():
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Insert DLG array item", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_array_insert", array_field_name, index, new_struct)
+		ur.add_undo_method(self, "_exec_array_remove", array_field_name, index)
+		ur.commit_action()
+	else:
+		_exec_array_insert(array_field_name, index, new_struct)
+
+
+func _exec_array_insert(array_field_name: String, index: int, new_struct: Dictionary) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.insert_struct_at_array(array_field_name, index, new_struct)
+
+
+func _apply_array_remove(array_field_name: String, index: int) -> void:
+	if _dlg_document == null or array_field_name.is_empty():
+		return
+	var array_field = _dlg_document.get_field(array_field_name)
+	if typeof(array_field) != TYPE_ARRAY:
+		return
+	var arr := array_field as Array
+	if index < 0 or index >= arr.size():
+		return
+	var removed_struct = arr[index]
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Remove DLG array item", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_array_remove", array_field_name, index)
+		ur.add_undo_method(self, "_exec_array_insert", array_field_name, index, removed_struct)
+		ur.commit_action()
+	else:
+		_exec_array_remove(array_field_name, index)
+
+
+func _exec_array_remove(array_field_name: String, index: int) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.remove_struct_from_array(array_field_name, index)
+
+
+func _apply_array_reorder(array_field_name: String, from_index: int, to_index: int) -> void:
+	if _dlg_document == null or array_field_name.is_empty():
+		return
+	if from_index == to_index:
+		return
+	var array_field = _dlg_document.get_field(array_field_name)
+	if typeof(array_field) != TYPE_ARRAY:
+		return
+	var arr := array_field as Array
+	if from_index < 0 or from_index >= arr.size() or to_index < 0 or to_index >= arr.size():
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Reorder DLG array item", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_array_reorder", array_field_name, from_index, to_index)
+		ur.add_undo_method(self, "_exec_array_reorder", array_field_name, to_index, from_index)
+		ur.commit_action()
+	else:
+		_exec_array_reorder(array_field_name, from_index, to_index)
+
+
+func _exec_array_reorder(array_field_name: String, from_index: int, to_index: int) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.reorder_array_item(array_field_name, from_index, to_index)

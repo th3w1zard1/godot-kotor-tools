@@ -9,6 +9,8 @@
 - **Next implementation-wave requirements:** `docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md`
 - **Official external API source references:** `docs/90-meta/godot-doc-source-map.md`
 - **Contributor implementation checklist:** `docs/50-execution/godot-kotor-implementation-playbook.md`
+- **Loader/saver/importer parity matrix:** `docs/50-execution/godot-loader-saver-importer-parity-matrix.md`
+- **Per-format serialization checklists:** `docs/50-execution/format-serialization-checklists/`
 
 ## Problem Frame
 
@@ -31,6 +33,7 @@ This knowledgebase focuses on Godot 4.x editor/runtime APIs needed for custom fo
 
 ## Next Actions
 
-1. Use `docs/50-execution/godot-kotor-implementation-playbook.md` as the checklist before adding new format support.
-2. Add a parity matrix for loader/saver/importer coverage per format as each pipeline lands.
-3. Re-run doc-source refresh when Godot minor versions change.
+1. Use `docs/50-execution/godot-kotor-implementation-playbook.md` and per-format checklists before adding new format support.
+2. Keep `docs/50-execution/godot-loader-saver-importer-parity-matrix.md` updated as each pipeline lands.
+3. Re-run doc-source refresh when Godot minor versions change (last pass: 2026-06-04, Godot 4.6).
+4. Add cache-mode-sensitive reload tests per playbook validation gates.

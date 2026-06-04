@@ -7,14 +7,36 @@ const UTCResource := preload("./typed/utc_resource.gd")
 const UTPResource := preload("./typed/utp_resource.gd")
 const DLGResource := preload("./typed/dlg_resource.gd")
 const AREResource := preload("./typed/are_resource.gd")
+const FACResource := preload("./typed/fac_resource.gd")
 const GITResource := preload("./typed/git_resource.gd")
 const IFOResource := preload("./typed/ifo_resource.gd")
+const BICResource := preload("./typed/bic_resource.gd")
+const JRLResource := preload("./typed/jrl_resource.gd")
+const PTHResource := preload("./typed/pth_resource.gd")
+const UTIResource := preload("./typed/uti_resource.gd")
+const UTDResource := preload("./typed/utd_resource.gd")
+const UTEResource := preload("./typed/ute_resource.gd")
+const UTMResource := preload("./typed/utm_resource.gd")
+const UTSResource := preload("./typed/uts_resource.gd")
+const UTTResource := preload("./typed/utt_resource.gd")
+const UTWResource := preload("./typed/utw_resource.gd")
 
 const RESOURCE_TYPES := {
 	"ARE": AREResource,
+	"BIC": BICResource,
 	"DLG": DLGResource,
+	"FAC": FACResource,
 	"GIT": GITResource,
 	"IFO": IFOResource,
+	"JRL": JRLResource,
+	"PTH": PTHResource,
+	"UTI": UTIResource,
+	"UTD": UTDResource,
+	"UTE": UTEResource,
+	"UTM": UTMResource,
+	"UTS": UTSResource,
+	"UTT": UTTResource,
+	"UTW": UTWResource,
 	"UTC": UTCResource,
 	"UTP": UTPResource,
 }

@@ -39,8 +39,14 @@
 - Registration lifecycle: `plugin.gd`, `editor/core/kotor_*_registry.gd`
 - Mutation/write orchestration: `editor/transactions/kotor_mutation_service.gd`
 
+## Related docs
+
+- Parity matrix: `docs/50-execution/godot-loader-saver-importer-parity-matrix.md`
+- Per-format checklists: `docs/50-execution/format-serialization-checklists/`
+- Official API source map: `docs/90-meta/godot-doc-source-map.md`
+
 ## Next Actions
 
-1. Create per-format checklist docs for ERF/TLK/2DA/GFF parity.
+1. ~~Create per-format checklist docs for ERF/TLK/2DA/GFF parity.~~ Shipped 2026-06-04 under `format-serialization-checklists/`.
 2. Add dependency-rename/dependency-list coverage where format supports references.
-3. Add cache-mode-sensitive tests for reload behavior.
+3. Add cache-mode-sensitive tests for reload behavior (`ResourceLoader.CACHE_MODE_REPLACE` after write-back).

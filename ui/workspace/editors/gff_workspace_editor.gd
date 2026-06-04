@@ -11,10 +11,13 @@ const KotorMutationService := preload("../../../editor/transactions/kotor_mutati
 const KotorValidationPanel := preload("../panels/validation_panel.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const GFFTreePopulator := preload("../gff_tree_populator.gd")
+const TypedFieldHelpers := preload("../typed_field_helpers.gd")
+const KotorResRefPickerDialog := preload("../dialogs/kotor_resref_picker_dialog.gd")
+const KotorItemPickerDialog := preload("../dialogs/kotor_item_picker_dialog.gd")
 
 const WORKSPACE_GFF_EXTENSIONS := [
 	"utc", "utp", "uti", "utd", "ute", "utm", "uts", "utt", "utw",
-	"are", "git", "ifo",
+	"are", "ifo", "jrl", "pth", "fac",
 ]
 
 const ENTITY_EXTENSIONS := WORKSPACE_GFF_EXTENSIONS
@@ -28,6 +31,8 @@ var _display_name_edit: LineEdit
 var _tree: Tree
 var _validation_panel: KotorValidationPanel
 var _preflight_dialog: KotorPreflightDialog
+var _array_context_menu: PopupMenu
+var _field_context_menu: PopupMenu
 
 var _mutation_service: RefCounted
 var _resource: GFFResource
@@ -37,6 +42,12 @@ var _file_name := "blueprint.utc"
 var _dirty := false
 var _status_text := ""
 var _document_key := ""
+
+# Context menu state (for struct array operations)
+var _context_array_field := ""
+var _context_array_index := -1
+var _context_field_path: Array = []
+var _context_field_name := ""
 
 var _pending_resource: GFFResource
 var _pending_source_path := ""
@@ -305,7 +316,16 @@ func _build_ui() -> void:
 	_tree.set_column_title(1, "Value")
 	_tree.column_titles_visible = true
 	_tree.item_edited.connect(_on_tree_item_edited)
+	_tree.item_mouse_selected.connect(_on_gff_item_mouse_selected)
 	add_child(_tree)
+
+	_array_context_menu = PopupMenu.new()
+	add_child(_array_context_menu)
+	_array_context_menu.id_pressed.connect(_on_array_context_menu_selected)
+
+	_field_context_menu = PopupMenu.new()
+	add_child(_field_context_menu)
+	_field_context_menu.id_pressed.connect(_on_field_context_menu_selected)
 
 	_validation_panel = KotorValidationPanel.new()
 	add_child(_validation_panel)
@@ -330,7 +350,7 @@ func _refresh_tree() -> void:
 	var type_label := _resource.file_type if not _resource.file_type.is_empty() else "?"
 	root_item.set_text(0, type_label)
 	root_item.set_text(1, _resource.get_type_label())
-	GFFTreePopulator.populate(root_item, _resource.gff_data)
+	GFFTreePopulator.populate(root_item, _resource.gff_data, [], _get_enum_registry())
 
 
 func _refresh_tag_edit() -> void:
@@ -393,7 +413,7 @@ func _refresh_status() -> void:
 func _open_gff() -> void:
 	var filter := (
 		"*.utc,*.utp,*.uti,*.utd,*.ute,*.utm,*.uts,*.utt,*.utw,"
-		+ "*.are,*.git,*.ifo ; KotOR GFF"
+		+ "*.are,*.ifo ; KotOR GFF"
 	)
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
@@ -559,6 +579,10 @@ func _apply_tree_field_edit(path: Array, text: String) -> void:
 	if current == null and text.strip_edges().is_empty():
 		return
 	var coerced: Variant = _document.coerce_scalar_edit_text(text, current)
+	
+	if typeof(coerced) == TYPE_STRING and _is_resref_field(path):
+		coerced = _document.validate_resref(coerced)
+	
 	if coerced == current:
 		_refresh_tree()
 		return
@@ -578,6 +602,13 @@ func _exec_tree_field_edit(path: Array, value: Variant) -> void:
 	_document.set_field_at_path(path, value)
 	_refresh_tag_edit()
 	# _on_document_changed handles dirty, _refresh_tree, _refresh_display_name_edit, _refresh_summary, _refresh_status
+
+
+func _is_resref_field(path: Array) -> bool:
+	if path.is_empty():
+		return false
+	var field_name = str(path[path.size() - 1])
+	return TypedFieldHelpers.is_resref_field(field_name)
 
 
 func _connect_document_signal() -> void:
@@ -768,3 +799,326 @@ func _get_undo_redo() -> EditorUndoRedoManager:
 		return null
 	return EditorInterface.get_editor_undo_redo()
 
+
+# === Struct Array Context Menu Handlers (U3) ===
+
+func _on_gff_item_mouse_selected(item: TreeItem, column: int, at_position: Vector2) -> void:
+	# Right-click (button 2) shows context menu for struct array items or typed fields
+	var button_index = _tree.get_button_index_at_position(at_position)
+	if button_index != 2:
+		return
+	if item == null:
+		return
+	if item.has_meta(GFFTreePopulator.META_IS_STRUCT_ARRAY_ITEM):
+		_context_array_field = item.get_meta(GFFTreePopulator.META_ARRAY_FIELD)
+		_context_array_index = item.get_meta(GFFTreePopulator.META_ARRAY_INDEX)
+		_show_array_context_menu(_context_array_field, _context_array_index, at_position)
+		return
+
+	var path: Variant = item.get_metadata(1)
+	if typeof(path) != TYPE_ARRAY:
+		return
+	_context_field_path = path
+	_context_field_name = str(path.back()) if not path.is_empty() else ""
+	var has_item := item.has_meta("is_item_resref") and bool(item.get_meta("is_item_resref"))
+	var has_resref := item.has_meta("is_resref") and bool(item.get_meta("is_resref"))
+	var has_enum := item.has_meta("enum_field_name")
+	if not has_item and not has_resref and not has_enum:
+		return
+	_show_field_context_menu(item, at_position, has_item, has_resref, has_enum)
+
+
+func _show_field_context_menu(
+	item: TreeItem,
+	position: Vector2,
+	has_item: bool,
+	has_resref: bool,
+	has_enum: bool
+) -> void:
+	if _field_context_menu == null:
+		return
+	_field_context_menu.clear()
+	if has_item:
+		_field_context_menu.add_item("Browse Item…", 3)
+	elif has_resref:
+		_field_context_menu.add_item("Browse ResRef…", 1)
+	if has_enum:
+		_field_context_menu.add_item("Pick Enum Value…", 2)
+	_field_context_menu.popup_rect(Rect2(position, Vector2.ZERO))
+
+
+func _on_field_context_menu_selected(menu_id: int) -> void:
+	if _context_field_path.is_empty():
+		return
+	var item := _tree.get_selected()
+	if item == null:
+		return
+	var field_name := _context_field_name
+	match menu_id:
+		1:
+			var current_value := item.get_text(1)
+			_open_gff_resref_picker(_context_field_path, field_name, current_value)
+		2:
+			var enum_field := str(item.get_meta("enum_field_name"))
+			var current_value := int(item.get_text(1)) if item.get_text(1).is_valid_int() else 0
+			_open_gff_enum_picker(_context_field_path, enum_field, current_value)
+		3:
+			var current_item := item.get_text(1)
+			_open_gff_item_picker(_context_field_path, current_item)
+	_context_field_path = []
+	_context_field_name = ""
+
+
+func _open_gff_resref_picker(path: Array, field_name: String, current_value: String) -> void:
+	var dialog := KotorResRefPickerDialog.new()
+	dialog.configure(
+		_editor_state,
+		TypedFieldHelpers.get_resref_type_hint(field_name),
+		current_value
+	)
+	add_child(dialog)
+	dialog.resref_selected.connect(func(selected: String) -> void:
+		if not selected.is_empty():
+			_apply_tree_field_edit(path, selected)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func() -> void:
+		dialog.queue_free()
+	)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _open_gff_enum_picker(path: Array, field_name: String, current_value: int) -> void:
+	var registry := _get_enum_registry()
+	var dialog := AcceptDialog.new()
+	dialog.title = "Pick %s" % field_name
+	dialog.ok_button_text = "Apply"
+	var option := OptionButton.new()
+	var options := TypedFieldHelpers.get_enum_options_as_array(field_name, registry)
+	for option_text in options:
+		option.add_item(option_text)
+	var selected_index := TypedFieldHelpers.find_enum_option_index(field_name, current_value, registry)
+	if selected_index >= 0:
+		option.select(selected_index)
+	elif not TypedFieldHelpers.validate_enum_value(field_name, current_value, registry):
+		push_warning("Field '%s' has out-of-range enum value %d" % [field_name, current_value])
+	dialog.add_child(option)
+	add_child(dialog)
+	dialog.confirmed.connect(func() -> void:
+		var parsed := TypedFieldHelpers.parse_enum_option_index(option.get_item_text(option.selected))
+		if parsed >= 0:
+			_apply_tree_field_edit(path, str(parsed))
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func() -> void:
+		dialog.queue_free()
+	)
+	dialog.popup_centered_ratio(0.35)
+
+
+func _open_gff_item_picker(path: Array, current_value: String) -> void:
+	var dialog := KotorItemPickerDialog.new()
+	dialog.configure(_editor_state, "uti", current_value)
+	add_child(dialog)
+	dialog.item_selected.connect(func(selected: String) -> void:
+		if not selected.is_empty():
+			_apply_tree_field_edit(path, selected)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func() -> void:
+		dialog.queue_free()
+	)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _get_enum_registry() -> RefCounted:
+	if _editor_state != null and _editor_state.get("enum_registry") != null:
+		return _editor_state.enum_registry
+	return null
+
+
+func _show_array_context_menu(array_field: String, index: int, position: Vector2) -> void:
+	if _array_context_menu == null:
+		return
+	_array_context_menu.clear()
+	
+	# Add Item / Remove / Move Up / Move Down options
+	_array_context_menu.add_item("Add Item", 0)
+	_array_context_menu.add_item("Remove Item", 1)
+	_array_context_menu.add_separator()
+	
+	# Check if we can move up (not first item)
+	if index > 0:
+		_array_context_menu.add_item("Move Up", 2)
+	else:
+		_array_context_menu.add_item("Move Up", 2)
+		_array_context_menu.set_item_disabled(_array_context_menu.get_item_count() - 1, true)
+	
+	# Check if we can move down (not last item)
+	var array_field_obj = _document.get_field(array_field) if _document != null else null
+	var can_move_down = false
+	if typeof(array_field_obj) == TYPE_ARRAY:
+		var arr := array_field_obj as Array
+		can_move_down = index < arr.size() - 1
+	
+	if can_move_down:
+		_array_context_menu.add_item("Move Down", 3)
+	else:
+		_array_context_menu.add_item("Move Down", 3)
+		_array_context_menu.set_item_disabled(_array_context_menu.get_item_count() - 1, true)
+	
+	_array_context_menu.popup_rect(Rect2(position, Vector2.ZERO))
+
+
+func _on_array_context_menu_selected(menu_id: int) -> void:
+	if _context_array_field.is_empty() or _context_array_index < 0:
+		return
+	
+	match menu_id:
+		0:  # Add Item
+			var new_struct = _create_default_struct(_context_array_field)
+			_apply_array_insert(_context_array_field, _context_array_index + 1, new_struct)
+		1:  # Remove Item
+			_apply_array_remove(_context_array_field, _context_array_index)
+		2:  # Move Up
+			if _context_array_index > 0:
+				_apply_array_reorder(_context_array_field, _context_array_index, _context_array_index - 1)
+		3:  # Move Down
+			var array_field_obj = _document.get_field(_context_array_field) if _document != null else null
+			if typeof(array_field_obj) == TYPE_ARRAY:
+				var arr := array_field_obj as Array
+				if _context_array_index < arr.size() - 1:
+					_apply_array_reorder(_context_array_field, _context_array_index, _context_array_index + 1)
+	
+	_context_array_field = ""
+	_context_array_index = -1
+
+
+func _create_default_struct(array_field: String) -> Dictionary:
+	# Return default struct based on the array field type (from U1 schema)
+	match array_field:
+		"CreatureActions":
+			return {
+				"ActionID": -1,
+				"Comment": "",
+				"Flags": 0,
+			}
+		"itemList", "Inventory", "EquippedInventory":
+			return {
+				"InventoryRes": "",
+				"Dropable": 1,
+				"Infinite": 0,
+				"Recharge": 0,
+			}
+		"SkillList":
+			return {
+				"Rank": 0,
+			}
+		"FeatList":
+			return {
+				"Feat": 65535,
+			}
+		"Scripts":
+			return {
+				"Script": "",
+				"EventID": 0,
+			}
+		"ConditionList", "OnCondition", "OnSuccess", "OnFailure":
+			return {
+				"Operator": 0,
+				"Script": "",
+				"Parameter": 0,
+				"Comment": "",
+			}
+		"TrapList":
+			return {
+				"TrapType": 0,
+			}
+		# DLG default (for backwards compatibility)
+		"EntryList", "ReplyList", "StartingList":
+			return {
+				"Index": -1,
+				"Comment": "",
+				"Active": "",
+				"IsChild": 0,
+			}
+		_:
+			# Generic fallback: return empty dict
+			return {}
+
+
+func _apply_array_insert(array_field_name: String, index: int, new_struct: Dictionary) -> void:
+	if _document == null or array_field_name.is_empty():
+		return
+	if new_struct.is_empty():
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Insert array item", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_array_insert", array_field_name, index, new_struct)
+		ur.add_undo_method(self, "_exec_array_remove", array_field_name, index)
+		ur.commit_action()
+	else:
+		_exec_array_insert(array_field_name, index, new_struct)
+
+
+func _exec_array_insert(array_field_name: String, index: int, new_struct: Dictionary) -> void:
+	if _document == null:
+		return
+	_document.insert_struct_at_array(array_field_name, index, new_struct)
+	_refresh_tree()
+
+
+func _apply_array_remove(array_field_name: String, index: int) -> void:
+	if _document == null or array_field_name.is_empty():
+		return
+	var array_field = _document.get_field(array_field_name)
+	if typeof(array_field) != TYPE_ARRAY:
+		return
+	var arr := array_field as Array
+	if index < 0 or index >= arr.size():
+		return
+	var removed_struct = arr[index].duplicate()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Remove array item", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_array_remove", array_field_name, index)
+		ur.add_undo_method(self, "_exec_array_insert", array_field_name, index, removed_struct)
+		ur.commit_action()
+	else:
+		_exec_array_remove(array_field_name, index)
+
+
+func _exec_array_remove(array_field_name: String, index: int) -> void:
+	if _document == null:
+		return
+	_document.remove_struct_from_array(array_field_name, index)
+	_refresh_tree()
+
+
+func _apply_array_reorder(array_field_name: String, from_index: int, to_index: int) -> void:
+	if _document == null or array_field_name.is_empty():
+		return
+	if from_index == to_index:
+		return
+	var array_field = _document.get_field(array_field_name)
+	if typeof(array_field) != TYPE_ARRAY:
+		return
+	var arr := array_field as Array
+	if from_index < 0 or from_index >= arr.size() or to_index < 0 or to_index >= arr.size():
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Reorder array item", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_array_reorder", array_field_name, from_index, to_index)
+		ur.add_undo_method(self, "_exec_array_reorder", array_field_name, to_index, from_index)
+		ur.commit_action()
+	else:
+		_exec_array_reorder(array_field_name, from_index, to_index)
+
+
+func _exec_array_reorder(array_field_name: String, from_index: int, to_index: int) -> void:
+	if _document == null:
+		return
+	_document.reorder_array_item(array_field_name, from_index, to_index)
+	_refresh_tree()
