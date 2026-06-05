@@ -62,6 +62,13 @@ func has_embedded_component(component_id: String) -> bool:
 	return _embedded_by_id.has(component_id.strip_edges())
 
 
+func get_embedded_component(component_id: String) -> Dictionary:
+	var normalized := component_id.strip_edges()
+	if normalized.is_empty() or not _embedded_by_id.has(normalized):
+		return {}
+	return (_embedded_by_id[normalized] as Dictionary).duplicate(true)
+
+
 func get_summary_lines() -> Array[String]:
 	var lines: Array[String] = []
 	lines.append("Module ID: %s" % get_module_id())

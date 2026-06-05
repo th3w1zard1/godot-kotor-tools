@@ -5,6 +5,7 @@ const ERFParser := preload("../../formats/erf_parser.gd")
 const ERFWriter := preload("../../formats/erf_writer.gd")
 const KotorIndoorBuildManifest := preload("./kotor_indoor_build_manifest.gd")
 const KotorIndoorDocument := preload("../documents/kotor_indoor_document.gd")
+const KotorIndoorEmbeddedAssetGenerator := preload("./kotor_indoor_embedded_asset_generator.gd")
 const KotorIndoorMapIO := preload("./kotor_indoor_map_io.gd")
 
 const CORE_BUILDERS := {
@@ -125,10 +126,28 @@ static func _append_room_asset_entries(
 			continue
 		if kit_id == KotorIndoorMapIO.EMBEDDED_KIT_ID:
 			var embedded_key := "embedded:%s" % component_id
-			if not seen.has(embedded_key):
-				seen[embedded_key] = true
+			if seen.has(embedded_key):
+				continue
+			seen[embedded_key] = true
+			var embedded := document.get_embedded_component(component_id)
+			if embedded.is_empty():
 				warnings.append(
-					"Room %d uses embedded component '%s'; native MOD omits on-disk MDL/WOK."
+					"Room %d references missing embedded component '%s'." % [index, component_id]
+				)
+				continue
+			for entry in KotorIndoorEmbeddedAssetGenerator.list_entries(
+				component_id,
+				embedded,
+				warnings
+			):
+				var asset_key := "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+				if seen.has(asset_key):
+					continue
+				seen[asset_key] = true
+				entries.append(entry)
+			if not _embedded_has_any_asset(embedded):
+				warnings.append(
+					"Room %d embedded component '%s' has no decodable MDL/WOK assets."
 					% [index, component_id]
 				)
 			continue
@@ -163,6 +182,13 @@ static func list_entry_names(parsed: Dictionary) -> Array[String]:
 			names.append("%s.%s" % [erf_entry.resref, erf_entry.extension])
 	names.sort()
 	return names
+
+
+static func _embedded_has_any_asset(component: Dictionary) -> bool:
+	var flags: Dictionary = KotorIndoorEmbeddedAssetGenerator.asset_flags(component)
+	return bool(flags.get("has_wok", false)) or bool(flags.get("has_mdl", false)) or bool(
+		flags.get("has_mdx", false)
+	)
 
 
 static func _ensure_mod_extension(path: String) -> String:
