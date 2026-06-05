@@ -9,6 +9,7 @@ const KotorGITDocument := preload("../../../resources/documents/kotor_git_docume
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorModuleContext := preload("../../../editor/module/kotor_module_context.gd")
+const BWMWriter := preload("../../../formats/bwm_writer.gd")
 const KotorTemplateModelResolver := preload("../../../editor/module/kotor_template_model_resolver.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const ModuleDesignerMapView := preload("../panels/module_designer_map_view.gd")
@@ -190,6 +191,11 @@ func _build_ui() -> void:
 	save_btn.pressed.connect(_save_git)
 	_toolbar.add_child(save_btn)
 
+	var export_walkmesh_btn := Button.new()
+	export_walkmesh_btn.text = "Export Walkmesh Preview…"
+	export_walkmesh_btn.pressed.connect(_export_walkmesh_preview_dialog)
+	_toolbar.add_child(export_walkmesh_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -274,7 +280,15 @@ func _refresh_bundle_label() -> void:
 func _refresh_summary() -> void:
 	if _summary_label == null or _document == null:
 		return
-	_summary_label.text = _document.build_summary_text()
+	var lines: Array[String] = [_document.build_summary_text()]
+	if not _parsed_layout.is_empty():
+		lines.append(KotorModuleContext.format_layout_summary(_parsed_layout))
+	if not _parsed_walkmesh.is_empty():
+		lines.append(
+			"Walkmesh: %d face(s), %d vertex/vertices"
+			% [int(_parsed_walkmesh.get("face_count", 0)), int(_parsed_walkmesh.get("vertex_count", 0))]
+		)
+	_summary_label.text = "\n".join(lines)
 
 
 func _refresh_instance_tree() -> void:
@@ -535,6 +549,53 @@ func _save_git() -> void:
 		_refresh_status()
 		return
 	save_document_to_path(_source_path)
+
+
+func _export_walkmesh_preview_dialog() -> void:
+	if _parsed_walkmesh.is_empty():
+		_status_text = "No area walkmesh loaded for this module."
+		_refresh_status()
+		return
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export Walkmesh Preview"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
+	dialog.current_file = "%s.wok" % module_resref
+	dialog.add_filter("*.wok ; Walkmesh")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_write_walkmesh_preview(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _write_walkmesh_preview(path: String) -> void:
+	var target_path := path
+	if target_path.get_extension().to_lower() != "wok":
+		target_path = "%s.wok" % target_path.get_basename()
+	var bytes := BWMWriter.write_bytes(_parsed_walkmesh)
+	if bytes.is_empty():
+		_status_text = "Failed to serialize walkmesh preview."
+		_refresh_status()
+		return
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write walkmesh preview: %s" % target_path
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "Walkmesh preview written to %s" % target_path.get_file()
+	_refresh_status()
 
 
 func _install_git_to_override() -> void:

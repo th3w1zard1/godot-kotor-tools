@@ -23,7 +23,7 @@ var _layout_root: Node3D
 var _room_mesh_root: Node3D
 var _walkmesh_root: Node3D
 var _records: Array[Dictionary] = []
-var _layout_rooms: Array = []
+var _parsed_layout: Dictionary = {}
 var _room_meshes: Array = []
 var _instance_mesh_by_key: Dictionary = {}
 var _walkmesh: Dictionary = {}
@@ -106,7 +106,7 @@ func set_instances(records: Array, layout: Dictionary = {}) -> void:
 	for raw_record in records:
 		if typeof(raw_record) == TYPE_DICTIONARY:
 			_records.append(raw_record)
-	_layout_rooms = layout.get("rooms", []) as Array if typeof(layout) == TYPE_DICTIONARY else []
+	_parsed_layout = layout if typeof(layout) == TYPE_DICTIONARY else {}
 	_rebuild_markers()
 	_fit_camera_to_content()
 	queue_redraw()
@@ -216,7 +216,7 @@ func _rebuild_markers() -> void:
 		child.queue_free()
 	_marker_nodes.clear()
 
-	for room in _layout_rooms:
+	for room in _parsed_layout.get("rooms", []):
 		if typeof(room) != TYPE_DICTIONARY:
 			continue
 		var room_dict: Dictionary = room
@@ -231,6 +231,47 @@ func _rebuild_markers() -> void:
 			)
 			marker.name = "Room_%s" % model_name
 			_layout_root.add_child(marker)
+
+	for track in _parsed_layout.get("tracks", []):
+		if typeof(track) != TYPE_DICTIONARY:
+			continue
+		var track_dict: Dictionary = track
+		var track_position: Vector3 = track_dict.get("position", Vector3.ZERO)
+		var track_marker := _make_box_marker(
+			KotorWorldCoordinates.kotor_to_godot(track_position),
+			Vector3(4.0, 0.35, 4.0),
+			Color(0.25, 0.85, 0.45, 0.45),
+			true
+		)
+		track_marker.name = "Track_%s" % str(track_dict.get("model", "track"))
+		_layout_root.add_child(track_marker)
+
+	for obstacle in _parsed_layout.get("obstacles", []):
+		if typeof(obstacle) != TYPE_DICTIONARY:
+			continue
+		var obstacle_dict: Dictionary = obstacle
+		var obstacle_position: Vector3 = obstacle_dict.get("position", Vector3.ZERO)
+		var obstacle_marker := _make_box_marker(
+			KotorWorldCoordinates.kotor_to_godot(obstacle_position),
+			Vector3(3.0, 2.0, 3.0),
+			Color(0.9, 0.35, 0.2, 0.4),
+			true
+		)
+		obstacle_marker.name = "Obstacle_%s" % str(obstacle_dict.get("model", "obstacle"))
+		_layout_root.add_child(obstacle_marker)
+
+	for hook in _parsed_layout.get("doorhooks", []):
+		if typeof(hook) != TYPE_DICTIONARY:
+			continue
+		var hook_dict: Dictionary = hook
+		var hook_position: Vector3 = hook_dict.get("position", Vector3.ZERO)
+		var hook_marker := _make_sphere_marker(
+			KotorWorldCoordinates.kotor_to_godot(hook_position),
+			0.45,
+			Color(0.95, 0.85, 0.2, 0.85)
+		)
+		hook_marker.name = "Doorhook_%s" % str(hook_dict.get("name", "hook"))
+		_layout_root.add_child(hook_marker)
 
 	for record in _records:
 		var category := str(record.get("category", ""))
@@ -422,6 +463,21 @@ func _make_box_marker(position: Vector3, box_size: Vector3, color: Color, wirefr
 	return mesh_instance
 
 
+func _make_sphere_marker(position: Vector3, radius: float, color: Color) -> MeshInstance3D:
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.position = position
+	var sphere := SphereMesh.new()
+	sphere.radius = radius
+	sphere.height = radius * 2.0
+	mesh_instance.mesh = sphere
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh_instance.material_override = material
+	return mesh_instance
+
+
 func _refresh_marker_highlights() -> void:
 	for key in _marker_nodes.keys():
 		var area: Area3D = _marker_nodes[key]
@@ -478,7 +534,7 @@ func _pick_instance(screen_pos: Vector2) -> Dictionary:
 
 
 func _fit_camera_to_content() -> void:
-	if _records.is_empty() and _layout_rooms.is_empty() and _walkmesh.is_empty() and _room_meshes.is_empty() and _instance_mesh_by_key.is_empty():
+	if _records.is_empty() and _parsed_layout.is_empty() and _walkmesh.is_empty() and _room_meshes.is_empty() and _instance_mesh_by_key.is_empty():
 		_orbit_focus = Vector3.ZERO
 		_orbit_distance = 40.0
 		_update_camera_transform()
@@ -534,7 +590,16 @@ func _fit_camera_to_content() -> void:
 			var godot_corner := KotorWorldCoordinates.kotor_to_godot(corner)
 			min_pos = min_pos.min(godot_corner)
 			max_pos = max_pos.max(godot_corner)
-	for room in _layout_rooms:
+	for layout_key in ["rooms", "tracks", "obstacles", "doorhooks"]:
+		for raw_entry in _parsed_layout.get(layout_key, []):
+			if typeof(raw_entry) != TYPE_DICTIONARY:
+				continue
+			var entry: Dictionary = raw_entry
+			var kotor_pos: Vector3 = entry.get("position", Vector3.ZERO)
+			var godot_pos := KotorWorldCoordinates.kotor_to_godot(kotor_pos)
+			min_pos = min_pos.min(godot_pos)
+			max_pos = max_pos.max(godot_pos)
+	for room in _parsed_layout.get("rooms", []):
 		if typeof(room) != TYPE_DICTIONARY:
 			continue
 		var room_dict: Dictionary = room

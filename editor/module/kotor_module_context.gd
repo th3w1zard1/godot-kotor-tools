@@ -99,6 +99,21 @@ static func load_parsed_model_mesh(gamefs: RefCounted, model_resref: String) -> 
 	return MDLParser.parse_bytes(mdl_bytes, mdx_bytes)
 
 
+static func format_layout_summary(parsed: Dictionary) -> String:
+	if parsed.is_empty():
+		return "LYT: not loaded"
+	var rooms: Array = parsed.get("rooms", [])
+	var tracks: Array = parsed.get("tracks", [])
+	var obstacles: Array = parsed.get("obstacles", [])
+	var doorhooks: Array = parsed.get("doorhooks", [])
+	return "LYT: %d room(s), %d track(s), %d obstacle(s), %d doorhook(s)" % [
+		rooms.size(),
+		tracks.size(),
+		obstacles.size(),
+		doorhooks.size(),
+	]
+
+
 static func describe_bundle(bundle: Dictionary) -> String:
 	if bundle.is_empty():
 		return "No module bundle"
