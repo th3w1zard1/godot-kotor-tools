@@ -3,6 +3,13 @@ extends SubViewportContainer
 class_name ModuleDesignerViewport3D
 
 signal instance_selected(category: String, index: int)
+signal instance_rotate_updated(category: String, index: int, bearing: float)
+signal instance_rotate_finished(
+	category: String,
+	index: int,
+	old_bearing: float,
+	new_bearing: float
+)
 
 const KotorGITDocument := preload("../../../resources/documents/kotor_git_document.gd")
 const KotorWorldCoordinates := preload("../../../editor/module/kotor_world_coordinates.gd")
@@ -16,7 +23,7 @@ var _layout_root: Node3D
 var _room_mesh_root: Node3D
 var _walkmesh_root: Node3D
 var _records: Array[Dictionary] = []
-var _layout_rooms: Array = []
+var _parsed_layout: Dictionary = {}
 var _room_meshes: Array = []
 var _instance_mesh_by_key: Dictionary = {}
 var _walkmesh: Dictionary = {}
@@ -29,6 +36,12 @@ var _orbit_distance := 40.0
 var _orbit_focus := Vector3.ZERO
 var _dragging := false
 var _last_mouse := Vector2.ZERO
+var _rotate_active := false
+var _rotate_category := ""
+var _rotate_index := -1
+var _rotate_start_bearing := 0.0
+var _rotate_preview_bearing := 0.0
+var _rotate_gizmo_root: Node3D
 
 
 func _init() -> void:
@@ -79,6 +92,10 @@ func _build_scene() -> void:
 	_walkmesh_root.name = "Walkmesh"
 	world.add_child(_walkmesh_root)
 
+	_rotate_gizmo_root = Node3D.new()
+	_rotate_gizmo_root.name = "RotateGizmo"
+	world.add_child(_rotate_gizmo_root)
+
 
 func _ready() -> void:
 	_update_camera_transform()
@@ -89,7 +106,7 @@ func set_instances(records: Array, layout: Dictionary = {}) -> void:
 	for raw_record in records:
 		if typeof(raw_record) == TYPE_DICTIONARY:
 			_records.append(raw_record)
-	_layout_rooms = layout.get("rooms", []) as Array if typeof(layout) == TYPE_DICTIONARY else []
+	_parsed_layout = layout if typeof(layout) == TYPE_DICTIONARY else {}
 	_rebuild_markers()
 	_fit_camera_to_content()
 	queue_redraw()
@@ -131,6 +148,16 @@ func set_selection(category: String, index: int) -> void:
 	_selected_category = category
 	_selected_index = index
 	_refresh_marker_highlights()
+	_rebuild_rotate_gizmo()
+
+
+func set_preview_bearing(category: String, index: int, bearing: float) -> void:
+	var key := "%s:%d" % [category, index]
+	if not _marker_nodes.has(key):
+		return
+	var area: Area3D = _marker_nodes[key]
+	area.rotation.y = KotorWorldCoordinates.kotor_bearing_to_yaw(bearing)
+	_update_rotate_gizmo_rotation(bearing)
 
 
 func _notification(what: int) -> void:
@@ -150,7 +177,15 @@ func _gui_input(event: InputEvent) -> void:
 				accept_event()
 				return
 		if mouse_event.button_index == MOUSE_BUTTON_RIGHT:
-			_dragging = mouse_event.pressed
+			if mouse_event.pressed and mouse_event.shift_pressed and _has_selection():
+				_begin_rotate(mouse_event.position)
+				accept_event()
+				return
+			if not mouse_event.pressed and _rotate_active:
+				_finish_rotate()
+				accept_event()
+				return
+			_dragging = mouse_event.pressed and not _rotate_active
 			_last_mouse = mouse_event.position
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_event.pressed:
 			_orbit_distance = maxf(5.0, _orbit_distance * 0.9)
@@ -158,13 +193,18 @@ func _gui_input(event: InputEvent) -> void:
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_event.pressed:
 			_orbit_distance = minf(500.0, _orbit_distance * 1.1)
 			_update_camera_transform()
-	if event is InputEventMouseMotion and _dragging:
+	if event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
-		var delta := motion.position - _last_mouse
-		_last_mouse = motion.position
-		_orbit_yaw -= delta.x * 0.01
-		_orbit_pitch = clampf(_orbit_pitch - delta.y * 0.01, -1.4, -0.1)
-		_update_camera_transform()
+		if _rotate_active:
+			_update_rotate_preview(motion.position)
+			accept_event()
+			return
+		if _dragging:
+			var delta := motion.position - _last_mouse
+			_last_mouse = motion.position
+			_orbit_yaw -= delta.x * 0.01
+			_orbit_pitch = clampf(_orbit_pitch - delta.y * 0.01, -1.4, -0.1)
+			_update_camera_transform()
 
 
 func _rebuild_markers() -> void:
@@ -176,7 +216,7 @@ func _rebuild_markers() -> void:
 		child.queue_free()
 	_marker_nodes.clear()
 
-	for room in _layout_rooms:
+	for room in _parsed_layout.get("rooms", []):
 		if typeof(room) != TYPE_DICTIONARY:
 			continue
 		var room_dict: Dictionary = room
@@ -191,6 +231,47 @@ func _rebuild_markers() -> void:
 			)
 			marker.name = "Room_%s" % model_name
 			_layout_root.add_child(marker)
+
+	for track in _parsed_layout.get("tracks", []):
+		if typeof(track) != TYPE_DICTIONARY:
+			continue
+		var track_dict: Dictionary = track
+		var track_position: Vector3 = track_dict.get("position", Vector3.ZERO)
+		var track_marker := _make_box_marker(
+			KotorWorldCoordinates.kotor_to_godot(track_position),
+			Vector3(4.0, 0.35, 4.0),
+			Color(0.25, 0.85, 0.45, 0.45),
+			true
+		)
+		track_marker.name = "Track_%s" % str(track_dict.get("model", "track"))
+		_layout_root.add_child(track_marker)
+
+	for obstacle in _parsed_layout.get("obstacles", []):
+		if typeof(obstacle) != TYPE_DICTIONARY:
+			continue
+		var obstacle_dict: Dictionary = obstacle
+		var obstacle_position: Vector3 = obstacle_dict.get("position", Vector3.ZERO)
+		var obstacle_marker := _make_box_marker(
+			KotorWorldCoordinates.kotor_to_godot(obstacle_position),
+			Vector3(3.0, 2.0, 3.0),
+			Color(0.9, 0.35, 0.2, 0.4),
+			true
+		)
+		obstacle_marker.name = "Obstacle_%s" % str(obstacle_dict.get("model", "obstacle"))
+		_layout_root.add_child(obstacle_marker)
+
+	for hook in _parsed_layout.get("doorhooks", []):
+		if typeof(hook) != TYPE_DICTIONARY:
+			continue
+		var hook_dict: Dictionary = hook
+		var hook_position: Vector3 = hook_dict.get("position", Vector3.ZERO)
+		var hook_marker := _make_sphere_marker(
+			KotorWorldCoordinates.kotor_to_godot(hook_position),
+			0.45,
+			Color(0.95, 0.85, 0.2, 0.85)
+		)
+		hook_marker.name = "Doorhook_%s" % str(hook_dict.get("name", "hook"))
+		_layout_root.add_child(hook_marker)
 
 	for record in _records:
 		var category := str(record.get("category", ""))
@@ -210,6 +291,7 @@ func _rebuild_markers() -> void:
 		_marker_nodes[key] = marker
 
 	_refresh_marker_highlights()
+	_rebuild_rotate_gizmo()
 
 
 func _rebuild_room_meshes() -> void:
@@ -381,6 +463,21 @@ func _make_box_marker(position: Vector3, box_size: Vector3, color: Color, wirefr
 	return mesh_instance
 
 
+func _make_sphere_marker(position: Vector3, radius: float, color: Color) -> MeshInstance3D:
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.position = position
+	var sphere := SphereMesh.new()
+	sphere.radius = radius
+	sphere.height = radius * 2.0
+	mesh_instance.mesh = sphere
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh_instance.material_override = material
+	return mesh_instance
+
+
 func _refresh_marker_highlights() -> void:
 	for key in _marker_nodes.keys():
 		var area: Area3D = _marker_nodes[key]
@@ -437,7 +534,7 @@ func _pick_instance(screen_pos: Vector2) -> Dictionary:
 
 
 func _fit_camera_to_content() -> void:
-	if _records.is_empty() and _layout_rooms.is_empty() and _walkmesh.is_empty() and _room_meshes.is_empty() and _instance_mesh_by_key.is_empty():
+	if _records.is_empty() and _parsed_layout.is_empty() and _walkmesh.is_empty() and _room_meshes.is_empty() and _instance_mesh_by_key.is_empty():
 		_orbit_focus = Vector3.ZERO
 		_orbit_distance = 40.0
 		_update_camera_transform()
@@ -493,7 +590,16 @@ func _fit_camera_to_content() -> void:
 			var godot_corner := KotorWorldCoordinates.kotor_to_godot(corner)
 			min_pos = min_pos.min(godot_corner)
 			max_pos = max_pos.max(godot_corner)
-	for room in _layout_rooms:
+	for layout_key in ["rooms", "tracks", "obstacles", "doorhooks"]:
+		for raw_entry in _parsed_layout.get(layout_key, []):
+			if typeof(raw_entry) != TYPE_DICTIONARY:
+				continue
+			var entry: Dictionary = raw_entry
+			var kotor_pos: Vector3 = entry.get("position", Vector3.ZERO)
+			var godot_pos := KotorWorldCoordinates.kotor_to_godot(kotor_pos)
+			min_pos = min_pos.min(godot_pos)
+			max_pos = max_pos.max(godot_pos)
+	for room in _parsed_layout.get("rooms", []):
 		if typeof(room) != TYPE_DICTIONARY:
 			continue
 		var room_dict: Dictionary = room
@@ -539,3 +645,147 @@ func _update_camera_transform() -> void:
 		_camera.look_at(_orbit_focus, Vector3.UP)
 	else:
 		_camera.basis = Basis.looking_at(forward, Vector3.UP)
+
+
+func _has_selection() -> bool:
+	return not _selected_category.is_empty() and _selected_index >= 0
+
+
+func _selected_record() -> Dictionary:
+	for record in _records:
+		if str(record.get("category", "")) == _selected_category and int(record.get("index", -1)) == _selected_index:
+			return record
+	return {}
+
+
+func _begin_rotate(screen_pos: Vector2) -> void:
+	var record := _selected_record()
+	if record.is_empty():
+		return
+	_rotate_active = true
+	_rotate_category = _selected_category
+	_rotate_index = _selected_index
+	_rotate_start_bearing = float(record.get("bearing", 0.0))
+	_rotate_preview_bearing = _rotate_start_bearing
+	_last_mouse = screen_pos
+	_update_rotate_preview(screen_pos)
+
+
+func _update_rotate_preview(screen_pos: Vector2) -> void:
+	if not _rotate_active:
+		return
+	var record := _selected_record()
+	if record.is_empty():
+		_cancel_rotate()
+		return
+	_rotate_preview_bearing = _bearing_from_screen(screen_pos, record)
+	set_preview_bearing(_rotate_category, _rotate_index, _rotate_preview_bearing)
+	instance_rotate_updated.emit(_rotate_category, _rotate_index, _rotate_preview_bearing)
+
+
+func _finish_rotate() -> void:
+	if not _rotate_active:
+		return
+	if absf(_rotate_preview_bearing - _rotate_start_bearing) > 0.001:
+		instance_rotate_finished.emit(
+			_rotate_category,
+			_rotate_index,
+			_rotate_start_bearing,
+			_rotate_preview_bearing
+		)
+	_cancel_rotate()
+
+
+func _cancel_rotate() -> void:
+	_rotate_active = false
+	_rotate_category = ""
+	_rotate_index = -1
+	_rotate_start_bearing = 0.0
+	_rotate_preview_bearing = 0.0
+	if _has_selection():
+		var record := _selected_record()
+		set_preview_bearing(_selected_category, _selected_index, float(record.get("bearing", 0.0)))
+
+
+func _bearing_from_screen(screen_pos: Vector2, record: Dictionary) -> float:
+	var instance_xy := Vector2(float(record.get("x", 0.0)), float(record.get("y", 0.0)))
+	var ray := _screen_ray(screen_pos)
+	if ray.is_empty():
+		return float(record.get("bearing", 0.0))
+	var kotor_pos := Vector3(
+		float(record.get("x", 0.0)),
+		float(record.get("y", 0.0)),
+		float(record.get("z", 0.0))
+	)
+	var plane_y := KotorWorldCoordinates.kotor_to_godot(kotor_pos).y
+	var cursor_xy := KotorWorldCoordinates.godot_ray_to_kotor_xy(
+		ray.get("origin", Vector3.ZERO),
+		ray.get("direction", Vector3.FORWARD),
+		plane_y
+	)
+	if is_nan(cursor_xy.x):
+		return float(record.get("bearing", 0.0))
+	return KotorWorldCoordinates.bearing_from_kotor_xy_offset(instance_xy, cursor_xy)
+
+
+func _screen_ray(screen_pos: Vector2) -> Dictionary:
+	if _camera == null or _viewport == null or size.x <= 0.0 or size.y <= 0.0:
+		return {}
+	var viewport_pos := Vector2(
+		screen_pos.x / size.x * float(_viewport.size.x),
+		screen_pos.y / size.y * float(_viewport.size.y)
+	)
+	return {
+		"origin": _camera.project_ray_origin(viewport_pos),
+		"direction": _camera.project_ray_normal(viewport_pos),
+	}
+
+
+func _rebuild_rotate_gizmo() -> void:
+	if _rotate_gizmo_root == null:
+		return
+	for child in _rotate_gizmo_root.get_children():
+		child.queue_free()
+	if not _has_selection():
+		_rotate_gizmo_root.visible = false
+		return
+	var key := "%s:%d" % [_selected_category, _selected_index]
+	if not _marker_nodes.has(key):
+		_rotate_gizmo_root.visible = false
+		return
+	var area: Area3D = _marker_nodes[key]
+	_rotate_gizmo_root.visible = true
+	_rotate_gizmo_root.global_position = area.global_position
+
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 1.05
+	torus.outer_radius = 1.25
+	ring.mesh = torus
+	ring.rotation.x = PI * 0.5
+	var ring_material := StandardMaterial3D.new()
+	ring_material.albedo_color = Color(1.0, 0.85, 0.2, 0.9)
+	ring_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ring_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ring.material_override = ring_material
+	_rotate_gizmo_root.add_child(ring)
+
+	var arrow := MeshInstance3D.new()
+	var arrow_mesh := BoxMesh.new()
+	arrow_mesh.size = Vector3(0.08, 0.08, 1.4)
+	arrow.mesh = arrow_mesh
+	arrow.position = Vector3(0.0, 0.05, -0.7)
+	var arrow_material := StandardMaterial3D.new()
+	arrow_material.albedo_color = Color(1.0, 0.45, 0.15, 0.95)
+	arrow_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	arrow.material_override = arrow_material
+	_rotate_gizmo_root.add_child(arrow)
+
+	var record := _selected_record()
+	_update_rotate_gizmo_rotation(float(record.get("bearing", 0.0)))
+
+
+func _update_rotate_gizmo_rotation(bearing: float) -> void:
+	if _rotate_gizmo_root == null:
+		return
+	_rotate_gizmo_root.rotation.y = KotorWorldCoordinates.kotor_bearing_to_yaw(bearing)

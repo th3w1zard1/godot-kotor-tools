@@ -3,6 +3,7 @@ class_name KotorIndoorLyTBuilder
 
 const KotorIndoorDocument := preload("../documents/kotor_indoor_document.gd")
 const LYTParser := preload("../../formats/lyt_parser.gd")
+const LYTWriter := preload("../../formats/lyt_writer.gd")
 
 
 static func build_from_document(document: KotorIndoorDocument) -> Dictionary:
@@ -24,7 +25,12 @@ static func build_from_document(document: KotorIndoorDocument) -> Dictionary:
 	if room_entries.is_empty():
 		return {"ok": false, "errors": ["Indoor map has no rooms to place in LYT."]}
 
-	var text := build_text(room_entries)
+	var text := LYTWriter.write_text({
+		"rooms": room_entries,
+		"tracks": [],
+		"obstacles": [],
+		"doorhooks": [],
+	})
 	var bytes := text.to_utf8_buffer()
 	return {
 		"ok": true,
@@ -35,18 +41,12 @@ static func build_from_document(document: KotorIndoorDocument) -> Dictionary:
 
 
 static func build_text(room_entries: Array) -> String:
-	var lines: Array[String] = ["beginlayout", "roomcount %d" % room_entries.size()]
-	for raw_entry in room_entries:
-		if typeof(raw_entry) != TYPE_DICTIONARY:
-			continue
-		var entry: Dictionary = raw_entry
-		var model := str(entry.get("model", "")).strip_edges()
-		var position: Vector3 = entry.get("position", Vector3.ZERO)
-		lines.append(
-			"roommodel %s %.6f %.6f %.6f" % [model, position.x, position.y, position.z]
-		)
-	lines.append("donelayout")
-	return "\n".join(lines)
+	return LYTWriter.write_text({
+		"rooms": room_entries,
+		"tracks": [],
+		"obstacles": [],
+		"doorhooks": [],
+	})
 
 
 static func parse_built_text(text: String) -> Dictionary:
