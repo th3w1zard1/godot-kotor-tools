@@ -49,6 +49,19 @@ static func export_payload_to_path(target_path: String, payload: Variant, fallba
 	return _write_serialized_payload(target_path, serialized, false)
 
 
+static func write_payload_to_path_with_backup(
+	target_path: String,
+	payload: Variant,
+	fallback_name: String = ""
+) -> Dictionary:
+	if target_path.is_empty():
+		return _result(false, "invalid", "Choose a destination file path")
+	var serialized := _serialize_payload(target_path if not target_path.is_empty() else fallback_name, payload)
+	if not serialized.get("ok", false):
+		return serialized
+	return _write_serialized_payload(target_path, serialized, true)
+
+
 static func serialize_payload(file_name: String, payload: Variant) -> Dictionary:
 	return _serialize_payload(file_name, payload)
 
