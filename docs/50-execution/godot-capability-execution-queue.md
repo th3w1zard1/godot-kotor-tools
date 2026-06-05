@@ -72,12 +72,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q55 | Native indoor MOD export default | `KotorIndoorNativeExporter`; **Export .mod** uses native builders; PyKotor CLI fallback toolbar action; headless `test_indoor_native_exporter.gd`. |
 | Q56 | Module Designer walkmesh install | **Install Walkmesh to Override** via `BWMWriter` + mutation preflight; headless `test_module_designer_walkmesh_install.gd`. |
 | Q57 | Indoor MOD install to modules | `KotorIndoorModuleInstaller`; **Install MOD to Modules** in Indoor Builder; headless `test_indoor_module_installer.gd`. |
+| Q58 | Module Designer LYT install | **Install LYT to Override** via `LYTWriter` + mutation preflight; headless `test_module_designer_lyt_install.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q57 shipped indoor MOD install to game modules folder. | Next: Module Designer LYT install, advanced tooling, or utility panels per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q58 shipped Module Designer LYT install to override. | Next: advanced module designer tooling, utility panels, or parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
