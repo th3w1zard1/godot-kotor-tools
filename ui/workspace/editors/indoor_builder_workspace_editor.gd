@@ -7,6 +7,7 @@ const KotorIndoorMapIO := preload("../../../resources/indoor/kotor_indoor_map_io
 const KotorIndoorKitLibrary := preload("../../../resources/indoor/kotor_indoor_kit_library.gd")
 const KotorIndoorModExporter := preload("../../../resources/indoor/kotor_indoor_mod_exporter.gd")
 const KotorIndoorNativeExporter := preload("../../../resources/indoor/kotor_indoor_native_exporter.gd")
+const KotorIndoorModuleInstaller := preload("../../../resources/indoor/kotor_indoor_module_installer.gd")
 const KotorIndoorBuildManifest := preload("../../../resources/indoor/kotor_indoor_build_manifest.gd")
 const KotorIndoorLyTBuilder := preload("../../../resources/indoor/kotor_indoor_lyt_builder.gd")
 const KotorIndoorIfoBuilder := preload("../../../resources/indoor/kotor_indoor_ifo_builder.gd")
@@ -151,6 +152,11 @@ func _build_ui() -> void:
 	export_pykotor_mod_btn.text = "Export .mod (PyKotor)…"
 	export_pykotor_mod_btn.pressed.connect(_export_pykotor_mod_dialog)
 	_toolbar.add_child(export_pykotor_mod_btn)
+
+	var install_mod_btn := Button.new()
+	install_mod_btn.text = "Install MOD to Modules"
+	install_mod_btn.pressed.connect(_install_mod_to_modules)
+	_toolbar.add_child(install_mod_btn)
 
 	var build_preview_btn := Button.new()
 	build_preview_btn.text = "Build Preview"
@@ -1112,4 +1118,32 @@ func _export_pykotor_mod_to_path(path: String) -> void:
 		_refresh_status()
 		return
 	_status_text = str(result.get("message", "Export complete."))
+	_refresh_status()
+
+
+func _install_mod_to_modules() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before installing."
+		_refresh_status()
+		return
+	var game_path := _editor_state.game_path if _editor_state != null else ""
+	var kits_path := _kits_path_edit.text.strip_edges() if _kits_path_edit != null else ""
+	if kits_path.is_empty() and _editor_state != null:
+		kits_path = _editor_state.indoor_kits_path
+
+	var config := {
+		"document": _document,
+		"kit_library": _kit_library,
+		"kits_path": kits_path,
+		"game_path": game_path,
+		"output_path": "%s.mod" % _document.get_module_id(),
+	}
+	var result := KotorIndoorModuleInstaller.install_indoor_mod_to_modules(config)
+	if not result.get("ok", false):
+		_status_text = str(result.get("message", "Install failed."))
+		_refresh_status()
+		return
+	_status_text = str(result.get("message", "Install complete."))
+	if _editor_state != null:
+		_editor_state.refresh_gamefs()
 	_refresh_status()
