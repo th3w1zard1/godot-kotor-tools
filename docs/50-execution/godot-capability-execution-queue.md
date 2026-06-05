@@ -70,12 +70,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q53 | LYT depth overlay + writer | `LYTWriter` round-trip; Module Designer tracks/obstacles/doorhooks 3D markers; layout/walkmesh summary; headless `test_lyt_writer.gd`. |
 | Q54 | BWM writer + walkmesh export | `BWMWriter` round-trip; Module Designer **Export Walkmesh Preview…**; headless `test_bwm_writer.gd`. |
 | Q55 | Native indoor MOD export default | `KotorIndoorNativeExporter`; **Export .mod** uses native builders; PyKotor CLI fallback toolbar action; headless `test_indoor_native_exporter.gd`. |
+| Q56 | Module Designer walkmesh install | **Install Walkmesh to Override** via `BWMWriter` + mutation preflight; headless `test_module_designer_walkmesh_install.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q55 shipped native indoor MOD export as default. | Next: advanced module designer tooling or install-to-override per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q56 shipped Module Designer walkmesh install to override. | Next: indoor MOD install to modules, LYT install, or advanced tooling per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
