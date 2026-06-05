@@ -2,6 +2,8 @@
 extends Control
 class_name ModuleDesignerMapView
 
+const KotorWorldCoordinates := preload("../../../editor/module/kotor_world_coordinates.gd")
+
 signal instance_selected(category: String, index: int)
 signal instance_drag_updated(category: String, index: int, x: float, y: float)
 signal instance_drag_finished(
@@ -260,10 +262,7 @@ func _cancel_rotate() -> void:
 
 
 static func _bearing_from_world_point(instance_world: Vector2, cursor_world: Vector2) -> float:
-	var offset := cursor_world - instance_world
-	if offset.length_squared() < 0.000001:
-		return 0.0
-	return atan2(offset.y, offset.x)
+	return KotorWorldCoordinates.bearing_from_kotor_xy_offset(instance_world, cursor_world)
 
 
 func _find_record(category: String, index: int) -> Dictionary:

@@ -33,7 +33,7 @@ func _run_tests() -> void:
 	await _test_viewport_walkmesh()
 	await _test_viewport_room_meshes()
 	await _test_viewport_instance_meshes()
-	_test_viewport_markers()
+	await _test_viewport_markers()
 	_test_editor_has_viewport()
 	_cleanup()
 	print("✓ Module designer 3D viewport tests passed")
@@ -223,10 +223,24 @@ func _test_viewport_markers() -> void:
 		"rooms": [
 			{"model": "room001", "position": Vector3(0.0, 0.0, 0.0)},
 		],
+		"tracks": [
+			{"model": "track01", "position": Vector3(4.0, 0.0, 4.0)},
+		],
+		"obstacles": [
+			{"model": "obs01", "position": Vector3(5.0, 0.0, 5.0)},
+		],
+		"doorhooks": [
+			{"name": "hook_a", "door": "door01", "room": "room001", "position": Vector3(6.0, 0.0, 6.0)},
+		],
 	}
 	viewport.set_instances(records, layout)
 	assert(viewport.get_child_count() >= 1)
 	viewport.set_selection("Creatures", 0)
+	await process_frame
+	var subviewport := viewport.get_child(0) as SubViewport
+	var layout_root := subviewport.get_child(0).get_node_or_null("Layout")
+	assert(layout_root != null)
+	assert(layout_root.get_child_count() >= 4)
 	print("✓ Viewport marker build passed")
 
 
