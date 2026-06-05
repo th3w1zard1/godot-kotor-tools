@@ -2,6 +2,7 @@
 class_name KotorIndoorBuildManifest
 
 const KotorIndoorDocument := preload("../documents/kotor_indoor_document.gd")
+const KotorIndoorEmbeddedAssetGenerator := preload("./kotor_indoor_embedded_asset_generator.gd")
 const KotorIndoorLayoutValidator := preload("./kotor_indoor_layout_validator.gd")
 const KotorIndoorMapIO := preload("./kotor_indoor_map_io.gd")
 const KotorIndoorLyTBuilder := preload("./kotor_indoor_lyt_builder.gd")
@@ -50,10 +51,15 @@ static func build(document: KotorIndoorDocument, kit_library: RefCounted = null)
 			"walkmesh_resref": component_id,
 			"has_mdl": false,
 			"has_mdx": false,
+			"has_wok": false,
 		}
 		if kit_id == KotorIndoorMapIO.EMBEDDED_KIT_ID:
-			if document.has_embedded_component(component_id):
-				asset["has_mdl"] = true
+			var embedded := document.get_embedded_component(component_id)
+			if not embedded.is_empty():
+				var flags: Dictionary = KotorIndoorEmbeddedAssetGenerator.asset_flags(embedded)
+				asset["has_mdl"] = bool(flags.get("has_mdl", false))
+				asset["has_mdx"] = bool(flags.get("has_mdx", false))
+				asset["has_wok"] = bool(flags.get("has_wok", false))
 		elif kit_library != null and kit_library.has_method("find_component"):
 			var component: Dictionary = kit_library.call("find_component", kit_id, component_id)
 			asset["has_mdl"] = bool(component.get("has_mdl", false))

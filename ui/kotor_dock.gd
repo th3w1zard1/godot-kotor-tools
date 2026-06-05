@@ -26,6 +26,7 @@ const KotorDLGDocument := preload("../resources/documents/kotor_dlg_document.gd"
 const KotorEditorState := preload("../editor/core/kotor_editor_state.gd")
 const KotorScriptToolBridge := preload("../resources/scripts/kotor_script_tool_bridge.gd")
 const KotorDiffToolBridge := preload("../resources/diff/kotor_diff_tool_bridge.gd")
+const HoloPatcherToolBridge := preload("../resources/patch/holo_patcher_tool_bridge.gd")
 const KotorModdingPipeline := preload("../editor/modding/kotor_modding_pipeline.gd")
 const KotorMutationService := preload("../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("./workspace/dialogs/kotor_preflight_dialog.gd")
@@ -69,6 +70,7 @@ var _activity_log: TextEdit
 var _last_compare_report := ""
 var _kotordiff_path1 := ""
 var _kotordiff_path2 := ""
+var _holopatcher_tslpatchdata := ""
 
 # GameFS tab
 var _gamefs_status_label: Label
@@ -524,6 +526,20 @@ func _build_gamefs_tab() -> void:
 	kotordiff_btn.text = "Run KotorDiff CLI…"
 	kotordiff_btn.pressed.connect(_run_kotordiff_cli_dialog)
 	toolbar.add_child(kotordiff_btn)
+
+	var validate_patch_btn := Button.new()
+	validate_patch_btn.text = "Validate TSL Patch…"
+	validate_patch_btn.pressed.connect(
+		func() -> void: _run_holopatcher_cli_dialog(HoloPatcherToolBridge.MODE_VALIDATE)
+	)
+	toolbar.add_child(validate_patch_btn)
+
+	var install_patch_btn := Button.new()
+	install_patch_btn.text = "Install TSL Patch…"
+	install_patch_btn.pressed.connect(
+		func() -> void: _run_holopatcher_cli_dialog(HoloPatcherToolBridge.MODE_INSTALL)
+	)
+	toolbar.add_child(install_patch_btn)
 
 	_gamefs_status_label = Label.new()
 	_gamefs_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1304,6 +1320,40 @@ func _execute_kotordiff_cli(output_log: String) -> void:
 		"pykotor_cli_path": _editor_state.pykotor_cli_path if _editor_state != null else "",
 	})
 	var report := str(result.get("message", "KotorDiff failed."))
+	if not str(result.get("stdout", "")).strip_edges().is_empty():
+		report += "\n\n" + str(result.get("stdout", "")).strip_edges()
+	_show_gamefs_report(report)
+	_append_activity(report)
+
+
+func _run_holopatcher_cli_dialog(mode: String) -> void:
+	if not _has_valid_game_path():
+		_show_gamefs_report("Configure a game install path first.")
+		return
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_DIR,
+		PackedStringArray(),
+		"HoloPatcher tslpatchdata folder",
+		_editor_state.game_path
+	)
+	dialog.dir_selected.connect(func(path: String) -> void:
+		_holopatcher_tslpatchdata = path
+		dialog.queue_free()
+		_execute_holopatcher_cli(mode)
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _execute_holopatcher_cli(mode: String) -> void:
+	var result := HoloPatcherToolBridge.run_tool({
+		"game_dir": _editor_state.game_path,
+		"tslpatchdata": _holopatcher_tslpatchdata,
+		"mode": mode,
+		"pykotor_cli_path": _editor_state.pykotor_cli_path if _editor_state != null else "",
+	})
+	var report := str(result.get("message", "HoloPatcher failed."))
 	if not str(result.get("stdout", "")).strip_edges().is_empty():
 		report += "\n\n" + str(result.get("stdout", "")).strip_edges()
 	_show_gamefs_report(report)

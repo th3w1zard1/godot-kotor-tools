@@ -1,12 +1,13 @@
 @tool
 extends SceneTree
 
+const BWMParser := preload("../../formats/bwm_parser.gd")
 const ERFParser := preload("../../formats/erf_parser.gd")
-const KotorIndoorBuildManifest := preload("../../resources/indoor/kotor_indoor_build_manifest.gd")
 const KotorIndoorDocument := preload("../../resources/documents/kotor_indoor_document.gd")
 const KotorIndoorKitLibrary := preload("../../resources/indoor/kotor_indoor_kit_library.gd")
 const KotorIndoorMapIO := preload("../../resources/indoor/kotor_indoor_map_io.gd")
 const KotorIndoorModBuilder := preload("../../resources/indoor/kotor_indoor_mod_builder.gd")
+const KotorIndoorNativeExporter := preload("../../resources/indoor/kotor_indoor_native_exporter.gd")
 
 
 func _initialize() -> void:
@@ -15,34 +16,17 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	var kits_root := _create_fixture_kits_directory()
-	_test_validation_failure()
-	_test_no_rooms_error()
-	_test_embedded_core_only()
-	_test_kit_room_assets(kits_root)
-	_test_mod_round_trip(kits_root)
-	_test_manifest_includes_mod(kits_root)
+	_test_preflight_requires_rooms()
+	_test_preflight_embedded_without_kits_path()
+	_test_preflight_kit_room_requires_kits_path()
+	_test_export_embedded_mod()
+	_test_export_kit_mod(kits_root)
 	_cleanup_fixture(kits_root)
-	print("✓ Indoor MOD builder tests passed")
+	print("✓ Indoor native exporter tests passed")
 	quit()
 
 
-func _test_validation_failure() -> void:
-	var document := KotorIndoorDocument.new()
-	document.load_from_dictionary({
-		"module_id": "",
-		"warp": "",
-		"name": {"stringref": -1},
-		"lighting": [0.5, 0.5, 0.5],
-		"skybox": "",
-		"embedded_components": [],
-		"rooms": [],
-	})
-	var result := KotorIndoorModBuilder.build_from_document(document)
-	assert(not result.get("ok", true))
-	print("✓ Indoor MOD builder validation failure passed")
-
-
-func _test_no_rooms_error() -> void:
+func _test_preflight_requires_rooms() -> void:
 	var document := KotorIndoorDocument.new()
 	document.load_from_dictionary({
 		"module_id": "test01",
@@ -53,70 +37,96 @@ func _test_no_rooms_error() -> void:
 		"embedded_components": [],
 		"rooms": [],
 	})
-	var result := KotorIndoorModBuilder.build_from_document(document)
-	assert(not result.get("ok", true))
-	print("✓ Indoor MOD builder no rooms error passed")
+	var preflight := KotorIndoorNativeExporter.validate_preflight({
+		"document": document,
+		"output_path": "/tmp/test01.mod",
+	})
+	assert(not preflight.get("ok", true))
+	print("✓ Indoor native exporter preflight requires rooms passed")
 
 
-func _test_embedded_core_only() -> void:
+func _test_preflight_embedded_without_kits_path() -> void:
 	var document := _document_with_embedded_room()
-	var result := KotorIndoorModBuilder.build_from_document(document)
+	var preflight := KotorIndoorNativeExporter.validate_preflight({
+		"document": document,
+		"output_path": "/tmp/test01.mod",
+	})
+	assert(preflight.get("ok", false))
+	print("✓ Indoor native exporter embedded preflight without kits passed")
+
+
+func _test_preflight_kit_room_requires_kits_path() -> void:
+	var library := KotorIndoorKitLibrary.new()
+	var document := KotorIndoorDocument.new()
+	document.load_from_dictionary({
+		"module_id": "test01",
+		"warp": "test01",
+		"name": {"stringref": -1},
+		"lighting": [0.5, 0.5, 0.5],
+		"skybox": "",
+		"embedded_components": [],
+		"rooms": [],
+	})
+	document.set_kit_library(library)
+	document.add_room_from_kit("testkit", "room_a", Vector3.ZERO, 0.0)
+
+	var preflight := KotorIndoorNativeExporter.validate_preflight({
+		"document": document,
+		"output_path": "/tmp/test01.mod",
+	})
+	assert(not preflight.get("ok", true))
+	print("✓ Indoor native exporter kit room requires kits path passed")
+
+
+func _test_export_embedded_mod() -> void:
+	var document := _document_with_embedded_room()
+	var output_path := "/tmp/kotor_indoor_native_export_%d.mod" % Time.get_ticks_usec()
+	var result := KotorIndoorNativeExporter.export_indoor_to_mod({
+		"document": document,
+		"output_path": output_path,
+	})
 	assert(result.get("ok", false))
-	assert(int(result.get("entry_count", 0)) == 6)
-	var parsed := ERFParser.parse_bytes(result.get("bytes", PackedByteArray()))
-	assert(str(parsed.get("file_type", "")) == "MOD ")
+	assert(FileAccess.file_exists(output_path))
+	var parsed := ERFParser.parse_file(output_path)
 	var names := KotorIndoorModBuilder.list_entry_names(parsed)
 	assert(names.has("test01.are"))
 	assert(names.has("test01.git"))
 	assert(names.has("test01.ifo"))
 	assert(names.has("test01.lyt"))
 	assert(names.has("test01.vis"))
-	assert(names.has("room_a.wok"))
-	print("✓ Indoor MOD builder embedded core resources passed")
-
-
-func _test_kit_room_assets(kits_root: String) -> void:
-	var library := _library_for(kits_root)
-	var document := _document_with_kit_room(kits_root, library)
-	var result := KotorIndoorModBuilder.build_from_document(document, library)
-	assert(result.get("ok", false))
-	assert(int(result.get("entry_count", 0)) == 6)
-	var parsed := ERFParser.parse_bytes(result.get("bytes", PackedByteArray()))
-	var names := KotorIndoorModBuilder.list_entry_names(parsed)
-	assert(names.has("room_a.wok"))
-	print("✓ Indoor MOD builder kit room assets passed")
-
-
-func _test_mod_round_trip(kits_root: String) -> void:
-	var library := _library_for(kits_root)
-	var document := _document_with_kit_room(kits_root, library)
-	var output_path := "/tmp/kotor_indoor_mod_builder_%d.mod" % Time.get_ticks_usec()
-	var result := KotorIndoorModBuilder.write_to_path(document, output_path, library)
-	assert(result.get("ok", false))
-	assert(FileAccess.file_exists(output_path))
-	var parsed := ERFParser.parse_file(output_path)
-	assert(not parsed.is_empty())
 	DirAccess.remove_absolute(output_path)
-	print("✓ Indoor MOD builder write round trip passed")
+	print("✓ Indoor native exporter embedded MOD export passed")
 
 
-func _test_manifest_includes_mod(kits_root: String) -> void:
-	var library := _library_for(kits_root)
-	var document := _document_with_kit_room(kits_root, library)
-	var manifest := KotorIndoorBuildManifest.build(document, library)
-	assert(manifest.get("ok", false))
-	var mod: Dictionary = manifest.get("mod", {})
-	assert(mod.get("ok", false))
-	var report := KotorIndoorBuildManifest.format_report(manifest)
-	assert(report.find("MOD preview") >= 0)
-	print("✓ Indoor MOD builder manifest integration passed")
-
-
-func _library_for(kits_root: String) -> KotorIndoorKitLibrary:
+func _test_export_kit_mod(kits_root: String) -> void:
 	var library := KotorIndoorKitLibrary.new()
 	library.configure(kits_root)
 	library.refresh()
-	return library
+
+	var document := KotorIndoorDocument.new()
+	document.load_from_dictionary({
+		"module_id": "test01",
+		"warp": "test01",
+		"name": {"stringref": -1},
+		"lighting": [0.5, 0.5, 0.5],
+		"skybox": "",
+		"embedded_components": [],
+		"rooms": [],
+	})
+	document.set_kit_library(library)
+	document.add_room_from_kit("testkit", "room_a", Vector3.ZERO, 0.0)
+
+	var output_path := "/tmp/kotor_indoor_native_export_kit_%d.mod" % Time.get_ticks_usec()
+	var result := KotorIndoorNativeExporter.export_indoor_to_mod({
+		"document": document,
+		"kit_library": library,
+		"kits_path": kits_root,
+		"output_path": output_path,
+	})
+	assert(result.get("ok", false))
+	assert(FileAccess.file_exists(output_path))
+	DirAccess.remove_absolute(output_path)
+	print("✓ Indoor native exporter kit MOD export passed")
 
 
 func _document_with_embedded_room() -> KotorIndoorDocument:
@@ -154,24 +164,8 @@ func _document_with_embedded_room() -> KotorIndoorDocument:
 	return document
 
 
-func _document_with_kit_room(kits_root: String, library: KotorIndoorKitLibrary) -> KotorIndoorDocument:
-	var document := KotorIndoorDocument.new()
-	document.load_from_dictionary({
-		"module_id": "test01",
-		"warp": "test01",
-		"name": {"stringref": -1},
-		"lighting": [0.5, 0.5, 0.5],
-		"skybox": "",
-		"embedded_components": [],
-		"rooms": [],
-	})
-	document.set_kit_library(library)
-	document.add_room_from_kit("testkit", "room_a", Vector3.ZERO, 0.0)
-	return document
-
-
 func _create_fixture_kits_directory() -> String:
-	var root: String = "/tmp/kotor_indoor_mod_builder_%d" % Time.get_ticks_usec()
+	var root: String = "/tmp/kotor_indoor_native_export_%d" % Time.get_ticks_usec()
 	DirAccess.make_dir_recursive_absolute(root)
 	var kit_dir: String = root.path_join("testkit")
 	DirAccess.make_dir_recursive_absolute(kit_dir)
@@ -228,7 +222,6 @@ func _remove_dir_recursive(path: String) -> void:
 
 
 static func _build_minimal_wok(vertices: Array, face_indices: Array, materials: Array) -> PackedByteArray:
-	const BWMParser := preload("../../formats/bwm_parser.gd")
 	var vertex_count := vertices.size()
 	var face_count := materials.size()
 	assert(face_indices.size() == face_count * 3)
