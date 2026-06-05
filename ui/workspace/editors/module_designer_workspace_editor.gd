@@ -10,6 +10,7 @@ const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorModuleContext := preload("../../../editor/module/kotor_module_context.gd")
 const BWMWriter := preload("../../../formats/bwm_writer.gd")
+const LYTWriter := preload("../../../formats/lyt_writer.gd")
 const KotorTemplateModelResolver := preload("../../../editor/module/kotor_template_model_resolver.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const ModuleDesignerMapView := preload("../panels/module_designer_map_view.gd")
@@ -221,6 +222,52 @@ func walkmesh_file_name() -> String:
 	return "%s.wok" % module_resref
 
 
+func install_layout_to_override() -> Dictionary:
+	if _parsed_layout.is_empty():
+		var message := "No area layout loaded for this module."
+		_status_text = message
+		_refresh_status()
+		return {"ok": false, "message": message}
+	var bytes := serialize_loaded_layout_bytes()
+	if bytes.is_empty():
+		var message := "Failed to serialize layout for install."
+		_status_text = message
+		_refresh_status()
+		return {"ok": false, "message": message}
+	var file_name := layout_file_name()
+	var preview: Dictionary = _mutation_service.preview_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		bytes
+	)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Layout install failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "Layout is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		return _apply_layout_install_now(bytes, file_name)
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "install_layout"
+	_preflight_pending_path = file_name
+	_show_preflight_dialog(preview)
+	return {}
+
+
+func serialize_loaded_layout_bytes() -> PackedByteArray:
+	if _parsed_layout.is_empty():
+		return PackedByteArray()
+	return LYTWriter.write_bytes(_parsed_layout)
+
+
+func layout_file_name() -> String:
+	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
+	return "%s.lyt" % module_resref
+
+
 func _build_ui() -> void:
 	if _toolbar != null:
 		return
@@ -246,6 +293,11 @@ func _build_ui() -> void:
 	install_walkmesh_btn.text = "Install Walkmesh to Override"
 	install_walkmesh_btn.pressed.connect(_install_walkmesh_to_override)
 	_toolbar.add_child(install_walkmesh_btn)
+
+	var install_layout_btn := Button.new()
+	install_layout_btn.text = "Install LYT to Override"
+	install_layout_btn.pressed.connect(_install_layout_to_override)
+	_toolbar.add_child(install_layout_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -653,6 +705,10 @@ func _install_walkmesh_to_override() -> void:
 	install_walkmesh_to_override()
 
 
+func _install_layout_to_override() -> void:
+	install_layout_to_override()
+
+
 func _install_git_to_override() -> void:
 	install_document_to_override()
 
@@ -706,6 +762,22 @@ func _apply_walkmesh_install_now(bytes: PackedByteArray, file_name: String) -> D
 	return result
 
 
+func _apply_layout_install_now(bytes: PackedByteArray, file_name: String) -> Dictionary:
+	var result: Dictionary = _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		bytes,
+		true
+	)
+	_status_text = _mutation_message(result)
+	if result.get("applied", false):
+		_refresh_gamefs()
+		_refresh_module_bundle()
+		_refresh_bundle_label()
+	_refresh_status()
+	return result
+
+
 func _show_preflight_dialog(preview: Dictionary) -> void:
 	if _preflight_dialog == null:
 		_preflight_dialog = KotorPreflightDialog.new()
@@ -723,6 +795,9 @@ func _on_preflight_proceed() -> void:
 	elif _preflight_pending_kind == "install_walkmesh":
 		var bytes := serialize_loaded_walkmesh_bytes()
 		_apply_walkmesh_install_now(bytes, _preflight_pending_path)
+	elif _preflight_pending_kind == "install_layout":
+		var layout_bytes := serialize_loaded_layout_bytes()
+		_apply_layout_install_now(layout_bytes, _preflight_pending_path)
 	_preflight_pending_kind = ""
 	_preflight_pending_path = ""
 	_preflight_pending_preview = {}
