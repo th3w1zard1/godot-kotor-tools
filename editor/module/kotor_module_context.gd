@@ -4,6 +4,7 @@ class_name KotorModuleContext
 
 const LYTParser := preload("../../formats/lyt_parser.gd")
 const BWMParser := preload("../../formats/bwm_parser.gd")
+const VISParser := preload("../../formats/vis_parser.gd")
 
 const MDLParser := preload("../../formats/mdl_parser.gd")
 
@@ -63,6 +64,20 @@ static func load_parsed_layout(gamefs: RefCounted, bundle: Dictionary) -> Dictio
 	return LYTParser.parse_bytes(bytes)
 
 
+static func load_parsed_visibility(gamefs: RefCounted, bundle: Dictionary) -> Dictionary:
+	if gamefs == null or bundle.is_empty():
+		return {}
+	var vis_entry: Dictionary = bundle.get("vis", {})
+	if vis_entry.is_empty():
+		return {}
+	if not gamefs.has_method("load_resource_entry_bytes"):
+		return {}
+	var bytes: PackedByteArray = gamefs.load_resource_entry_bytes(vis_entry)
+	if bytes.is_empty():
+		return {}
+	return VISParser.parse_bytes(bytes)
+
+
 static func load_parsed_walkmesh(gamefs: RefCounted, bundle: Dictionary) -> Dictionary:
 	if gamefs == null or bundle.is_empty():
 		return {}
@@ -112,6 +127,12 @@ static func format_layout_summary(parsed: Dictionary) -> String:
 		obstacles.size(),
 		doorhooks.size(),
 	]
+
+
+static func format_visibility_summary(parsed: Dictionary) -> String:
+	if parsed.is_empty():
+		return "VIS: not loaded"
+	return "VIS: %d room visibility group(s)" % VISParser.room_count(parsed)
 
 
 static func describe_bundle(bundle: Dictionary) -> String:

@@ -3,6 +3,7 @@ class_name KotorIndoorVisBuilder
 
 const KotorIndoorDocument := preload("../documents/kotor_indoor_document.gd")
 const VISParser := preload("../../formats/vis_parser.gd")
+const VISWriter := preload("../../formats/vis_writer.gd")
 
 
 static func build_from_document(document: KotorIndoorDocument) -> Dictionary:
@@ -26,22 +27,7 @@ static func build_from_document(document: KotorIndoorDocument) -> Dictionary:
 
 
 static func build_text(visibility: Dictionary) -> String:
-	var parent_names: Array[String] = []
-	for parent_name in visibility.keys():
-		parent_names.append(str(parent_name))
-	parent_names.sort()
-
-	var lines: Array[String] = []
-	for parent_name in parent_names:
-		var children: Array = visibility.get(parent_name, [])
-		var child_names: Array[String] = []
-		for raw_child in children:
-			child_names.append(str(raw_child))
-		child_names.sort()
-		lines.append("%s %d" % [parent_name, child_names.size()])
-		for child_name in child_names:
-			lines.append("  %s" % child_name)
-	return "\n".join(lines).strip_edges()
+	return VISWriter.write_visibility_map(visibility)
 
 
 static func _build_visibility_map(document: KotorIndoorDocument) -> Dictionary:
