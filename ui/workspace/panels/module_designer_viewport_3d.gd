@@ -3,6 +3,7 @@ extends SubViewportContainer
 class_name ModuleDesignerViewport3D
 
 signal instance_selected(category: String, index: int)
+signal path_point_selected(index: int)
 signal instance_rotate_updated(category: String, index: int, bearing: float)
 signal instance_rotate_finished(
 	category: String,
@@ -32,7 +33,9 @@ var _instance_mesh_by_key: Dictionary = {}
 var _walkmesh: Dictionary = {}
 var _selected_category := ""
 var _selected_index := -1
+var _selected_path_point_index := -1
 var _marker_nodes: Dictionary = {}
+var _path_point_nodes: Dictionary = {}
 var _orbit_yaw := 0.6
 var _orbit_pitch := -0.45
 var _orbit_distance := 40.0
@@ -172,7 +175,20 @@ func set_path_edges(entries: Array) -> void:
 func set_selection(category: String, index: int) -> void:
 	_selected_category = category
 	_selected_index = index
+	if not category.is_empty() and index >= 0:
+		_selected_path_point_index = -1
 	_refresh_marker_highlights()
+	_refresh_path_point_highlights()
+	_rebuild_rotate_gizmo()
+
+
+func set_path_point_selection(index: int) -> void:
+	_selected_path_point_index = index
+	if index >= 0:
+		_selected_category = ""
+		_selected_index = -1
+	_refresh_marker_highlights()
+	_refresh_path_point_highlights()
 	_rebuild_rotate_gizmo()
 
 
@@ -199,6 +215,11 @@ func _gui_input(event: InputEvent) -> void:
 			var picked := _pick_instance(mouse_event.position)
 			if not picked.is_empty():
 				instance_selected.emit(str(picked.get("category", "")), int(picked.get("index", -1)))
+				accept_event()
+				return
+			var picked_point := _pick_path_point(mouse_event.position)
+			if not picked_point.is_empty():
+				path_point_selected.emit(int(picked_point.get("index", -1)))
 				accept_event()
 				return
 		if mouse_event.button_index == MOUSE_BUTTON_RIGHT:
@@ -410,6 +431,7 @@ func _rebuild_path_overlay() -> void:
 		return
 	for child in _path_root.get_children():
 		child.queue_free()
+	_path_point_nodes.clear()
 	if not _path_edges.is_empty():
 		var edge_mesh := MeshInstance3D.new()
 		edge_mesh.name = "PathEdges"
@@ -421,18 +443,11 @@ func _rebuild_path_overlay() -> void:
 			edge_mesh.material_override = material
 			_path_root.add_child(edge_mesh)
 	for point_record in _path_points:
-		var kotor_pos := Vector3(
-			float(point_record.get("x", 0.0)),
-			float(point_record.get("y", 0.0)),
-			float(point_record.get("z", 0.0))
-		)
-		var marker := _make_sphere_marker(
-			KotorWorldCoordinates.kotor_to_godot(kotor_pos),
-			0.28,
-			Color(0.2, 0.95, 0.95, 0.9)
-		)
-		marker.name = "PathPoint_%d" % int(point_record.get("id", int(point_record.get("index", 0))))
-		_path_root.add_child(marker)
+		var area := _make_pickable_path_point(point_record)
+		area.name = "PathPoint_%d" % int(point_record.get("id", int(point_record.get("index", 0))))
+		_path_root.add_child(area)
+		_path_point_nodes[int(point_record.get("index", -1))] = area
+	_refresh_path_point_highlights()
 
 
 func _build_path_edge_mesh() -> ArrayMesh:
@@ -517,6 +532,26 @@ func _make_pickable_marker(record: Dictionary, position: Vector3, color: Color, 
 	return area
 
 
+func _make_pickable_path_point(point_record: Dictionary) -> Area3D:
+	var area := Area3D.new()
+	area.position = KotorWorldCoordinates.kotor_to_godot(Vector3(
+		float(point_record.get("x", 0.0)),
+		float(point_record.get("y", 0.0)),
+		float(point_record.get("z", 0.0))
+	))
+	area.set_meta("path_point_record", point_record)
+
+	var collision := CollisionShape3D.new()
+	var shape := SphereShape3D.new()
+	shape.radius = 0.45
+	collision.shape = shape
+	area.add_child(collision)
+
+	var marker := _make_sphere_marker(Vector3.ZERO, 0.28, Color(0.2, 0.95, 0.95, 0.9))
+	area.add_child(marker)
+	return area
+
+
 func _marker_visual_mesh(area: Area3D) -> MeshInstance3D:
 	for child in area.get_children():
 		if child is MeshInstance3D:
@@ -575,6 +610,22 @@ func _refresh_marker_highlights() -> void:
 			area.scale = Vector3.ONE
 
 
+func _refresh_path_point_highlights() -> void:
+	for point_index in _path_point_nodes.keys():
+		var area: Area3D = _path_point_nodes[point_index]
+		var mesh := _marker_visual_mesh(area)
+		if mesh == null or mesh.material_override == null:
+			continue
+		var material := mesh.material_override as StandardMaterial3D
+		var base_color := Color(0.2, 0.95, 0.95, 0.9)
+		if int(point_index) == _selected_path_point_index:
+			material.albedo_color = base_color.lightened(0.3)
+			area.scale = Vector3.ONE * 1.35
+		else:
+			material.albedo_color = base_color
+			area.scale = Vector3.ONE
+
+
 func _pick_instance(screen_pos: Vector2) -> Dictionary:
 	if _camera == null or _viewport == null or size.x <= 0.0 or size.y <= 0.0:
 		return {}
@@ -593,6 +644,40 @@ func _pick_instance(screen_pos: Vector2) -> Dictionary:
 			continue
 		var center := area.global_position
 		var radius := 0.75 * maxf(area.scale.x, 1.0)
+		var oc := origin - center
+		var b := direction.dot(oc)
+		var c := oc.dot(oc) - radius * radius
+		var discriminant := b * b - c
+		if discriminant < 0.0:
+			continue
+		var t := -b - sqrt(discriminant)
+		if t < 0.0:
+			t = -b + sqrt(discriminant)
+		if t < 0.0 or t >= best_distance:
+			continue
+		best_distance = t
+		best_record = record
+	return best_record
+
+
+func _pick_path_point(screen_pos: Vector2) -> Dictionary:
+	if _camera == null or _viewport == null or size.x <= 0.0 or size.y <= 0.0:
+		return {}
+	var viewport_pos := Vector2(
+		screen_pos.x / size.x * float(_viewport.size.x),
+		screen_pos.y / size.y * float(_viewport.size.y)
+	)
+	var origin := _camera.project_ray_origin(viewport_pos)
+	var direction := _camera.project_ray_normal(viewport_pos)
+	var best_record := {}
+	var best_distance := INF
+	for point_index in _path_point_nodes.keys():
+		var area: Area3D = _path_point_nodes[point_index]
+		var record = area.get_meta("path_point_record", {})
+		if typeof(record) != TYPE_DICTIONARY:
+			continue
+		var center := area.global_position
+		var radius := 0.55 * maxf(area.scale.x, 1.0)
 		var oc := origin - center
 		var b := direction.dot(oc)
 		var c := oc.dot(oc) - radius * radius

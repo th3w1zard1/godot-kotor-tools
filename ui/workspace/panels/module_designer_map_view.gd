@@ -5,6 +5,7 @@ class_name ModuleDesignerMapView
 const KotorWorldCoordinates := preload("../../../editor/module/kotor_world_coordinates.gd")
 
 signal instance_selected(category: String, index: int)
+signal path_point_selected(index: int)
 signal instance_drag_updated(category: String, index: int, x: float, y: float)
 signal instance_drag_finished(
 	category: String,
@@ -30,6 +31,7 @@ var _path_edges: Array[Dictionary] = []
 var _bounds := Rect2(-10, -10, 20, 20)
 var _selected_category := ""
 var _selected_index := -1
+var _selected_path_point_index := -1
 var _padding_pixels := 24.0
 var _drag_active := false
 var _drag_category := ""
@@ -65,6 +67,16 @@ func set_instances(records: Array, bounds: Rect2, path_points: Array = [], path_
 func set_selection(category: String, index: int) -> void:
 	_selected_category = category
 	_selected_index = index
+	if not category.is_empty() and index >= 0:
+		_selected_path_point_index = -1
+	queue_redraw()
+
+
+func set_path_point_selection(index: int) -> void:
+	_selected_path_point_index = index
+	if index >= 0:
+		_selected_category = ""
+		_selected_index = -1
 	queue_redraw()
 
 
@@ -92,15 +104,26 @@ func _draw_path_edges() -> void:
 	for edge_record in _path_edges:
 		var source := _world_to_screen(Vector2(float(edge_record.get("source_x", 0.0)), float(edge_record.get("source_y", 0.0))))
 		var target := _world_to_screen(Vector2(float(edge_record.get("target_x", 0.0)), float(edge_record.get("target_y", 0.0))))
-		draw_line(source, target, path_color, 1.5)
+		var highlighted := (
+			int(edge_record.get("source_index", -1)) == _selected_path_point_index
+			or int(edge_record.get("target_index", -1)) == _selected_path_point_index
+		)
+		draw_line(
+			source,
+			target,
+			path_color.lightened(0.25) if highlighted else path_color,
+			2.5 if highlighted else 1.5
+		)
 
 
 func _draw_path_points() -> void:
 	var path_color := Color(0.2, 0.95, 0.95, 0.95)
 	for point_record in _path_points:
 		var point := _world_to_screen(Vector2(float(point_record.get("x", 0.0)), float(point_record.get("y", 0.0))))
-		draw_circle(point, 3.5, path_color)
-		draw_arc(point, 5.5, 0.0, TAU, 18, path_color.darkened(0.35), 1.5)
+		var highlighted := int(point_record.get("index", -1)) == _selected_path_point_index
+		var fill := path_color.lightened(0.25) if highlighted else path_color
+		draw_circle(point, 4.75 if highlighted else 3.5, fill)
+		draw_arc(point, 7.0 if highlighted else 5.5, 0.0, TAU, 18, fill.darkened(0.35), 1.75 if highlighted else 1.5)
 
 
 func _draw_grid() -> void:
@@ -159,18 +182,22 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		if mouse_event.pressed:
 			var picked := _pick_instance(mouse_event.position)
-			if picked.is_empty():
+			if not picked.is_empty():
+				var category := str(picked.get("category", ""))
+				var index := int(picked.get("index", -1))
+				instance_selected.emit(category, index)
+				_drag_active = true
+				_drag_category = category
+				_drag_index = index
+				_drag_start_world = Vector2(float(picked.get("x", 0.0)), float(picked.get("y", 0.0)))
+				_drag_current_world = _drag_start_world
+				accept_event()
 				return
-			var category := str(picked.get("category", ""))
-			var index := int(picked.get("index", -1))
-			instance_selected.emit(category, index)
-			_drag_active = true
-			_drag_category = category
-			_drag_index = index
-			_drag_start_world = Vector2(float(picked.get("x", 0.0)), float(picked.get("y", 0.0)))
-			_drag_current_world = _drag_start_world
-			accept_event()
-			return
+			var picked_point := _pick_path_point(mouse_event.position)
+			if not picked_point.is_empty():
+				path_point_selected.emit(int(picked_point.get("index", -1)))
+				accept_event()
+				return
 		if _drag_active:
 			_finish_drag()
 			accept_event()
@@ -209,6 +236,21 @@ func _pick_instance(screen_point: Vector2) -> Dictionary:
 			best_index = record_index
 			best = record
 	return best if best_distance <= 12.0 else {}
+
+
+func _pick_path_point(screen_point: Vector2) -> Dictionary:
+	var best: Dictionary = {}
+	var best_distance := 10.0
+	var best_index := 0x7fffffff
+	for point_record in _path_points:
+		var point := _world_to_screen(Vector2(float(point_record.get("x", 0.0)), float(point_record.get("y", 0.0))))
+		var distance := point.distance_to(screen_point)
+		var point_index := int(point_record.get("index", 0x7fffffff))
+		if distance < best_distance or (distance == best_distance and point_index < best_index):
+			best_distance = distance
+			best_index = point_index
+			best = point_record
+	return best if best_distance <= 10.0 else {}
 
 
 func _world_to_screen(world: Vector2) -> Vector2:
