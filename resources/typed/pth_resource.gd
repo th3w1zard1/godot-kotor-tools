@@ -33,5 +33,9 @@ func get_connection_records() -> Array[Dictionary]:
 	return (create_document() as KotorPTHDocument).get_connection_records()
 
 
+func set_point_position(index: int, x: float, y: float, z: Variant = null) -> bool:
+	return (create_document() as KotorPTHDocument).set_point_position(index, x, y, z)
+
+
 func _create_document():
 	return KotorPTHDocument.new().setup(file_type, gff_data, self)

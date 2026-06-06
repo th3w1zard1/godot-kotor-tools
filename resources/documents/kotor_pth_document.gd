@@ -43,6 +43,7 @@ func get_point_records() -> Array[Dictionary]:
 		var point := points[index]
 		records.append({
 			"index": index,
+			"path": [field_name, index],
 			"id": _point_int(point, POINT_ID_FIELDS, index),
 			"x": _point_float(point, POINT_X_FIELDS),
 			"y": _point_float(point, POINT_Y_FIELDS),
@@ -103,6 +104,29 @@ func get_connection_records() -> Array[Dictionary]:
 	return records
 
 
+func find_point_record(index: int) -> Dictionary:
+	for point_record in get_point_records():
+		if int(point_record.get("index", -1)) == index:
+			return point_record
+	return {}
+
+
+func set_point_position(index: int, x: float, y: float, z: Variant = null) -> bool:
+	var point_record := find_point_record(index)
+	if point_record.is_empty():
+		return false
+	var base_path: Array = point_record.get("path", [])
+	if base_path.is_empty():
+		return false
+	var raw_point: Dictionary = point_record.get("raw", {})
+	var changed := false
+	changed = _set_point_float(base_path, raw_point, POINT_X_FIELDS, x) or changed
+	changed = _set_point_float(base_path, raw_point, POINT_Y_FIELDS, y) or changed
+	if z != null:
+		changed = _set_point_float(base_path, raw_point, POINT_Z_FIELDS, float(z)) or changed
+	return changed
+
+
 func get_display_name() -> String:
 	var tag := get_tag()
 	return tag if not tag.is_empty() else super.get_display_name()
@@ -131,3 +155,19 @@ static func _point_int(point: Dictionary, field_names: Array, default_value: int
 		if point.has(field_name):
 			return int(point.get(field_name, default_value))
 	return default_value
+
+
+func _set_point_float(base_path: Array, raw_point: Dictionary, field_names: Array, value: float) -> bool:
+	var field_name := _point_field_name(raw_point, field_names)
+	if field_name.is_empty():
+		return false
+	var path := base_path.duplicate()
+	path.append(field_name)
+	return set_field_at_path(path, value)
+
+
+static func _point_field_name(point: Dictionary, field_names: Array) -> String:
+	for field_name in field_names:
+		if point.has(field_name):
+			return String(field_name)
+	return ""

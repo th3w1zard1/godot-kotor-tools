@@ -14,6 +14,7 @@ const GFFWriter := preload("../../../formats/gff_writer.gd")
 const LYTWriter := preload("../../../formats/lyt_writer.gd")
 const VISWriter := preload("../../../formats/vis_writer.gd")
 const PTHResource := preload("../../../resources/typed/pth_resource.gd")
+const KotorPTHDocument := preload("../../../resources/documents/kotor_pth_document.gd")
 const KotorTemplateModelResolver := preload("../../../editor/module/kotor_template_model_resolver.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const ModuleDesignerMapView := preload("../panels/module_designer_map_view.gd")
@@ -35,6 +36,7 @@ var _viewport_3d: ModuleDesignerViewport3D
 var _parsed_layout: Dictionary = {}
 var _parsed_visibility: Dictionary = {}
 var _path_resource: PTHResource
+var _path_document: KotorPTHDocument
 var _parsed_walkmesh: Dictionary = {}
 var _parsed_room_meshes: Array = []
 var _mutation_service: RefCounted
@@ -43,6 +45,8 @@ var _document: KotorGITDocument
 var _source_path := ""
 var _file_name := "module.git"
 var _dirty := false
+var _git_dirty := false
+var _pth_dirty := false
 var _status_text := ""
 var _document_key := ""
 var _module_bundle: Dictionary = {}
@@ -88,7 +92,9 @@ func open_resource(resource: GITResource, source_path: String = "", file_name: S
 	_disconnect_document_signal()
 	_source_path = source_path if source_path.is_absolute_path() else ""
 	_file_name = file_name.get_file() if not file_name.is_empty() else "module.git"
-	_dirty = false
+	_git_dirty = false
+	_pth_dirty = false
+	_refresh_dirty_state()
 	_status_text = ""
 	_refresh_module_bundle()
 	_register_controller_document()
@@ -450,6 +456,7 @@ func _build_ui() -> void:
 	_map_view.path_point_selected.connect(_on_map_path_point_selected)
 	_map_view.path_connection_selected.connect(_on_map_path_connection_selected)
 	_map_view.instance_drag_finished.connect(_on_map_instance_drag_finished)
+	_map_view.path_point_drag_finished.connect(_on_map_path_point_drag_finished)
 	_map_view.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
 
 	var right_split := VSplitContainer.new()
@@ -481,7 +488,10 @@ func _refresh_view() -> void:
 func _refresh_path_label() -> void:
 	if _path_label == null:
 		return
-	var parts: Array[String] = [_current_file_name()]
+	var label := _current_file_name()
+	if _dirty:
+		label += " *"
+	var parts: Array[String] = [label]
 	if not _source_path.is_empty():
 		parts.append(_source_path)
 	_path_label.text = " · ".join(parts)
@@ -595,8 +605,10 @@ func _refresh_viewport_3d() -> void:
 
 func _refresh_status() -> void:
 	var parts: Array[String] = []
-	if _dirty:
-		parts.append("Unsaved changes")
+	if _git_dirty:
+		parts.append("Unsaved GIT changes")
+	if _pth_dirty:
+		parts.append("Unsaved PTH changes")
 	if not _status_text.is_empty():
 		parts.append(_status_text)
 	var text := "Ready" if parts.is_empty() else " · ".join(parts)
@@ -609,7 +621,7 @@ func _refresh_module_bundle() -> void:
 	_module_bundle = KotorModuleContext.find_module_bundle(gamefs, module_resref)
 	_parsed_layout = KotorModuleContext.load_parsed_layout(gamefs, _module_bundle)
 	_parsed_visibility = KotorModuleContext.load_parsed_visibility(gamefs, _module_bundle)
-	_path_resource = KotorModuleContext.load_path_resource(gamefs, _module_bundle)
+	_set_path_resource(KotorModuleContext.load_path_resource(gamefs, _module_bundle))
 	_parsed_walkmesh = KotorModuleContext.load_parsed_walkmesh(gamefs, _module_bundle)
 	_parsed_room_meshes = _load_room_meshes(gamefs)
 
@@ -796,6 +808,16 @@ func _on_map_instance_drag_finished(
 	_apply_instance_position_with_undo(category, index, old_x, old_y, new_x, new_y)
 
 
+func _on_map_path_point_drag_finished(
+	index: int,
+	old_x: float,
+	old_y: float,
+	new_x: float,
+	new_y: float
+) -> void:
+	_apply_path_point_position_with_undo(index, old_x, old_y, new_x, new_y)
+
+
 func _on_map_instance_rotate_finished(
 	category: String,
 	index: int,
@@ -948,16 +970,20 @@ func _select_tree_item(kind: String, category: String, index: int) -> void:
 
 func _clear_document_state(message: String) -> void:
 	_disconnect_document_signal()
+	_disconnect_path_document_signal()
 	_resource = null
 	_document = null
 	_source_path = ""
 	_file_name = "module.git"
-	_dirty = false
+	_git_dirty = false
+	_pth_dirty = false
+	_refresh_dirty_state()
 	_status_text = message
 	_module_bundle = {}
 	_parsed_layout = {}
 	_parsed_visibility = {}
 	_path_resource = null
+	_path_document = null
 	_parsed_walkmesh = {}
 	_parsed_room_meshes = []
 	if _instance_tree != null:
@@ -1220,7 +1246,8 @@ func _apply_export_now(target_path: String) -> Dictionary:
 	if result.get("applied", false):
 		_source_path = target_path
 		_file_name = target_path.get_file()
-		_dirty = false
+		_git_dirty = false
+		_refresh_dirty_state()
 		_register_controller_document()
 		_remove_previous_controller_document(previous_key)
 	_update_controller_dirty_state()
@@ -1237,10 +1264,11 @@ func _apply_install_now() -> Dictionary:
 	)
 	_status_text = _mutation_message(result)
 	if result.get("applied", false):
-		_dirty = false
+		_git_dirty = false
 		_refresh_gamefs()
 		_refresh_module_bundle()
 		_refresh_bundle_label()
+		_refresh_dirty_state()
 	_update_controller_dirty_state()
 	_refresh_status()
 	return result
@@ -1303,9 +1331,12 @@ func _apply_pth_install_now(file_name: String) -> Dictionary:
 	)
 	_status_text = _mutation_message(result)
 	if result.get("applied", false):
+		_pth_dirty = false
 		_refresh_gamefs()
 		_refresh_module_bundle()
 		_refresh_bundle_label()
+		_refresh_dirty_state()
+	_update_controller_dirty_state()
 	_refresh_status()
 	return result
 
@@ -1410,6 +1441,31 @@ func _exec_instance_position(category: String, index: int, x: float, y: float) -
 	_select_instance(category, index)
 
 
+func _apply_path_point_position_with_undo(
+	index: int,
+	old_x: float,
+	old_y: float,
+	new_x: float,
+	new_y: float
+) -> void:
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Move PTH point", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_point_position", index, new_x, new_y)
+		ur.add_undo_method(self, "_exec_path_point_position", index, old_x, old_y)
+		ur.commit_action()
+	else:
+		_exec_path_point_position(index, new_x, new_y)
+
+
+func _exec_path_point_position(index: int, x: float, y: float) -> void:
+	if _path_document == null:
+		return
+	if not _path_document.set_point_position(index, x, y):
+		return
+	_select_path_point(index)
+
+
 func _apply_instance_bearing_with_undo(
 	category: String,
 	index: int,
@@ -1450,8 +1506,32 @@ func _disconnect_document_signal() -> void:
 		_document.changed.disconnect(changed)
 
 
+func _connect_path_document_signal() -> void:
+	if _path_document == null:
+		return
+	var changed := Callable(self, "_on_path_document_changed")
+	if not _path_document.changed.is_connected(changed):
+		_path_document.changed.connect(changed)
+
+
+func _disconnect_path_document_signal() -> void:
+	if _path_document == null:
+		return
+	var changed := Callable(self, "_on_path_document_changed")
+	if _path_document.changed.is_connected(changed):
+		_path_document.changed.disconnect(changed)
+
+
 func _on_document_changed() -> void:
-	_dirty = true
+	_git_dirty = true
+	_refresh_dirty_state()
+	_update_controller_dirty_state()
+	_refresh_view()
+
+
+func _on_path_document_changed() -> void:
+	_pth_dirty = true
+	_refresh_dirty_state()
 	_update_controller_dirty_state()
 	_refresh_view()
 
@@ -1510,3 +1590,16 @@ func is_dirty() -> bool:
 
 func get_status_text() -> String:
 	return _status_text
+
+
+func _set_path_resource(resource: PTHResource) -> void:
+	_disconnect_path_document_signal()
+	_path_resource = resource
+	_path_document = _path_resource.create_document() as KotorPTHDocument if _path_resource != null else null
+	_connect_path_document_signal()
+
+
+func _refresh_dirty_state() -> void:
+	_dirty = _git_dirty or _pth_dirty
+	_refresh_path_label()
+	_emit_dirty_state(_dirty)
