@@ -77,12 +77,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q60 | Module Designer PTH install | **Install PTH to Override** via typed `PTHResource` + mutation preflight; headless `test_module_designer_pth_install.gd`. |
 | Q61 | Module Designer LYT preview export | **Export LYT Preview…** writes the loaded area layout to filesystem `.lyt`; headless `test_module_designer_lyt_export.gd`. |
 | Q62 | Module Designer VIS preview export | **Export VIS Preview…** writes the loaded area visibility graph to filesystem `.vis`; headless `test_module_designer_vis_export.gd`. |
+| Q63 | Module Designer PTH preview export | **Export PTH Preview…** writes the loaded area path graph to filesystem `.pth`; headless `test_module_designer_pth_export.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q62 shipped Module Designer VIS preview export. | Next: advanced module designer tooling, utility panels, or parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q63 shipped Module Designer PTH preview export. | Next: advanced module designer tooling, utility panels, or parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
