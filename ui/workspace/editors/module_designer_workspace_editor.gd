@@ -541,7 +541,8 @@ func _refresh_map() -> void:
 		return
 	var records := _document.get_instance_records()
 	var path_points := _module_path_points()
-	_map_view.set_instances(records, _module_overlay_bounds(_document.get_layout_bounds(), path_points), path_points)
+	var path_edges := _module_path_edges()
+	_map_view.set_instances(records, _module_overlay_bounds(_document.get_layout_bounds(), path_points), path_points, path_edges)
 	_refresh_viewport_3d()
 
 
@@ -550,8 +551,10 @@ func _refresh_viewport_3d() -> void:
 		return
 	var records := _document.get_instance_records()
 	var path_points := _module_path_points()
+	var path_edges := _module_path_edges()
 	_viewport_3d.set_instances(records, _parsed_layout)
 	_viewport_3d.set_path_points(path_points)
+	_viewport_3d.set_path_edges(path_edges)
 	_viewport_3d.set_walkmesh(_parsed_walkmesh)
 	_viewport_3d.set_room_meshes(_parsed_room_meshes)
 	_viewport_3d.set_instance_meshes(_load_instance_meshes(_resolve_gamefs(), records))
@@ -645,6 +648,12 @@ func _module_path_points() -> Array[Dictionary]:
 	if _path_resource == null:
 		return []
 	return _path_resource.get_point_records()
+
+
+func _module_path_edges() -> Array[Dictionary]:
+	if _path_resource == null:
+		return []
+	return _path_resource.get_connection_records()
 
 
 func _module_overlay_bounds(base_bounds: Rect2, path_points: Array[Dictionary]) -> Rect2:

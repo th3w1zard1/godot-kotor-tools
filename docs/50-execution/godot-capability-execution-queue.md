@@ -79,12 +79,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q62 | Module Designer VIS preview export | **Export VIS Preview…** writes the loaded area visibility graph to filesystem `.vis`; headless `test_module_designer_vis_export.gd`. |
 | Q63 | Module Designer PTH preview export | **Export PTH Preview…** writes the loaded area path graph to filesystem `.pth`; headless `test_module_designer_pth_export.gd`. |
 | Q64 | Module Designer PTH point overlay | Loaded `.pth` points render in the 2D map and 3D viewport with overlay-aware bounds/camera; headless `test_module_designer_pth_overlay.gd`. |
+| Q65 | Module Designer PTH connection overlay | Loaded `.pth` edges render in the 2D map and 3D viewport, with typed connection extraction and summary depth; headless `test_module_designer_pth_connection_overlay.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q64 shipped Module Designer PTH point overlay. | Next: advanced module designer tooling, utility panels, or parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q65 shipped Module Designer PTH connection overlay. | Next: advanced module designer tooling, utility panels, or parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 

@@ -21,5 +21,17 @@ func get_point_records() -> Array[Dictionary]:
 	return (create_document() as KotorPTHDocument).get_point_records()
 
 
+func get_connection_field_name() -> String:
+	return (create_document() as KotorPTHDocument).get_connection_field_name()
+
+
+func get_connection_count() -> int:
+	return (create_document() as KotorPTHDocument).get_connection_count()
+
+
+func get_connection_records() -> Array[Dictionary]:
+	return (create_document() as KotorPTHDocument).get_connection_records()
+
+
 func _create_document():
 	return KotorPTHDocument.new().setup(file_type, gff_data, self)

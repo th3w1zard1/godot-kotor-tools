@@ -26,6 +26,7 @@ const KotorGITDocument := preload("../../../resources/documents/kotor_git_docume
 
 var _records: Array[Dictionary] = []
 var _path_points: Array[Dictionary] = []
+var _path_edges: Array[Dictionary] = []
 var _bounds := Rect2(-10, -10, 20, 20)
 var _selected_category := ""
 var _selected_index := -1
@@ -42,7 +43,7 @@ var _rotate_start_bearing := 0.0
 var _rotate_preview_bearing := 0.0
 
 
-func set_instances(records: Array, bounds: Rect2, path_points: Array = []) -> void:
+func set_instances(records: Array, bounds: Rect2, path_points: Array = [], path_edges: Array = []) -> void:
 	_records.clear()
 	for raw_record in records:
 		if typeof(raw_record) == TYPE_DICTIONARY:
@@ -51,6 +52,10 @@ func set_instances(records: Array, bounds: Rect2, path_points: Array = []) -> vo
 	for raw_point in path_points:
 		if typeof(raw_point) == TYPE_DICTIONARY:
 			_path_points.append(raw_point)
+	_path_edges.clear()
+	for raw_edge in path_edges:
+		if typeof(raw_edge) == TYPE_DICTIONARY:
+			_path_edges.append(raw_edge)
 	_bounds = bounds if bounds.size.x > 0.0 and bounds.size.y > 0.0 else Rect2(-10, -10, 20, 20)
 	_cancel_drag()
 	_cancel_rotate()
@@ -71,6 +76,7 @@ func _notification(what: int) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.12, 0.13, 0.15))
 	_draw_grid()
+	_draw_path_edges()
 	_draw_path_points()
 	for record in _records:
 		_draw_instance(record)
@@ -79,6 +85,14 @@ func _draw() -> void:
 		if not selected.is_empty():
 			var point := _world_to_screen(Vector2(float(selected.get("x", 0.0)), float(selected.get("y", 0.0))))
 			draw_arc(point, 8.0, 0.0, TAU, 24, Color(1.0, 1.0, 1.0), 2.0)
+
+
+func _draw_path_edges() -> void:
+	var path_color := Color(0.15, 0.75, 0.82, 0.85)
+	for edge_record in _path_edges:
+		var source := _world_to_screen(Vector2(float(edge_record.get("source_x", 0.0)), float(edge_record.get("source_y", 0.0))))
+		var target := _world_to_screen(Vector2(float(edge_record.get("target_x", 0.0)), float(edge_record.get("target_y", 0.0))))
+		draw_line(source, target, path_color, 1.5)
 
 
 func _draw_path_points() -> void:

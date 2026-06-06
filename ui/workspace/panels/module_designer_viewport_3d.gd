@@ -25,6 +25,7 @@ var _walkmesh_root: Node3D
 var _path_root: Node3D
 var _records: Array[Dictionary] = []
 var _path_points: Array[Dictionary] = []
+var _path_edges: Array[Dictionary] = []
 var _parsed_layout: Dictionary = {}
 var _room_meshes: Array = []
 var _instance_mesh_by_key: Dictionary = {}
@@ -155,7 +156,16 @@ func set_path_points(entries: Array) -> void:
 	for raw_entry in entries:
 		if typeof(raw_entry) == TYPE_DICTIONARY:
 			_path_points.append(raw_entry)
-	_rebuild_path_points()
+	_rebuild_path_overlay()
+	_fit_camera_to_content()
+
+
+func set_path_edges(entries: Array) -> void:
+	_path_edges.clear()
+	for raw_entry in entries:
+		if typeof(raw_entry) == TYPE_DICTIONARY:
+			_path_edges.append(raw_entry)
+	_rebuild_path_overlay()
 	_fit_camera_to_content()
 
 
@@ -395,11 +405,21 @@ func _rebuild_walkmesh() -> void:
 	_walkmesh_root.add_child(mesh_instance)
 
 
-func _rebuild_path_points() -> void:
+func _rebuild_path_overlay() -> void:
 	if _path_root == null:
 		return
 	for child in _path_root.get_children():
 		child.queue_free()
+	if not _path_edges.is_empty():
+		var edge_mesh := MeshInstance3D.new()
+		edge_mesh.name = "PathEdges"
+		edge_mesh.mesh = _build_path_edge_mesh()
+		if edge_mesh.mesh != null:
+			var material := StandardMaterial3D.new()
+			material.albedo_color = Color(0.15, 0.75, 0.82, 0.9)
+			material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			edge_mesh.material_override = material
+			_path_root.add_child(edge_mesh)
 	for point_record in _path_points:
 		var kotor_pos := Vector3(
 			float(point_record.get("x", 0.0)),
@@ -413,6 +433,27 @@ func _rebuild_path_points() -> void:
 		)
 		marker.name = "PathPoint_%d" % int(point_record.get("id", int(point_record.get("index", 0))))
 		_path_root.add_child(marker)
+
+
+func _build_path_edge_mesh() -> ArrayMesh:
+	if _path_edges.is_empty():
+		return null
+	var surface_tool := SurfaceTool.new()
+	surface_tool.begin(Mesh.PRIMITIVE_LINES)
+	for edge_record in _path_edges:
+		var source := KotorWorldCoordinates.kotor_to_godot(Vector3(
+			float(edge_record.get("source_x", 0.0)),
+			float(edge_record.get("source_y", 0.0)),
+			float(edge_record.get("source_z", 0.0))
+		))
+		var target := KotorWorldCoordinates.kotor_to_godot(Vector3(
+			float(edge_record.get("target_x", 0.0)),
+			float(edge_record.get("target_y", 0.0)),
+			float(edge_record.get("target_z", 0.0))
+		))
+		surface_tool.add_vertex(source)
+		surface_tool.add_vertex(target)
+	return surface_tool.commit()
 
 
 func _build_walkmesh_surface(parsed: Dictionary) -> ArrayMesh:

@@ -7,6 +7,11 @@ const POINT_ID_FIELDS := ["ID", "Id"]
 const POINT_X_FIELDS := ["X", "XPosition", "XPos"]
 const POINT_Y_FIELDS := ["Y", "YPosition", "YPos"]
 const POINT_Z_FIELDS := ["Z", "ZPosition", "ZPos"]
+# KotOR/PyKotor carry historical misspellings in the connection field names.
+const CONNECTION_LIST_FIELDS := ["Path_Conections", "PathConnections", "Path_Connections"]
+const POINT_CONNECTION_COUNT_FIELDS := ["Conections", "Connections"]
+const POINT_FIRST_CONNECTION_FIELDS := ["First_Conection", "FirstConnection", "First_Connection"]
+const CONNECTION_TARGET_FIELDS := ["Destination", "Target", "To"]
 
 
 func get_tag() -> String:
@@ -43,7 +48,58 @@ func get_point_records() -> Array[Dictionary]:
 			"y": _point_float(point, POINT_Y_FIELDS),
 			"z": _point_float(point, POINT_Z_FIELDS),
 			"raw": point,
-		})
+	})
+	return records
+
+
+func get_connection_field_name() -> String:
+	for field_name in CONNECTION_LIST_FIELDS:
+		if has_field(field_name):
+			return field_name
+	return ""
+
+
+func get_connection_count() -> int:
+	return get_connection_records().size()
+
+
+func get_connection_records() -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
+	var field_name := get_connection_field_name()
+	if field_name.is_empty():
+		return records
+	var connections := get_struct_list(field_name)
+	if connections.is_empty():
+		return records
+	var points := get_point_records()
+	for source_index in range(points.size()):
+		var point: Dictionary = points[source_index]
+		var raw_point: Dictionary = point.get("raw", {})
+		var connection_count := _point_int(raw_point, POINT_CONNECTION_COUNT_FIELDS, 0)
+		var first_connection := _point_int(raw_point, POINT_FIRST_CONNECTION_FIELDS, 0)
+		for offset in range(connection_count):
+			var connection_index := first_connection + offset
+			if connection_index < 0 or connection_index >= connections.size():
+				continue
+			var raw_connection: Dictionary = connections[connection_index]
+			var target_index := _point_int(raw_connection, CONNECTION_TARGET_FIELDS, -1)
+			if target_index < 0 or target_index >= points.size():
+				continue
+			var target: Dictionary = points[target_index]
+			records.append({
+				"index": connection_index,
+				"source_index": source_index,
+				"target_index": target_index,
+				"source_id": int(point.get("id", source_index)),
+				"target_id": int(target.get("id", target_index)),
+				"source_x": float(point.get("x", 0.0)),
+				"source_y": float(point.get("y", 0.0)),
+				"source_z": float(point.get("z", 0.0)),
+				"target_x": float(target.get("x", 0.0)),
+				"target_y": float(target.get("y", 0.0)),
+				"target_z": float(target.get("z", 0.0)),
+				"raw": raw_connection,
+			})
 	return records
 
 
@@ -58,6 +114,8 @@ func get_summary_lines() -> Array[String]:
 	_append_summary_line(lines, "Tag", get_tag())
 	_append_summary_line(lines, "Point Field", get_point_field_name())
 	_append_summary_line(lines, "Points", get_point_count())
+	_append_summary_line(lines, "Connection Field", get_connection_field_name())
+	_append_summary_line(lines, "Connections", get_connection_count())
 	return lines
 
 

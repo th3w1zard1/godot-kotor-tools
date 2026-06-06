@@ -159,6 +159,15 @@ static func format_path_summary(resource: PTHResource) -> String:
 	if resource == null:
 		return "PTH: not loaded"
 	var field_name := resource.get_point_field_name()
+	var connection_count := resource.get_connection_count()
+	var connection_field := resource.get_connection_field_name()
+	if not field_name.is_empty() and connection_count > 0 and not connection_field.is_empty():
+		return "PTH: %d point(s), %d connection(s) via %s/%s" % [
+			resource.get_point_count(),
+			connection_count,
+			field_name,
+			connection_field,
+		]
 	if field_name.is_empty():
 		return "PTH: %d point(s)" % resource.get_point_count()
 	return "PTH: %d point(s) via %s" % [resource.get_point_count(), field_name]
