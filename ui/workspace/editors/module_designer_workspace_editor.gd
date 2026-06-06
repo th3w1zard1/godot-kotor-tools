@@ -378,6 +378,11 @@ func _build_ui() -> void:
 	export_layout_btn.pressed.connect(_export_layout_preview_dialog)
 	_toolbar.add_child(export_layout_btn)
 
+	var export_visibility_btn := Button.new()
+	export_visibility_btn.text = "Export VIS Preview…"
+	export_visibility_btn.pressed.connect(_export_visibility_preview_dialog)
+	_toolbar.add_child(export_visibility_btn)
+
 	var install_walkmesh_btn := Button.new()
 	install_walkmesh_btn.text = "Install Walkmesh to Override"
 	install_walkmesh_btn.pressed.connect(_install_walkmesh_to_override)
@@ -814,6 +819,32 @@ func _export_layout_preview_dialog() -> void:
 	dialog.popup_centered_ratio(0.7)
 
 
+func _export_visibility_preview_dialog() -> void:
+	if _parsed_visibility.is_empty():
+		_status_text = "No area visibility loaded for this module."
+		_refresh_status()
+		return
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export VIS Preview"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	dialog.current_file = visibility_file_name()
+	dialog.add_filter("*.vis ; KotOR Visibility")
+	dialog.file_selected.connect(func(path: String) -> void:
+		export_visibility_preview_to_path(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
 func _write_walkmesh_preview(path: String) -> void:
 	var target_path := path
 	if target_path.get_extension().to_lower() != "wok":
@@ -856,6 +887,32 @@ func export_layout_preview_to_path(path: String) -> Dictionary:
 	file.store_buffer(bytes)
 	file.close()
 	_status_text = "LYT preview written to %s" % target_path.get_file()
+	_refresh_status()
+	return {"ok": true, "path": target_path}
+
+
+func export_visibility_preview_to_path(path: String) -> Dictionary:
+	if _parsed_visibility.is_empty():
+		var missing_message := "No area visibility loaded for this module."
+		_status_text = missing_message
+		_refresh_status()
+		return {"ok": false, "message": missing_message}
+	var target_path := _ensure_extension(path, "vis")
+	var bytes := serialize_loaded_visibility_bytes()
+	if bytes.is_empty():
+		var serialize_message := "Failed to serialize visibility preview."
+		_status_text = serialize_message
+		_refresh_status()
+		return {"ok": false, "message": serialize_message}
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		var write_message := "Failed to write visibility preview: %s" % target_path
+		_status_text = write_message
+		_refresh_status()
+		return {"ok": false, "message": write_message, "path": target_path}
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "VIS preview written to %s" % target_path.get_file()
 	_refresh_status()
 	return {"ok": true, "path": target_path}
 
