@@ -22,6 +22,7 @@ const ModuleDesignerViewport3D := preload("../panels/module_designer_viewport_3d
 const MODULE_DESIGNER_EXTENSIONS := ["git"]
 const TREE_KIND_INSTANCE := "instance"
 const TREE_KIND_PATH_POINT := "path_point"
+const TREE_KIND_PATH_CONNECTION := "path_connection"
 
 var _toolbar: HBoxContainer
 var _path_label: Label
@@ -447,6 +448,7 @@ func _build_ui() -> void:
 	_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_map_view.instance_selected.connect(_on_map_instance_selected)
 	_map_view.path_point_selected.connect(_on_map_path_point_selected)
+	_map_view.path_connection_selected.connect(_on_map_path_connection_selected)
 	_map_view.instance_drag_finished.connect(_on_map_instance_drag_finished)
 	_map_view.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
 
@@ -458,6 +460,7 @@ func _build_ui() -> void:
 	_viewport_3d = ModuleDesignerViewport3D.new()
 	_viewport_3d.instance_selected.connect(_on_viewport_instance_selected)
 	_viewport_3d.path_point_selected.connect(_on_viewport_path_point_selected)
+	_viewport_3d.path_connection_selected.connect(_on_viewport_path_connection_selected)
 	_viewport_3d.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
 	right_split.add_child(_viewport_3d)
 
@@ -552,6 +555,17 @@ func _refresh_instance_tree() -> void:
 			item.set_metadata(0, {
 				"kind": TREE_KIND_PATH_POINT,
 				"index": int(point_record.get("index", -1)),
+			})
+	var path_connections := _module_path_edges()
+	if not path_connections.is_empty():
+		var connection_item := _instance_tree.create_item(root)
+		connection_item.set_text(0, "Path Connections (%d)" % path_connections.size())
+		for connection_record in path_connections:
+			var item := _instance_tree.create_item(connection_item)
+			item.set_text(0, _module_path_connection_label(connection_record))
+			item.set_metadata(0, {
+				"kind": TREE_KIND_PATH_CONNECTION,
+				"index": int(connection_record.get("index", -1)),
 			})
 
 
@@ -690,6 +704,21 @@ func _module_path_outgoing_edges(index: int) -> Array[Dictionary]:
 	return records
 
 
+func _module_path_connection_by_index(index: int) -> Dictionary:
+	for edge_record in _module_path_edges():
+		if int(edge_record.get("index", -1)) == index:
+			return edge_record
+	return {}
+
+
+func _module_path_connection_label(record: Dictionary) -> String:
+	return "Connection %d: %d -> %d" % [
+		int(record.get("index", 0)),
+		int(record.get("source_id", int(record.get("source_index", 0)))),
+		int(record.get("target_id", int(record.get("target_index", 0)))),
+	]
+
+
 func _module_overlay_bounds(base_bounds: Rect2, path_points: Array[Dictionary]) -> Rect2:
 	if path_points.is_empty():
 		return base_bounds
@@ -726,9 +755,11 @@ func _on_instance_tree_selected() -> void:
 		if _map_view != null:
 			_map_view.set_selection("", -1)
 			_map_view.set_path_point_selection(-1)
+			_map_view.set_path_connection_selection(-1)
 		if _viewport_3d != null:
 			_viewport_3d.set_selection("", -1)
 			_viewport_3d.set_path_point_selection(-1)
+			_viewport_3d.set_path_connection_selection(-1)
 		return
 	var kind := str(metadata.get("kind", ""))
 	if kind == TREE_KIND_INSTANCE:
@@ -736,6 +767,9 @@ func _on_instance_tree_selected() -> void:
 		return
 	if kind == TREE_KIND_PATH_POINT:
 		_select_path_point(int(metadata.get("index", -1)))
+		return
+	if kind == TREE_KIND_PATH_CONNECTION:
+		_select_path_connection(int(metadata.get("index", -1)))
 		return
 
 
@@ -745,6 +779,10 @@ func _on_map_instance_selected(category: String, index: int) -> void:
 
 func _on_map_path_point_selected(index: int) -> void:
 	_select_path_point(index)
+
+
+func _on_map_path_connection_selected(index: int) -> void:
+	_select_path_connection(index)
 
 
 func _on_map_instance_drag_finished(
@@ -775,6 +813,10 @@ func _on_viewport_path_point_selected(index: int) -> void:
 	_select_path_point(index)
 
 
+func _on_viewport_path_connection_selected(index: int) -> void:
+	_select_path_connection(index)
+
+
 func _select_instance(category: String, index: int) -> void:
 	var record := _document.find_instance_record(category, index)
 	if record.is_empty():
@@ -783,9 +825,11 @@ func _select_instance(category: String, index: int) -> void:
 	if _map_view != null:
 		_map_view.set_selection(category, index)
 		_map_view.set_path_point_selection(-1)
+		_map_view.set_path_connection_selection(-1)
 	if _viewport_3d != null:
 		_viewport_3d.set_selection(category, index)
 		_viewport_3d.set_path_point_selection(-1)
+		_viewport_3d.set_path_connection_selection(-1)
 	_select_tree_item(TREE_KIND_INSTANCE, category, index)
 
 
@@ -797,10 +841,28 @@ func _select_path_point(index: int) -> void:
 	if _map_view != null:
 		_map_view.set_selection("", -1)
 		_map_view.set_path_point_selection(index)
+		_map_view.set_path_connection_selection(-1)
 	if _viewport_3d != null:
 		_viewport_3d.set_selection("", -1)
 		_viewport_3d.set_path_point_selection(index)
+		_viewport_3d.set_path_connection_selection(-1)
 	_select_tree_item(TREE_KIND_PATH_POINT, "", index)
+
+
+func _select_path_connection(index: int) -> void:
+	var connection_record := _module_path_connection_by_index(index)
+	if connection_record.is_empty():
+		return
+	_show_path_connection_detail(connection_record)
+	if _map_view != null:
+		_map_view.set_selection("", -1)
+		_map_view.set_path_point_selection(-1)
+		_map_view.set_path_connection_selection(index)
+	if _viewport_3d != null:
+		_viewport_3d.set_selection("", -1)
+		_viewport_3d.set_path_point_selection(-1)
+		_viewport_3d.set_path_connection_selection(index)
+	_select_tree_item(TREE_KIND_PATH_CONNECTION, "", index)
 
 
 func _show_instance_detail(record: Dictionary) -> void:
@@ -840,6 +902,25 @@ func _show_path_point_detail(record: Dictionary) -> void:
 			float(record.get("z", 0.0)),
 			outgoing.size(),
 			targets_text,
+		]
+	)
+
+
+func _show_path_connection_detail(record: Dictionary) -> void:
+	if _detail_label == null:
+		return
+	_detail_label.text = (
+		"Path Connection #%d\nSource: Point %d at %.2f, %.2f, %.2f\nTarget: Point %d at %.2f, %.2f, %.2f"
+		% [
+			int(record.get("index", 0)),
+			int(record.get("source_id", int(record.get("source_index", 0)))),
+			float(record.get("source_x", 0.0)),
+			float(record.get("source_y", 0.0)),
+			float(record.get("source_z", 0.0)),
+			int(record.get("target_id", int(record.get("target_index", 0)))),
+			float(record.get("target_x", 0.0)),
+			float(record.get("target_y", 0.0)),
+			float(record.get("target_z", 0.0)),
 		]
 	)
 
@@ -884,9 +965,11 @@ func _clear_document_state(message: String) -> void:
 	if _map_view != null:
 		_map_view.set_instances([], Rect2())
 		_map_view.set_path_point_selection(-1)
+		_map_view.set_path_connection_selection(-1)
 	if _viewport_3d != null:
 		_viewport_3d.set_instances([], {})
 		_viewport_3d.set_path_point_selection(-1)
+		_viewport_3d.set_path_connection_selection(-1)
 		_viewport_3d.set_walkmesh({})
 		_viewport_3d.set_room_meshes([])
 	if _detail_label != null:

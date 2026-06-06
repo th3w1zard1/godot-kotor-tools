@@ -6,6 +6,7 @@ const KotorWorldCoordinates := preload("../../../editor/module/kotor_world_coord
 
 signal instance_selected(category: String, index: int)
 signal path_point_selected(index: int)
+signal path_connection_selected(index: int)
 signal instance_drag_updated(category: String, index: int, x: float, y: float)
 signal instance_drag_finished(
 	category: String,
@@ -32,6 +33,7 @@ var _bounds := Rect2(-10, -10, 20, 20)
 var _selected_category := ""
 var _selected_index := -1
 var _selected_path_point_index := -1
+var _selected_path_connection_index := -1
 var _padding_pixels := 24.0
 var _drag_active := false
 var _drag_category := ""
@@ -69,6 +71,7 @@ func set_selection(category: String, index: int) -> void:
 	_selected_index = index
 	if not category.is_empty() and index >= 0:
 		_selected_path_point_index = -1
+		_selected_path_connection_index = -1
 	queue_redraw()
 
 
@@ -77,6 +80,16 @@ func set_path_point_selection(index: int) -> void:
 	if index >= 0:
 		_selected_category = ""
 		_selected_index = -1
+		_selected_path_connection_index = -1
+	queue_redraw()
+
+
+func set_path_connection_selection(index: int) -> void:
+	_selected_path_connection_index = index
+	if index >= 0:
+		_selected_category = ""
+		_selected_index = -1
+		_selected_path_point_index = -1
 	queue_redraw()
 
 
@@ -104,10 +117,7 @@ func _draw_path_edges() -> void:
 	for edge_record in _path_edges:
 		var source := _world_to_screen(Vector2(float(edge_record.get("source_x", 0.0)), float(edge_record.get("source_y", 0.0))))
 		var target := _world_to_screen(Vector2(float(edge_record.get("target_x", 0.0)), float(edge_record.get("target_y", 0.0))))
-		var highlighted := (
-			int(edge_record.get("source_index", -1)) == _selected_path_point_index
-			or int(edge_record.get("target_index", -1)) == _selected_path_point_index
-		)
+		var highlighted := _path_edge_highlighted(edge_record)
 		draw_line(
 			source,
 			target,
@@ -120,7 +130,7 @@ func _draw_path_points() -> void:
 	var path_color := Color(0.2, 0.95, 0.95, 0.95)
 	for point_record in _path_points:
 		var point := _world_to_screen(Vector2(float(point_record.get("x", 0.0)), float(point_record.get("y", 0.0))))
-		var highlighted := int(point_record.get("index", -1)) == _selected_path_point_index
+		var highlighted := _path_point_highlighted(point_record)
 		var fill := path_color.lightened(0.25) if highlighted else path_color
 		draw_circle(point, 4.75 if highlighted else 3.5, fill)
 		draw_arc(point, 7.0 if highlighted else 5.5, 0.0, TAU, 18, fill.darkened(0.35), 1.75 if highlighted else 1.5)
@@ -198,6 +208,11 @@ func _gui_input(event: InputEvent) -> void:
 				path_point_selected.emit(int(picked_point.get("index", -1)))
 				accept_event()
 				return
+			var picked_connection := _pick_path_connection(mouse_event.position)
+			if not picked_connection.is_empty():
+				path_connection_selected.emit(int(picked_connection.get("index", -1)))
+				accept_event()
+				return
 		if _drag_active:
 			_finish_drag()
 			accept_event()
@@ -251,6 +266,61 @@ func _pick_path_point(screen_point: Vector2) -> Dictionary:
 			best_index = point_index
 			best = point_record
 	return best if best_distance <= 10.0 else {}
+
+
+func _pick_path_connection(screen_point: Vector2) -> Dictionary:
+	var best: Dictionary = {}
+	var best_distance := 8.0
+	var best_index := 0x7fffffff
+	for edge_record in _path_edges:
+		var source := _world_to_screen(Vector2(float(edge_record.get("source_x", 0.0)), float(edge_record.get("source_y", 0.0))))
+		var target := _world_to_screen(Vector2(float(edge_record.get("target_x", 0.0)), float(edge_record.get("target_y", 0.0))))
+		var distance := _point_to_segment_distance(screen_point, source, target)
+		var edge_index := int(edge_record.get("index", 0x7fffffff))
+		if distance < best_distance or (is_equal_approx(distance, best_distance) and edge_index < best_index):
+			best_distance = distance
+			best_index = edge_index
+			best = edge_record
+	return best if best_distance <= 8.0 else {}
+
+
+func _path_edge_highlighted(edge_record: Dictionary) -> bool:
+	if int(edge_record.get("index", -1)) == _selected_path_connection_index:
+		return true
+	return (
+		int(edge_record.get("source_index", -1)) == _selected_path_point_index
+		or int(edge_record.get("target_index", -1)) == _selected_path_point_index
+	)
+
+
+func _path_point_highlighted(point_record: Dictionary) -> bool:
+	var point_index := int(point_record.get("index", -1))
+	if point_index == _selected_path_point_index:
+		return true
+	if _selected_path_connection_index < 0:
+		return false
+	var connection_record := _path_connection_record_by_index(_selected_path_connection_index)
+	return (
+		point_index == int(connection_record.get("source_index", -2))
+		or point_index == int(connection_record.get("target_index", -2))
+	)
+
+
+func _path_connection_record_by_index(index: int) -> Dictionary:
+	for edge_record in _path_edges:
+		if int(edge_record.get("index", -1)) == index:
+			return edge_record
+	return {}
+
+
+static func _point_to_segment_distance(point: Vector2, start: Vector2, end: Vector2) -> float:
+	var segment := end - start
+	var length_sq := segment.length_squared()
+	if is_zero_approx(length_sq):
+		return point.distance_to(start)
+	var t := clampf((point - start).dot(segment) / length_sq, 0.0, 1.0)
+	var closest := start + segment * t
+	return point.distance_to(closest)
 
 
 func _world_to_screen(world: Vector2) -> Vector2:

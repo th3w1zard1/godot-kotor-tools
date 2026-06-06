@@ -4,6 +4,7 @@ class_name ModuleDesignerViewport3D
 
 signal instance_selected(category: String, index: int)
 signal path_point_selected(index: int)
+signal path_connection_selected(index: int)
 signal instance_rotate_updated(category: String, index: int, bearing: float)
 signal instance_rotate_finished(
 	category: String,
@@ -34,6 +35,7 @@ var _walkmesh: Dictionary = {}
 var _selected_category := ""
 var _selected_index := -1
 var _selected_path_point_index := -1
+var _selected_path_connection_index := -1
 var _marker_nodes: Dictionary = {}
 var _path_point_nodes: Dictionary = {}
 var _orbit_yaw := 0.6
@@ -177,6 +179,8 @@ func set_selection(category: String, index: int) -> void:
 	_selected_index = index
 	if not category.is_empty() and index >= 0:
 		_selected_path_point_index = -1
+		_selected_path_connection_index = -1
+	_rebuild_path_overlay()
 	_refresh_marker_highlights()
 	_refresh_path_point_highlights()
 	_rebuild_rotate_gizmo()
@@ -187,6 +191,20 @@ func set_path_point_selection(index: int) -> void:
 	if index >= 0:
 		_selected_category = ""
 		_selected_index = -1
+		_selected_path_connection_index = -1
+	_rebuild_path_overlay()
+	_refresh_marker_highlights()
+	_refresh_path_point_highlights()
+	_rebuild_rotate_gizmo()
+
+
+func set_path_connection_selection(index: int) -> void:
+	_selected_path_connection_index = index
+	if index >= 0:
+		_selected_category = ""
+		_selected_index = -1
+		_selected_path_point_index = -1
+	_rebuild_path_overlay()
 	_refresh_marker_highlights()
 	_refresh_path_point_highlights()
 	_rebuild_rotate_gizmo()
@@ -220,6 +238,11 @@ func _gui_input(event: InputEvent) -> void:
 			var picked_point := _pick_path_point(mouse_event.position)
 			if not picked_point.is_empty():
 				path_point_selected.emit(int(picked_point.get("index", -1)))
+				accept_event()
+				return
+			var picked_connection := _pick_path_connection(mouse_event.position)
+			if not picked_connection.is_empty():
+				path_connection_selected.emit(int(picked_connection.get("index", -1)))
 				accept_event()
 				return
 		if mouse_event.button_index == MOUSE_BUTTON_RIGHT:
@@ -442,6 +465,19 @@ func _rebuild_path_overlay() -> void:
 			material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 			edge_mesh.material_override = material
 			_path_root.add_child(edge_mesh)
+	if _selected_path_connection_index >= 0:
+		var selected_edge := _path_connection_record_by_index(_selected_path_connection_index)
+		if not selected_edge.is_empty():
+			var selected_mesh := MeshInstance3D.new()
+			selected_mesh.name = "SelectedPathEdge"
+			selected_mesh.mesh = _build_path_edge_mesh([selected_edge])
+			if selected_mesh.mesh != null:
+				var selected_material := StandardMaterial3D.new()
+				selected_material.albedo_color = Color(0.85, 0.98, 1.0, 0.95)
+				selected_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				selected_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+				selected_mesh.material_override = selected_material
+				_path_root.add_child(selected_mesh)
 	for point_record in _path_points:
 		var area := _make_pickable_path_point(point_record)
 		area.name = "PathPoint_%d" % int(point_record.get("id", int(point_record.get("index", 0))))
@@ -450,12 +486,13 @@ func _rebuild_path_overlay() -> void:
 	_refresh_path_point_highlights()
 
 
-func _build_path_edge_mesh() -> ArrayMesh:
-	if _path_edges.is_empty():
+func _build_path_edge_mesh(edge_records: Array = []) -> ArrayMesh:
+	var records := edge_records if not edge_records.is_empty() else _path_edges
+	if records.is_empty():
 		return null
 	var surface_tool := SurfaceTool.new()
 	surface_tool.begin(Mesh.PRIMITIVE_LINES)
-	for edge_record in _path_edges:
+	for edge_record in records:
 		var source := KotorWorldCoordinates.kotor_to_godot(Vector3(
 			float(edge_record.get("source_x", 0.0)),
 			float(edge_record.get("source_y", 0.0)),
@@ -618,7 +655,7 @@ func _refresh_path_point_highlights() -> void:
 			continue
 		var material := mesh.material_override as StandardMaterial3D
 		var base_color := Color(0.2, 0.95, 0.95, 0.9)
-		if int(point_index) == _selected_path_point_index:
+		if _path_point_highlighted(int(point_index)):
 			material.albedo_color = base_color.lightened(0.3)
 			area.scale = Vector3.ONE * 1.35
 		else:
@@ -692,6 +729,71 @@ func _pick_path_point(screen_pos: Vector2) -> Dictionary:
 		best_distance = t
 		best_record = record
 	return best_record
+
+
+func _pick_path_connection(screen_pos: Vector2) -> Dictionary:
+	if _camera == null or _viewport == null or size.x <= 0.0 or size.y <= 0.0:
+		return {}
+	var best_record := {}
+	var best_distance := 8.0
+	var best_index := 0x7fffffff
+	for edge_record in _path_edges:
+		var source: Vector2 = _project_world_to_screen(Vector3(
+			float(edge_record.get("source_x", 0.0)),
+			float(edge_record.get("source_y", 0.0)),
+			float(edge_record.get("source_z", 0.0))
+		))
+		var target: Vector2 = _project_world_to_screen(Vector3(
+			float(edge_record.get("target_x", 0.0)),
+			float(edge_record.get("target_y", 0.0)),
+			float(edge_record.get("target_z", 0.0))
+		))
+		var distance := _point_to_segment_distance(screen_pos, source, target)
+		var edge_index := int(edge_record.get("index", 0x7fffffff))
+		if distance < best_distance or (is_equal_approx(distance, best_distance) and edge_index < best_index):
+			best_distance = distance
+			best_index = edge_index
+			best_record = edge_record
+	return best_record if best_distance <= 8.0 else {}
+
+
+func _path_connection_record_by_index(index: int) -> Dictionary:
+	for edge_record in _path_edges:
+		if int(edge_record.get("index", -1)) == index:
+			return edge_record
+	return {}
+
+
+func _path_point_highlighted(point_index: int) -> bool:
+	if point_index == _selected_path_point_index:
+		return true
+	if _selected_path_connection_index < 0:
+		return false
+	var connection_record := _path_connection_record_by_index(_selected_path_connection_index)
+	return (
+		point_index == int(connection_record.get("source_index", -2))
+		or point_index == int(connection_record.get("target_index", -2))
+	)
+
+
+func _project_world_to_screen(kotor_pos: Vector3) -> Vector2:
+	if _camera == null or _viewport == null:
+		return Vector2.ZERO
+	var viewport_pos := _camera.unproject_position(KotorWorldCoordinates.kotor_to_godot(kotor_pos))
+	return Vector2(
+		viewport_pos.x / float(_viewport.size.x) * size.x,
+		viewport_pos.y / float(_viewport.size.y) * size.y
+	)
+
+
+static func _point_to_segment_distance(point: Vector2, start: Vector2, end: Vector2) -> float:
+	var segment := end - start
+	var length_sq := segment.length_squared()
+	if is_zero_approx(length_sq):
+		return point.distance_to(start)
+	var t := clampf((point - start).dot(segment) / length_sq, 0.0, 1.0)
+	var closest := start + segment * t
+	return point.distance_to(closest)
 
 
 func _fit_camera_to_content() -> void:
