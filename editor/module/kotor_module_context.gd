@@ -5,8 +5,10 @@ class_name KotorModuleContext
 const LYTParser := preload("../../formats/lyt_parser.gd")
 const BWMParser := preload("../../formats/bwm_parser.gd")
 const VISParser := preload("../../formats/vis_parser.gd")
-
+const GFFParser := preload("../../formats/gff_parser.gd")
+const GFFResourceFactory := preload("../../resources/gff_resource_factory.gd")
 const MDLParser := preload("../../formats/mdl_parser.gd")
+const PTHResource := preload("../../resources/typed/pth_resource.gd")
 
 const MODULE_EXTENSIONS := ["git", "are", "ifo", "lyt", "vis", "pth", "wok"]
 const CORE_MODULE_EXTENSIONS := ["git", "are", "ifo"]
@@ -78,6 +80,24 @@ static func load_parsed_visibility(gamefs: RefCounted, bundle: Dictionary) -> Di
 	return VISParser.parse_bytes(bytes)
 
 
+static func load_path_resource(gamefs: RefCounted, bundle: Dictionary) -> PTHResource:
+	if gamefs == null or bundle.is_empty():
+		return null
+	var pth_entry: Dictionary = bundle.get("pth", {})
+	if pth_entry.is_empty():
+		return null
+	if not gamefs.has_method("load_resource_entry_bytes"):
+		return null
+	var bytes: PackedByteArray = gamefs.load_resource_entry_bytes(pth_entry)
+	if bytes.is_empty():
+		return null
+	var parsed := GFFParser.parse_bytes(bytes)
+	if parsed.is_empty():
+		return null
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	return resource as PTHResource
+
+
 static func load_parsed_walkmesh(gamefs: RefCounted, bundle: Dictionary) -> Dictionary:
 	if gamefs == null or bundle.is_empty():
 		return {}
@@ -133,6 +153,15 @@ static func format_visibility_summary(parsed: Dictionary) -> String:
 	if parsed.is_empty():
 		return "VIS: not loaded"
 	return "VIS: %d room visibility group(s)" % VISParser.room_count(parsed)
+
+
+static func format_path_summary(resource: PTHResource) -> String:
+	if resource == null:
+		return "PTH: not loaded"
+	var field_name := resource.get_point_field_name()
+	if field_name.is_empty():
+		return "PTH: %d point(s)" % resource.get_point_count()
+	return "PTH: %d point(s) via %s" % [resource.get_point_count(), field_name]
 
 
 static func describe_bundle(bundle: Dictionary) -> String:

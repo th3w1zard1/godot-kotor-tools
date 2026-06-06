@@ -368,7 +368,7 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"size": tpc_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
-		"are", "dlg", "gff", "git", "ifo", "jrl", "utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw":
+		"are", "dlg", "gff", "git", "ifo", "jrl", "pth", "utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw":
 			if payload is GFFResource:
 				var gff_bytes := GFFWriter.serialize(payload as GFFResource)
 				if gff_bytes.is_empty():

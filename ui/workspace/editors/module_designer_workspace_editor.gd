@@ -12,6 +12,7 @@ const KotorModuleContext := preload("../../../editor/module/kotor_module_context
 const BWMWriter := preload("../../../formats/bwm_writer.gd")
 const LYTWriter := preload("../../../formats/lyt_writer.gd")
 const VISWriter := preload("../../../formats/vis_writer.gd")
+const PTHResource := preload("../../../resources/typed/pth_resource.gd")
 const KotorTemplateModelResolver := preload("../../../editor/module/kotor_template_model_resolver.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const ModuleDesignerMapView := preload("../panels/module_designer_map_view.gd")
@@ -29,6 +30,7 @@ var _map_view: ModuleDesignerMapView
 var _viewport_3d: ModuleDesignerViewport3D
 var _parsed_layout: Dictionary = {}
 var _parsed_visibility: Dictionary = {}
+var _path_resource: PTHResource
 var _parsed_walkmesh: Dictionary = {}
 var _parsed_room_meshes: Array = []
 var _mutation_service: RefCounted
@@ -294,6 +296,35 @@ func install_visibility_to_override() -> Dictionary:
 	return {}
 
 
+func install_pth_to_override() -> Dictionary:
+	if _path_resource == null:
+		var message := "No area path graph loaded for this module."
+		_status_text = message
+		_refresh_status()
+		return {"ok": false, "message": message}
+	var file_name := pth_file_name()
+	var preview: Dictionary = _mutation_service.preview_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		_path_resource
+	)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "PTH install failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "PTH is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		return _apply_pth_install_now(file_name)
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "install_pth"
+	_preflight_pending_path = file_name
+	_show_preflight_dialog(preview)
+	return {}
+
+
 func serialize_loaded_layout_bytes() -> PackedByteArray:
 	if _parsed_layout.is_empty():
 		return PackedByteArray()
@@ -314,6 +345,11 @@ func layout_file_name() -> String:
 func visibility_file_name() -> String:
 	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
 	return "%s.vis" % module_resref
+
+
+func pth_file_name() -> String:
+	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
+	return "%s.pth" % module_resref
 
 
 func _build_ui() -> void:
@@ -351,6 +387,11 @@ func _build_ui() -> void:
 	install_visibility_btn.text = "Install VIS to Override"
 	install_visibility_btn.pressed.connect(_install_visibility_to_override)
 	_toolbar.add_child(install_visibility_btn)
+
+	var install_pth_btn := Button.new()
+	install_pth_btn.text = "Install PTH to Override"
+	install_pth_btn.pressed.connect(_install_pth_to_override)
+	_toolbar.add_child(install_pth_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -441,6 +482,8 @@ func _refresh_summary() -> void:
 		lines.append(KotorModuleContext.format_layout_summary(_parsed_layout))
 	if not _parsed_visibility.is_empty():
 		lines.append(KotorModuleContext.format_visibility_summary(_parsed_visibility))
+	if _path_resource != null:
+		lines.append(KotorModuleContext.format_path_summary(_path_resource))
 	if not _parsed_walkmesh.is_empty():
 		lines.append(
 			"Walkmesh: %d face(s), %d vertex/vertices"
@@ -511,6 +554,7 @@ func _refresh_module_bundle() -> void:
 	_module_bundle = KotorModuleContext.find_module_bundle(gamefs, module_resref)
 	_parsed_layout = KotorModuleContext.load_parsed_layout(gamefs, _module_bundle)
 	_parsed_visibility = KotorModuleContext.load_parsed_visibility(gamefs, _module_bundle)
+	_path_resource = KotorModuleContext.load_path_resource(gamefs, _module_bundle)
 	_parsed_walkmesh = KotorModuleContext.load_parsed_walkmesh(gamefs, _module_bundle)
 	_parsed_room_meshes = _load_room_meshes(gamefs)
 
@@ -683,6 +727,7 @@ func _clear_document_state(message: String) -> void:
 	_module_bundle = {}
 	_parsed_layout = {}
 	_parsed_visibility = {}
+	_path_resource = null
 	_parsed_walkmesh = {}
 	_parsed_room_meshes = []
 	if _instance_tree != null:
@@ -770,6 +815,10 @@ func _install_visibility_to_override() -> void:
 	install_visibility_to_override()
 
 
+func _install_pth_to_override() -> void:
+	install_pth_to_override()
+
+
 func _install_git_to_override() -> void:
 	install_document_to_override()
 
@@ -855,6 +904,22 @@ func _apply_visibility_install_now(bytes: PackedByteArray, file_name: String) ->
 	return result
 
 
+func _apply_pth_install_now(file_name: String) -> Dictionary:
+	var result: Dictionary = _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		_path_resource,
+		true
+	)
+	_status_text = _mutation_message(result)
+	if result.get("applied", false):
+		_refresh_gamefs()
+		_refresh_module_bundle()
+		_refresh_bundle_label()
+	_refresh_status()
+	return result
+
+
 func _show_preflight_dialog(preview: Dictionary) -> void:
 	if _preflight_dialog == null:
 		_preflight_dialog = KotorPreflightDialog.new()
@@ -878,6 +943,8 @@ func _on_preflight_proceed() -> void:
 	elif _preflight_pending_kind == "install_visibility":
 		var visibility_bytes := serialize_loaded_visibility_bytes()
 		_apply_visibility_install_now(visibility_bytes, _preflight_pending_path)
+	elif _preflight_pending_kind == "install_pth":
+		_apply_pth_install_now(_preflight_pending_path)
 	_preflight_pending_kind = ""
 	_preflight_pending_path = ""
 	_preflight_pending_preview = {}
