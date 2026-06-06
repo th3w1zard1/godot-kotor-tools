@@ -25,6 +25,7 @@ signal instance_rotate_finished(
 const KotorGITDocument := preload("../../../resources/documents/kotor_git_document.gd")
 
 var _records: Array[Dictionary] = []
+var _path_points: Array[Dictionary] = []
 var _bounds := Rect2(-10, -10, 20, 20)
 var _selected_category := ""
 var _selected_index := -1
@@ -41,11 +42,15 @@ var _rotate_start_bearing := 0.0
 var _rotate_preview_bearing := 0.0
 
 
-func set_instances(records: Array, bounds: Rect2) -> void:
+func set_instances(records: Array, bounds: Rect2, path_points: Array = []) -> void:
 	_records.clear()
 	for raw_record in records:
 		if typeof(raw_record) == TYPE_DICTIONARY:
 			_records.append(raw_record)
+	_path_points.clear()
+	for raw_point in path_points:
+		if typeof(raw_point) == TYPE_DICTIONARY:
+			_path_points.append(raw_point)
 	_bounds = bounds if bounds.size.x > 0.0 and bounds.size.y > 0.0 else Rect2(-10, -10, 20, 20)
 	_cancel_drag()
 	_cancel_rotate()
@@ -66,6 +71,7 @@ func _notification(what: int) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.12, 0.13, 0.15))
 	_draw_grid()
+	_draw_path_points()
 	for record in _records:
 		_draw_instance(record)
 	if not _selected_category.is_empty() and _selected_index >= 0:
@@ -73,6 +79,14 @@ func _draw() -> void:
 		if not selected.is_empty():
 			var point := _world_to_screen(Vector2(float(selected.get("x", 0.0)), float(selected.get("y", 0.0))))
 			draw_arc(point, 8.0, 0.0, TAU, 24, Color(1.0, 1.0, 1.0), 2.0)
+
+
+func _draw_path_points() -> void:
+	var path_color := Color(0.2, 0.95, 0.95, 0.95)
+	for point_record in _path_points:
+		var point := _world_to_screen(Vector2(float(point_record.get("x", 0.0)), float(point_record.get("y", 0.0))))
+		draw_circle(point, 3.5, path_color)
+		draw_arc(point, 5.5, 0.0, TAU, 18, path_color.darkened(0.35), 1.5)
 
 
 func _draw_grid() -> void:

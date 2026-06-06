@@ -17,5 +17,9 @@ func get_point_count() -> int:
 	return (create_document() as KotorPTHDocument).get_point_count()
 
 
+func get_point_records() -> Array[Dictionary]:
+	return (create_document() as KotorPTHDocument).get_point_records()
+
+
 func _create_document():
 	return KotorPTHDocument.new().setup(file_type, gff_data, self)

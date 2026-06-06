@@ -540,7 +540,8 @@ func _refresh_map() -> void:
 	if _map_view == null or _document == null:
 		return
 	var records := _document.get_instance_records()
-	_map_view.set_instances(records, _document.get_layout_bounds())
+	var path_points := _module_path_points()
+	_map_view.set_instances(records, _module_overlay_bounds(_document.get_layout_bounds(), path_points), path_points)
 	_refresh_viewport_3d()
 
 
@@ -548,7 +549,9 @@ func _refresh_viewport_3d() -> void:
 	if _viewport_3d == null or _document == null:
 		return
 	var records := _document.get_instance_records()
+	var path_points := _module_path_points()
 	_viewport_3d.set_instances(records, _parsed_layout)
+	_viewport_3d.set_path_points(path_points)
 	_viewport_3d.set_walkmesh(_parsed_walkmesh)
 	_viewport_3d.set_room_meshes(_parsed_room_meshes)
 	_viewport_3d.set_instance_meshes(_load_instance_meshes(_resolve_gamefs(), records))
@@ -636,6 +639,37 @@ func _load_instance_meshes(gamefs: RefCounted, records: Array) -> Array:
 			"mesh": mesh_dict,
 		})
 	return entries
+
+
+func _module_path_points() -> Array[Dictionary]:
+	if _path_resource == null:
+		return []
+	return _path_resource.get_point_records()
+
+
+func _module_overlay_bounds(base_bounds: Rect2, path_points: Array[Dictionary]) -> Rect2:
+	if path_points.is_empty():
+		return base_bounds
+	var has_bounds := base_bounds.size.x > 0.0 and base_bounds.size.y > 0.0
+	var min_point := base_bounds.position if has_bounds else Vector2.ZERO
+	var max_point := base_bounds.end if has_bounds else Vector2.ZERO
+	for raw_point in path_points:
+		var point := Vector2(float(raw_point.get("x", 0.0)), float(raw_point.get("y", 0.0)))
+		if not has_bounds:
+			min_point = point
+			max_point = point
+			has_bounds = true
+			continue
+		min_point = min_point.min(point)
+		max_point = max_point.max(point)
+	if not has_bounds:
+		return base_bounds
+	var size := max_point - min_point
+	if is_zero_approx(size.x):
+		size.x = 1.0
+	if is_zero_approx(size.y):
+		size.y = 1.0
+	return Rect2(min_point, size).grow(1.0)
 
 
 func _on_instance_tree_selected() -> void:

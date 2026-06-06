@@ -22,7 +22,9 @@ var _instances_root: Node3D
 var _layout_root: Node3D
 var _room_mesh_root: Node3D
 var _walkmesh_root: Node3D
+var _path_root: Node3D
 var _records: Array[Dictionary] = []
+var _path_points: Array[Dictionary] = []
 var _parsed_layout: Dictionary = {}
 var _room_meshes: Array = []
 var _instance_mesh_by_key: Dictionary = {}
@@ -92,6 +94,10 @@ func _build_scene() -> void:
 	_walkmesh_root.name = "Walkmesh"
 	world.add_child(_walkmesh_root)
 
+	_path_root = Node3D.new()
+	_path_root.name = "PathGraph"
+	world.add_child(_path_root)
+
 	_rotate_gizmo_root = Node3D.new()
 	_rotate_gizmo_root.name = "RotateGizmo"
 	world.add_child(_rotate_gizmo_root)
@@ -141,6 +147,15 @@ func set_instance_meshes(entries: Array) -> void:
 		var key := "%s:%d" % [str(entry.get("category", "")), int(entry.get("index", -1))]
 		_instance_mesh_by_key[key] = mesh_dict
 	_rebuild_markers()
+	_fit_camera_to_content()
+
+
+func set_path_points(entries: Array) -> void:
+	_path_points.clear()
+	for raw_entry in entries:
+		if typeof(raw_entry) == TYPE_DICTIONARY:
+			_path_points.append(raw_entry)
+	_rebuild_path_points()
 	_fit_camera_to_content()
 
 
@@ -380,6 +395,26 @@ func _rebuild_walkmesh() -> void:
 	_walkmesh_root.add_child(mesh_instance)
 
 
+func _rebuild_path_points() -> void:
+	if _path_root == null:
+		return
+	for child in _path_root.get_children():
+		child.queue_free()
+	for point_record in _path_points:
+		var kotor_pos := Vector3(
+			float(point_record.get("x", 0.0)),
+			float(point_record.get("y", 0.0)),
+			float(point_record.get("z", 0.0))
+		)
+		var marker := _make_sphere_marker(
+			KotorWorldCoordinates.kotor_to_godot(kotor_pos),
+			0.28,
+			Color(0.2, 0.95, 0.95, 0.9)
+		)
+		marker.name = "PathPoint_%d" % int(point_record.get("id", int(point_record.get("index", 0))))
+		_path_root.add_child(marker)
+
+
 func _build_walkmesh_surface(parsed: Dictionary) -> ArrayMesh:
 	var vertices: Array = parsed.get("vertices", [])
 	var faces: Array = parsed.get("faces", [])
@@ -534,7 +569,7 @@ func _pick_instance(screen_pos: Vector2) -> Dictionary:
 
 
 func _fit_camera_to_content() -> void:
-	if _records.is_empty() and _parsed_layout.is_empty() and _walkmesh.is_empty() and _room_meshes.is_empty() and _instance_mesh_by_key.is_empty():
+	if _records.is_empty() and _path_points.is_empty() and _parsed_layout.is_empty() and _walkmesh.is_empty() and _room_meshes.is_empty() and _instance_mesh_by_key.is_empty():
 		_orbit_focus = Vector3.ZERO
 		_orbit_distance = 40.0
 		_update_camera_transform()
@@ -564,6 +599,14 @@ func _fit_camera_to_content() -> void:
 		var godot_pos := KotorWorldCoordinates.kotor_to_godot(kotor_pos)
 		min_pos = min_pos.min(godot_pos)
 		max_pos = max_pos.max(godot_pos)
+	for point_record in _path_points:
+		var path_pos := KotorWorldCoordinates.kotor_to_godot(Vector3(
+			float(point_record.get("x", 0.0)),
+			float(point_record.get("y", 0.0)),
+			float(point_record.get("z", 0.0))
+		))
+		min_pos = min_pos.min(path_pos)
+		max_pos = max_pos.max(path_pos)
 	for record in _records:
 		var category := str(record.get("category", ""))
 		var index := int(record.get("index", -1))
