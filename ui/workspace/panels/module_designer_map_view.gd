@@ -16,6 +16,7 @@ signal instance_drag_finished(
 	new_x: float,
 	new_y: float
 )
+signal path_point_drag_finished(index: int, old_x: float, old_y: float, new_x: float, new_y: float)
 signal instance_rotate_updated(category: String, index: int, bearing: float)
 signal instance_rotate_finished(
 	category: String,
@@ -40,6 +41,10 @@ var _drag_category := ""
 var _drag_index := -1
 var _drag_start_world := Vector2.ZERO
 var _drag_current_world := Vector2.ZERO
+var _path_drag_active := false
+var _path_drag_index := -1
+var _path_drag_start_world := Vector2.ZERO
+var _path_drag_current_world := Vector2.ZERO
 var _rotate_active := false
 var _rotate_category := ""
 var _rotate_index := -1
@@ -62,6 +67,7 @@ func set_instances(records: Array, bounds: Rect2, path_points: Array = [], path_
 			_path_edges.append(raw_edge)
 	_bounds = bounds if bounds.size.x > 0.0 and bounds.size.y > 0.0 else Rect2(-10, -10, 20, 20)
 	_cancel_drag()
+	_cancel_path_drag()
 	_cancel_rotate()
 	queue_redraw()
 
@@ -115,8 +121,8 @@ func _draw() -> void:
 func _draw_path_edges() -> void:
 	var path_color := Color(0.15, 0.75, 0.82, 0.85)
 	for edge_record in _path_edges:
-		var source := _world_to_screen(Vector2(float(edge_record.get("source_x", 0.0)), float(edge_record.get("source_y", 0.0))))
-		var target := _world_to_screen(Vector2(float(edge_record.get("target_x", 0.0)), float(edge_record.get("target_y", 0.0))))
+		var source := _world_to_screen(_path_edge_endpoint_world(edge_record, true))
+		var target := _world_to_screen(_path_edge_endpoint_world(edge_record, false))
 		var highlighted := _path_edge_highlighted(edge_record)
 		draw_line(
 			source,
@@ -129,7 +135,7 @@ func _draw_path_edges() -> void:
 func _draw_path_points() -> void:
 	var path_color := Color(0.2, 0.95, 0.95, 0.95)
 	for point_record in _path_points:
-		var point := _world_to_screen(Vector2(float(point_record.get("x", 0.0)), float(point_record.get("y", 0.0))))
+		var point := _world_to_screen(_path_point_world(point_record))
 		var highlighted := _path_point_highlighted(point_record)
 		var fill := path_color.lightened(0.25) if highlighted else path_color
 		draw_circle(point, 4.75 if highlighted else 3.5, fill)
@@ -205,7 +211,12 @@ func _gui_input(event: InputEvent) -> void:
 				return
 			var picked_point := _pick_path_point(mouse_event.position)
 			if not picked_point.is_empty():
-				path_point_selected.emit(int(picked_point.get("index", -1)))
+				var point_index := int(picked_point.get("index", -1))
+				path_point_selected.emit(point_index)
+				_path_drag_active = true
+				_path_drag_index = point_index
+				_path_drag_start_world = _path_point_world(picked_point)
+				_path_drag_current_world = _path_drag_start_world
 				accept_event()
 				return
 			var picked_connection := _pick_path_connection(mouse_event.position)
@@ -215,6 +226,9 @@ func _gui_input(event: InputEvent) -> void:
 				return
 		if _drag_active:
 			_finish_drag()
+			accept_event()
+		elif _path_drag_active:
+			_finish_path_drag()
 			accept_event()
 	elif event is InputEventMouseMotion:
 		var motion := event as InputEventMouseMotion
@@ -227,6 +241,11 @@ func _gui_input(event: InputEvent) -> void:
 			var cursor_world := _screen_to_world(motion.position)
 			_rotate_preview_bearing = _bearing_from_world_point(instance_world, cursor_world)
 			instance_rotate_updated.emit(_rotate_category, _rotate_index, _rotate_preview_bearing)
+			queue_redraw()
+			accept_event()
+			return
+		if _path_drag_active:
+			_path_drag_current_world = _screen_to_world(motion.position)
 			queue_redraw()
 			accept_event()
 			return
@@ -258,7 +277,7 @@ func _pick_path_point(screen_point: Vector2) -> Dictionary:
 	var best_distance := 10.0
 	var best_index := 0x7fffffff
 	for point_record in _path_points:
-		var point := _world_to_screen(Vector2(float(point_record.get("x", 0.0)), float(point_record.get("y", 0.0))))
+		var point := _world_to_screen(_path_point_world(point_record))
 		var distance := point.distance_to(screen_point)
 		var point_index := int(point_record.get("index", 0x7fffffff))
 		if distance < best_distance or (distance == best_distance and point_index < best_index):
@@ -378,6 +397,29 @@ func _cancel_drag() -> void:
 	_drag_current_world = Vector2.ZERO
 
 
+func _finish_path_drag() -> void:
+	if not _path_drag_active:
+		return
+	var moved := _path_drag_current_world.distance_to(_path_drag_start_world) > 0.001
+	if moved:
+		path_point_drag_finished.emit(
+			_path_drag_index,
+			_path_drag_start_world.x,
+			_path_drag_start_world.y,
+			_path_drag_current_world.x,
+			_path_drag_current_world.y
+		)
+	_cancel_path_drag()
+	queue_redraw()
+
+
+func _cancel_path_drag() -> void:
+	_path_drag_active = false
+	_path_drag_index = -1
+	_path_drag_start_world = Vector2.ZERO
+	_path_drag_current_world = Vector2.ZERO
+
+
 func _finish_rotate() -> void:
 	if not _rotate_active:
 		return
@@ -410,3 +452,19 @@ func _find_record(category: String, index: int) -> Dictionary:
 		if str(record.get("category", "")) == category and int(record.get("index", -1)) == index:
 			return record
 	return {}
+
+
+func _path_point_world(point_record: Dictionary) -> Vector2:
+	var point_index := int(point_record.get("index", -1))
+	if _path_drag_active and point_index == _path_drag_index:
+		return _path_drag_current_world
+	return Vector2(float(point_record.get("x", 0.0)), float(point_record.get("y", 0.0)))
+
+
+func _path_edge_endpoint_world(edge_record: Dictionary, use_source: bool) -> Vector2:
+	var point_index := int(edge_record.get("source_index", -1)) if use_source else int(edge_record.get("target_index", -1))
+	if _path_drag_active and point_index == _path_drag_index:
+		return _path_drag_current_world
+	var x_key := "source_x" if use_source else "target_x"
+	var y_key := "source_y" if use_source else "target_y"
+	return Vector2(float(edge_record.get(x_key, 0.0)), float(edge_record.get(y_key, 0.0)))
