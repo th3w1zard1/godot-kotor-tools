@@ -6,6 +6,7 @@ const TPCReader := preload("../../../formats/tpc_reader.gd")
 const TPCWriter := preload("../../../formats/tpc_writer.gd")
 const TpcBatchConverter := preload("../../../formats/tpc_batch_converter.gd")
 const TpcBatchExporter := preload("../../../formats/tpc_batch_exporter.gd")
+const TpcGamefsBatchExporter := preload("../../../formats/tpc_gamefs_batch_exporter.gd")
 const KotorMediaToolBridge := preload("../../../resources/scripts/kotor_media_tool_bridge.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
@@ -159,6 +160,11 @@ func _build_ui() -> void:
 	batch_export_btn.text = "Batch Export TGA..."
 	batch_export_btn.pressed.connect(_batch_export_tga)
 	_toolbar.add_child(batch_export_btn)
+
+	var batch_install_export_btn := Button.new()
+	batch_install_export_btn.text = "Batch Export Install TGA..."
+	batch_install_export_btn.pressed.connect(_batch_export_install_tga)
+	_toolbar.add_child(batch_install_export_btn)
 
 	var save_btn := Button.new()
 	save_btn.text = "Save TPC"
@@ -321,19 +327,57 @@ func _batch_export_tga() -> void:
 	dialog.popup_centered_ratio(0.6)
 
 
+func _batch_export_install_tga() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch export."
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Batch Export TGA from install index"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(dir_path: String) -> void:
+		_run_batch_install_export(gamefs, dir_path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
 func _run_batch_export(dir_path: String) -> void:
-	var cli_path: String = ""
-	if _editor_state != null:
-		cli_path = str(_editor_state.get("pykotor_cli_path"))
-	var result := TpcBatchExporter.batch_directory(dir_path, {"pykotor_cli_path": cli_path})
-	_status_text = str(result.get("summary", "Batch TGA export finished."))
+	_apply_batch_export_status(TpcBatchExporter.batch_directory(dir_path, {
+		"pykotor_cli_path": _resolve_pykotor_cli_path(),
+	}), "Batch TGA export finished.")
+
+
+func _run_batch_install_export(gamefs: RefCounted, output_dir: String) -> void:
+	_apply_batch_export_status(TpcGamefsBatchExporter.batch_install(gamefs, output_dir, {
+		"pykotor_cli_path": _resolve_pykotor_cli_path(),
+		"source_filter": "override",
+	}), "Install batch TGA export finished.")
+
+
+func _resolve_pykotor_cli_path() -> String:
+	if _editor_state == null:
+		return ""
+	return str(_editor_state.get("pykotor_cli_path"))
+
+
+func _apply_batch_export_status(result: Dictionary, default_summary: String) -> void:
+	_status_text = str(result.get("summary", default_summary))
 	var failed: Array = result.get("failed", [])
-	if not failed.is_empty():
-		var first: Dictionary = failed[0]
-		_status_text += " First error: %s (%s)" % [
-			first.get("message", "?"),
-			str(first.get("tpc_path", "")).get_file(),
-		]
+	if failed.is_empty():
+		_refresh_status()
+		return
+	var first: Dictionary = failed[0]
+	var target_label := str(first.get("resref", ""))
+	if target_label.is_empty():
+		target_label = str(first.get("tpc_path", "")).get_file()
+	_status_text += " First error: %s (%s)" % [first.get("message", "?"), target_label]
 	_refresh_status()
 
 

@@ -94,12 +94,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q77 | Batch TGA/PNG to TPC converter | `TpcBatchConverter` scans flat image folders and writes RGBA `.tpc` files; TPC editor **Batch Convert TGA/PNG→TPC...**; headless `test_tpc_batch_converter.gd`. |
 | Q78 | ModuleKit loader for Indoor Builder | `KotorModuleKitLoader` synthesizes kit components from module LYT rooms; Indoor Builder **Refresh Module Kits**; headless `test_module_kit_loader.gd`. |
 | Q79 | Batch TPC to TGA export | `TpcBatchExporter` scans flat `.tpc` folders and exports via PyKotor `texture-convert`; TPC editor **Batch Export TGA...**; headless `test_tpc_batch_exporter.gd`. |
+| Q81 | Install-scoped TPC batch export | `TpcGamefsBatchExporter` scans GameFS `.tpc` index and batch-exports TGA via PyKotor `texture-convert`; TPC editor **Batch Export Install TGA...** action; headless `test_tpc_gamefs_batch_exporter.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q79 shipped batch TPC→TGA export. | Next: install-scoped texture batch, model helpers, or parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q81 shipped install-scoped TPC batch export. | Next: model helpers, GameFS batch import, or parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
