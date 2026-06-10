@@ -49,5 +49,13 @@ func remove_point(index: int) -> bool:
 	return (create_document() as KotorPTHDocument).remove_point(index)
 
 
+func capture_topology_snapshot() -> Dictionary:
+	return (create_document() as KotorPTHDocument).capture_topology_snapshot()
+
+
+func restore_topology_snapshot(snapshot: Dictionary) -> bool:
+	return (create_document() as KotorPTHDocument).restore_topology_snapshot(snapshot)
+
+
 func _create_document():
 	return KotorPTHDocument.new().setup(file_type, gff_data, self)

@@ -158,11 +158,54 @@ func add_point(x: float, y: float, z: float = 0.0) -> int:
 	return index
 
 
-func remove_point(index: int) -> bool:
-	var field_name := _resolve_point_field_name()
-	if field_name.is_empty():
+func capture_topology_snapshot() -> Dictionary:
+	var point_field := _resolve_point_field_name()
+	var connection_field := get_connection_field_name()
+	var points: Array = []
+	var connections: Array = []
+	if not point_field.is_empty() and has_field(point_field):
+		for point in get_struct_list(point_field):
+			points.append((point as Dictionary).duplicate(true))
+	if not connection_field.is_empty() and has_field(connection_field):
+		for connection in get_struct_list(connection_field):
+			connections.append((connection as Dictionary).duplicate(true))
+	return {
+		"point_field": point_field,
+		"connection_field": connection_field,
+		"points": points,
+		"connections": connections,
+	}
+
+
+func restore_topology_snapshot(snapshot: Dictionary) -> bool:
+	var point_field := str(snapshot.get("point_field", ""))
+	if point_field.is_empty():
 		return false
-	return remove_struct_from_array(field_name, index)
+	var changed := set_field(point_field, snapshot.get("points", []))
+	var connection_field := str(snapshot.get("connection_field", ""))
+	if not connection_field.is_empty():
+		changed = set_field(connection_field, snapshot.get("connections", [])) or changed
+	return changed
+
+
+func remove_point(index: int) -> bool:
+	if index < 0 or index >= get_point_count():
+		return false
+	var surviving_edges: Array[Dictionary] = []
+	for connection_record in get_connection_records():
+		var source_index := int(connection_record.get("source_index", -1))
+		var target_index := int(connection_record.get("target_index", -1))
+		if source_index == index or target_index == index:
+			continue
+		surviving_edges.append({
+			"source_index": source_index - 1 if source_index > index else source_index,
+			"target_index": target_index - 1 if target_index > index else target_index,
+			"raw": (connection_record.get("raw", {}) as Dictionary).duplicate(true),
+		})
+	var point_field := _resolve_point_field_name()
+	if point_field.is_empty() or not remove_struct_from_array(point_field, index):
+		return false
+	return _rebuild_connection_topology(surviving_edges)
 
 
 func set_point_position(index: int, x: float, y: float, z: Variant = null) -> bool:
@@ -273,6 +316,51 @@ func _next_first_connection_index() -> int:
 	if connection_field.is_empty():
 		return 0
 	return get_struct_list(connection_field).size()
+
+
+func _rebuild_connection_topology(edges: Array) -> bool:
+	var point_field := _resolve_point_field_name()
+	var connection_field := get_connection_field_name()
+	var point_count := get_point_count()
+	var edges_by_source: Dictionary = {}
+	for raw_edge in edges:
+		if typeof(raw_edge) != TYPE_DICTIONARY:
+			continue
+		var edge: Dictionary = raw_edge
+		var source_index := int(edge.get("source_index", -1))
+		if source_index < 0 or source_index >= point_count:
+			continue
+		if not edges_by_source.has(source_index):
+			edges_by_source[source_index] = []
+		(edges_by_source[source_index] as Array).append(edge)
+	var new_connections: Array = []
+	var points := get_struct_list(point_field)
+	for source_index in range(point_count):
+		var raw_point: Dictionary = points[source_index]
+		var source_edges: Array = edges_by_source.get(source_index, [])
+		var count_field := _point_field_name(raw_point, POINT_CONNECTION_COUNT_FIELDS)
+		var first_field := _point_field_name(raw_point, POINT_FIRST_CONNECTION_FIELDS)
+		if count_field.is_empty():
+			count_field = "Conections"
+		if first_field.is_empty():
+			first_field = "First_Conection"
+		var first_connection := new_connections.size()
+		var count_path := [point_field, source_index, count_field]
+		var first_path := [point_field, source_index, first_field]
+		set_field_at_path(count_path, source_edges.size())
+		set_field_at_path(first_path, first_connection)
+		for edge in source_edges:
+			if typeof(edge) != TYPE_DICTIONARY:
+				continue
+			var connection_struct := (edge.get("raw", {}) as Dictionary).duplicate(true)
+			var target_field := _connection_target_field_name(connection_struct)
+			if target_field.is_empty():
+				target_field = "Destination"
+			connection_struct[target_field] = int(edge.get("target_index", -1))
+			new_connections.append(connection_struct)
+	if connection_field.is_empty():
+		return true
+	return set_field(connection_field, new_connections)
 
 
 func _build_default_point_struct(

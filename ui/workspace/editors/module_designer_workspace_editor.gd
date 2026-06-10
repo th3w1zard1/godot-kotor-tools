@@ -423,6 +423,11 @@ func _build_ui() -> void:
 	add_pth_point_btn.pressed.connect(_arm_add_path_point)
 	_toolbar.add_child(add_pth_point_btn)
 
+	var remove_pth_point_btn := Button.new()
+	remove_pth_point_btn.text = "Remove Path Point"
+	remove_pth_point_btn.pressed.connect(_remove_selected_path_point)
+	_toolbar.add_child(remove_pth_point_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -820,6 +825,19 @@ func _arm_add_path_point() -> void:
 	_map_view.set_add_path_point_armed(true)
 	_status_text = "Click the map to place a new path point."
 	_refresh_status()
+
+
+func _remove_selected_path_point() -> void:
+	if _map_view == null or _path_document == null:
+		return
+	var index := _map_view._selected_path_point_index
+	if index < 0:
+		_status_text = "Select a path point to remove."
+		_refresh_status()
+		return
+	_status_text = ""
+	_refresh_status()
+	_apply_path_point_remove_with_undo(index)
 
 
 func _on_map_path_point_add_requested(x: float, y: float) -> void:
@@ -1536,6 +1554,20 @@ func _apply_path_point_add_with_undo(x: float, y: float) -> void:
 		_exec_path_point_add(x, y)
 
 
+func _apply_path_point_remove_with_undo(index: int) -> void:
+	if _path_document == null:
+		return
+	var snapshot := _path_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Remove PTH point", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_point_remove", index)
+		ur.add_undo_method(self, "_exec_path_point_restore_snapshot", snapshot)
+		ur.commit_action()
+	else:
+		_exec_path_point_remove(index)
+
+
 func _exec_path_point_add(x: float, y: float) -> void:
 	if _path_document == null:
 		return
@@ -1549,6 +1581,21 @@ func _exec_path_point_remove(index: int) -> void:
 	if _path_document == null:
 		return
 	if not _path_document.remove_point(index):
+		return
+	if _detail_label != null:
+		_detail_label.text = ""
+	if _map_view != null:
+		_map_view.set_path_point_selection(-1)
+		_map_view.set_path_connection_selection(-1)
+	if _viewport_3d != null:
+		_viewport_3d.set_path_point_selection(-1)
+		_viewport_3d.set_path_connection_selection(-1)
+
+
+func _exec_path_point_restore_snapshot(snapshot: Dictionary) -> void:
+	if _path_document == null:
+		return
+	if not _path_document.restore_topology_snapshot(snapshot):
 		return
 	if _detail_label != null:
 		_detail_label.text = ""
