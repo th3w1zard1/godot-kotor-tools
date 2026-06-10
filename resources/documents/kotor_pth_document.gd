@@ -139,6 +139,32 @@ func set_connection_destination(connection_index: int, target_index: int) -> boo
 	return set_field_at_path(path, target_index)
 
 
+func add_point(x: float, y: float, z: float = 0.0) -> int:
+	var field_name := _resolve_point_field_name()
+	if field_name.is_empty():
+		return -1
+	if not has_field(field_name):
+		set_field(field_name, [])
+	var index := get_point_count()
+	var new_point := _build_default_point_struct(
+		_next_point_id(index),
+		x,
+		y,
+		z,
+		_next_first_connection_index()
+	)
+	if not insert_struct_at_array(field_name, index, new_point):
+		return -1
+	return index
+
+
+func remove_point(index: int) -> bool:
+	var field_name := _resolve_point_field_name()
+	if field_name.is_empty():
+		return false
+	return remove_struct_from_array(field_name, index)
+
+
 func set_point_position(index: int, x: float, y: float, z: Variant = null) -> bool:
 	var point_record := find_point_record(index)
 	if point_record.is_empty():
@@ -223,3 +249,54 @@ static func _connection_target_field_name(connection: Dictionary) -> String:
 		if connection.has(field_name):
 			return String(field_name)
 	return ""
+
+
+func _resolve_point_field_name() -> String:
+	var existing := get_point_field_name()
+	if not existing.is_empty():
+		return existing
+	for field_name in POINT_LIST_FIELDS:
+		if has_field(field_name):
+			return field_name
+	return "Path_Points"
+
+
+func _next_point_id(fallback_index: int) -> int:
+	var max_id := 0
+	for point_record in get_point_records():
+		max_id = max(max_id, int(point_record.get("id", 0)))
+	return max_id + 1 if max_id > 0 else fallback_index + 1
+
+
+func _next_first_connection_index() -> int:
+	var connection_field := get_connection_field_name()
+	if connection_field.is_empty():
+		return 0
+	return get_struct_list(connection_field).size()
+
+
+func _build_default_point_struct(
+	point_id: int,
+	x: float,
+	y: float,
+	z: float,
+	first_connection: int
+) -> Dictionary:
+	var template: Dictionary = {}
+	var records := get_point_records()
+	if not records.is_empty():
+		template = records[0].get("raw", {})
+	var point := {}
+	var id_field := _point_field_name(template, POINT_ID_FIELDS)
+	point[id_field if not id_field.is_empty() else "ID"] = point_id
+	var x_field := _point_field_name(template, POINT_X_FIELDS)
+	point[x_field if not x_field.is_empty() else "X"] = x
+	var y_field := _point_field_name(template, POINT_Y_FIELDS)
+	point[y_field if not y_field.is_empty() else "Y"] = y
+	var z_field := _point_field_name(template, POINT_Z_FIELDS)
+	point[z_field if not z_field.is_empty() else "Z"] = z
+	var count_field := _point_field_name(template, POINT_CONNECTION_COUNT_FIELDS)
+	point[count_field if not count_field.is_empty() else "Conections"] = 0
+	var first_field := _point_field_name(template, POINT_FIRST_CONNECTION_FIELDS)
+	point[first_field if not first_field.is_empty() else "First_Conection"] = first_connection
+	return point

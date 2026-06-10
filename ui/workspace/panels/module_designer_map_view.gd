@@ -8,6 +8,7 @@ signal instance_selected(category: String, index: int)
 signal path_point_selected(index: int)
 signal path_connection_selected(index: int)
 signal path_connection_retarget_requested(connection_index: int, target_index: int)
+signal path_point_add_requested(x: float, y: float)
 signal instance_drag_updated(category: String, index: int, x: float, y: float)
 signal instance_drag_finished(
 	category: String,
@@ -51,6 +52,16 @@ var _rotate_category := ""
 var _rotate_index := -1
 var _rotate_start_bearing := 0.0
 var _rotate_preview_bearing := 0.0
+var _add_path_point_armed := false
+
+
+func set_add_path_point_armed(armed: bool) -> void:
+	_add_path_point_armed = armed
+	queue_redraw()
+
+
+func is_add_path_point_armed() -> bool:
+	return _add_path_point_armed
 
 
 func set_instances(records: Array, bounds: Rect2, path_points: Array = [], path_edges: Array = []) -> void:
@@ -227,6 +238,12 @@ func _gui_input(event: InputEvent) -> void:
 			var picked_connection := _pick_path_connection(mouse_event.position)
 			if not picked_connection.is_empty():
 				path_connection_selected.emit(int(picked_connection.get("index", -1)))
+				accept_event()
+				return
+			if _add_path_point_armed:
+				var world := _screen_to_world(mouse_event.position)
+				_add_path_point_armed = false
+				path_point_add_requested.emit(world.x, world.y)
 				accept_event()
 				return
 		if _drag_active:

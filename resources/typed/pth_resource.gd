@@ -41,5 +41,13 @@ func set_connection_destination(connection_index: int, target_index: int) -> boo
 	return (create_document() as KotorPTHDocument).set_connection_destination(connection_index, target_index)
 
 
+func add_point(x: float, y: float, z: float = 0.0) -> int:
+	return (create_document() as KotorPTHDocument).add_point(x, y, z)
+
+
+func remove_point(index: int) -> bool:
+	return (create_document() as KotorPTHDocument).remove_point(index)
+
+
 func _create_document():
 	return KotorPTHDocument.new().setup(file_type, gff_data, self)

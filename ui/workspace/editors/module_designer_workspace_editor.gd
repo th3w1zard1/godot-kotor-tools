@@ -418,6 +418,11 @@ func _build_ui() -> void:
 	install_pth_btn.pressed.connect(_install_pth_to_override)
 	_toolbar.add_child(install_pth_btn)
 
+	var add_pth_point_btn := Button.new()
+	add_pth_point_btn.text = "Add Path Point"
+	add_pth_point_btn.pressed.connect(_arm_add_path_point)
+	_toolbar.add_child(add_pth_point_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -456,6 +461,7 @@ func _build_ui() -> void:
 	_map_view.path_point_selected.connect(_on_map_path_point_selected)
 	_map_view.path_connection_selected.connect(_on_map_path_connection_selected)
 	_map_view.path_connection_retarget_requested.connect(_on_map_path_connection_retarget_requested)
+	_map_view.path_point_add_requested.connect(_on_map_path_point_add_requested)
 	_map_view.instance_drag_finished.connect(_on_map_instance_drag_finished)
 	_map_view.path_point_drag_finished.connect(_on_map_path_point_drag_finished)
 	_map_view.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
@@ -806,6 +812,22 @@ func _on_map_path_connection_retarget_requested(connection_index: int, target_in
 	if old_target == target_index:
 		return
 	_apply_path_connection_retarget_with_undo(connection_index, old_target, target_index)
+
+
+func _arm_add_path_point() -> void:
+	if _map_view == null or _path_document == null:
+		return
+	_map_view.set_add_path_point_armed(true)
+	_status_text = "Click the map to place a new path point."
+	_refresh_status()
+
+
+func _on_map_path_point_add_requested(x: float, y: float) -> void:
+	if _map_view != null:
+		_map_view.set_add_path_point_armed(false)
+	_status_text = ""
+	_refresh_status()
+	_apply_path_point_add_with_undo(x, y)
 
 
 func _on_map_instance_drag_finished(
@@ -1498,6 +1520,44 @@ func _exec_path_connection_retarget(connection_index: int, target_index: int) ->
 	if not _path_document.set_connection_destination(connection_index, target_index):
 		return
 	_select_path_connection(connection_index)
+
+
+func _apply_path_point_add_with_undo(x: float, y: float) -> void:
+	if _path_document == null:
+		return
+	var index := _path_document.get_point_count()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Add PTH point", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_point_add", x, y)
+		ur.add_undo_method(self, "_exec_path_point_remove", index)
+		ur.commit_action()
+	else:
+		_exec_path_point_add(x, y)
+
+
+func _exec_path_point_add(x: float, y: float) -> void:
+	if _path_document == null:
+		return
+	var index := _path_document.add_point(x, y)
+	if index < 0:
+		return
+	_select_path_point(index)
+
+
+func _exec_path_point_remove(index: int) -> void:
+	if _path_document == null:
+		return
+	if not _path_document.remove_point(index):
+		return
+	if _detail_label != null:
+		_detail_label.text = ""
+	if _map_view != null:
+		_map_view.set_path_point_selection(-1)
+		_map_view.set_path_connection_selection(-1)
+	if _viewport_3d != null:
+		_viewport_3d.set_path_point_selection(-1)
+		_viewport_3d.set_path_connection_selection(-1)
 
 
 func _apply_instance_bearing_with_undo(
