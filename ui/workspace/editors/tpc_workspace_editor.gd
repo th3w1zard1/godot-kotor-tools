@@ -4,6 +4,7 @@ class_name KotorTPCWorkspaceEditor
 
 const TPCReader := preload("../../../formats/tpc_reader.gd")
 const TPCWriter := preload("../../../formats/tpc_writer.gd")
+const TpcBatchExporter := preload("../../../formats/tpc_batch_exporter.gd")
 const KotorMediaToolBridge := preload("../../../resources/scripts/kotor_media_tool_bridge.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
@@ -148,6 +149,11 @@ func _build_ui() -> void:
 	export_tga_btn.pressed.connect(_export_tga)
 	_toolbar.add_child(export_tga_btn)
 
+	var batch_export_btn := Button.new()
+	batch_export_btn.text = "Batch Export TGA..."
+	batch_export_btn.pressed.connect(_batch_export_tga)
+	_toolbar.add_child(batch_export_btn)
+
 	var save_btn := Button.new()
 	save_btn.text = "Save TPC"
 	save_btn.pressed.connect(_save_tpc)
@@ -264,6 +270,36 @@ func _load_image_as_rgba_tpc(path: String) -> void:
 	_status_text = "Imported %s as RGBA TPC" % path.get_file()
 	_register_controller_document()
 	_refresh_view()
+
+
+func _batch_export_tga() -> void:
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Batch Export TGA from TPC folder"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(dir_path: String) -> void:
+		_run_batch_export(dir_path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_export(dir_path: String) -> void:
+	var cli_path: String = ""
+	if _editor_state != null:
+		cli_path = str(_editor_state.get("pykotor_cli_path"))
+	var result := TpcBatchExporter.batch_directory(dir_path, {"pykotor_cli_path": cli_path})
+	_status_text = str(result.get("summary", "Batch TGA export finished."))
+	var failed: Array = result.get("failed", [])
+	if not failed.is_empty():
+		var first: Dictionary = failed[0]
+		_status_text += " First error: %s (%s)" % [
+			first.get("message", "?"),
+			str(first.get("tpc_path", "")).get_file(),
+		]
+	_refresh_status()
 
 
 func _export_tga() -> void:
