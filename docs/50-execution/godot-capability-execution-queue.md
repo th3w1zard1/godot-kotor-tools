@@ -86,12 +86,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q69 | Module Designer PTH connection retarget | Loaded `.pth` connection destinations can be retargeted from the 2D map with undo-safe typed mutation and install-ready persistence; headless `test_module_designer_pth_connection_retarget.gd`. |
 | Q70 | Module Designer PTH point add | Loaded `.pth` graphs can grow via toolbar-armed map placement with undo-safe typed mutation and install-ready persistence; headless `test_module_designer_pth_point_add.gd`. |
 | Q71 | Module Designer PTH point remove | Loaded `.pth` graphs can shrink via topology-safe point removal with snapshot undo and install-ready persistence; headless `test_module_designer_pth_point_remove.gd`. |
+| Q72 | Module Designer PTH connection add | Loaded `.pth` graphs can grow new edges via toolbar-armed source-to-target placement with snapshot undo and install-ready persistence; headless `test_module_designer_pth_connection_add.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q71 shipped Module Designer PTH point remove. | Next: add/remove path connections, module designer utility panels, or parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q72 shipped Module Designer PTH connection add. | Next: remove path connections, module designer utility panels, or parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 

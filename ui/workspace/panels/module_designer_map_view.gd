@@ -8,6 +8,7 @@ signal instance_selected(category: String, index: int)
 signal path_point_selected(index: int)
 signal path_connection_selected(index: int)
 signal path_connection_retarget_requested(connection_index: int, target_index: int)
+signal path_connection_add_requested(source_index: int, target_index: int)
 signal path_point_add_requested(x: float, y: float)
 signal instance_drag_updated(category: String, index: int, x: float, y: float)
 signal instance_drag_finished(
@@ -53,6 +54,7 @@ var _rotate_index := -1
 var _rotate_start_bearing := 0.0
 var _rotate_preview_bearing := 0.0
 var _add_path_point_armed := false
+var _add_path_connection_armed := false
 
 
 func set_add_path_point_armed(armed: bool) -> void:
@@ -62,6 +64,15 @@ func set_add_path_point_armed(armed: bool) -> void:
 
 func is_add_path_point_armed() -> bool:
 	return _add_path_point_armed
+
+
+func set_add_path_connection_armed(armed: bool) -> void:
+	_add_path_connection_armed = armed
+	queue_redraw()
+
+
+func is_add_path_connection_armed() -> bool:
+	return _add_path_connection_armed
 
 
 func set_instances(records: Array, bounds: Rect2, path_points: Array = [], path_edges: Array = []) -> void:
@@ -226,6 +237,15 @@ func _gui_input(event: InputEvent) -> void:
 				var point_index := int(picked_point.get("index", -1))
 				if _selected_path_connection_index >= 0:
 					path_connection_retarget_requested.emit(_selected_path_connection_index, point_index)
+					accept_event()
+					return
+				if (
+					_add_path_connection_armed
+					and _selected_path_point_index >= 0
+					and point_index != _selected_path_point_index
+				):
+					_add_path_connection_armed = false
+					path_connection_add_requested.emit(_selected_path_point_index, point_index)
 					accept_event()
 					return
 				path_point_selected.emit(point_index)

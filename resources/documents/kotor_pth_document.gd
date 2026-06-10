@@ -118,6 +118,42 @@ func find_connection_record(connection_index: int) -> Dictionary:
 	return {}
 
 
+func add_connection(source_index: int, target_index: int) -> int:
+	if source_index < 0 or source_index >= get_point_count():
+		return -1
+	if target_index < 0 or target_index >= get_point_count():
+		return -1
+	if source_index == target_index:
+		return -1
+	for connection_record in get_connection_records():
+		if (
+			int(connection_record.get("source_index", -1)) == source_index
+			and int(connection_record.get("target_index", -1)) == target_index
+		):
+			return -1
+	var edges: Array[Dictionary] = []
+	for connection_record in get_connection_records():
+		edges.append({
+			"source_index": int(connection_record.get("source_index", -1)),
+			"target_index": int(connection_record.get("target_index", -1)),
+			"raw": (connection_record.get("raw", {}) as Dictionary).duplicate(true),
+		})
+	edges.append({
+		"source_index": source_index,
+		"target_index": target_index,
+		"raw": _build_default_connection_struct(target_index),
+	})
+	if not _rebuild_connection_topology(edges):
+		return -1
+	for connection_record in get_connection_records():
+		if (
+			int(connection_record.get("source_index", -1)) == source_index
+			and int(connection_record.get("target_index", -1)) == target_index
+		):
+			return int(connection_record.get("index", -1))
+	return -1
+
+
 func set_connection_destination(connection_index: int, target_index: int) -> bool:
 	var connection_field := get_connection_field_name()
 	if connection_field.is_empty():
@@ -359,8 +395,23 @@ func _rebuild_connection_topology(edges: Array) -> bool:
 			connection_struct[target_field] = int(edge.get("target_index", -1))
 			new_connections.append(connection_struct)
 	if connection_field.is_empty():
-		return true
+		if new_connections.is_empty():
+			return true
+		connection_field = "Path_Conections"
 	return set_field(connection_field, new_connections)
+
+
+func _build_default_connection_struct(target_index: int) -> Dictionary:
+	var template: Dictionary = {}
+	var connection_field := get_connection_field_name()
+	if not connection_field.is_empty() and has_field(connection_field):
+		var connections := get_struct_list(connection_field)
+		if not connections.is_empty():
+			template = connections[0]
+	var connection := {}
+	var target_field := _connection_target_field_name(template)
+	connection[target_field if not target_field.is_empty() else "Destination"] = target_index
+	return connection
 
 
 func _build_default_point_struct(
