@@ -15,6 +15,7 @@ func _run_tests() -> void:
 	_test_build_holopatcher_validate_command(fixture_root)
 	_test_build_holopatcher_install_command(fixture_root)
 	_test_build_holopatcher_module_command(fixture_root)
+	_test_resolve_cli_ignores_pykotorcli(fixture_root)
 	_test_dry_run(fixture_root)
 	_cleanup_fixture(fixture_root)
 	print("✓ HoloPatcher tool bridge tests passed")
@@ -87,6 +88,19 @@ func _test_build_holopatcher_module_command(fixture_root: String) -> void:
 	assert(args.has("-m"))
 	assert(args.has("holopatcher"))
 	print("✓ HoloPatcher bridge module command passed")
+
+
+func _test_resolve_cli_ignores_pykotorcli(fixture_root: String) -> void:
+	var cli := HoloPatcherToolBridge.resolve_cli("pykotorcli")
+	assert(str(cli.get("executable", "")) != "pykotorcli")
+	var built := HoloPatcherToolBridge.build_command({
+		"game_dir": fixture_root,
+		"tslpatchdata": fixture_root.path_join("tslpatchdata"),
+		"mode": HoloPatcherToolBridge.MODE_VALIDATE,
+		"pykotor_cli_path": "pykotorcli",
+	})
+	assert(not built.get("ok", true) or str(built.get("executable", "")) != "pykotorcli")
+	print("✓ HoloPatcher bridge ignores pykotorcli configured path passed")
 
 
 func _test_dry_run(fixture_root: String) -> void:

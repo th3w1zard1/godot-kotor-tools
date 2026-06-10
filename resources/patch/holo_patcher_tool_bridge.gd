@@ -62,12 +62,15 @@ static func resolve_cli(configured_path: String) -> Dictionary:
 				"source": "configured_python",
 				"cli_kind": "holopatcher_module",
 			}
-		return {
-			"executable": configured,
-			"module_args": PackedStringArray(),
-			"source": "configured",
-			"cli_kind": "holopatcher",
-		}
+		if _looks_like_pykotor_cli(configured) or _looks_like_kotordiff(configured):
+			configured = ""
+		else:
+			return {
+				"executable": configured,
+				"module_args": PackedStringArray(),
+				"source": "configured",
+				"cli_kind": "holopatcher",
+			}
 
 	for candidate in HOLOPATCHER_CANDIDATES:
 		if _command_exists(candidate):
@@ -206,6 +209,16 @@ static func _path_exists(path: String) -> bool:
 static func _looks_like_holopatcher(path: String) -> bool:
 	var base := path.get_file().to_lower()
 	return base.contains("holopatcher")
+
+
+static func _looks_like_pykotor_cli(path: String) -> bool:
+	var base := path.get_file().to_lower()
+	return base.contains("pykotorcli") or base == "pykotor" or base.begins_with("pykotor")
+
+
+static func _looks_like_kotordiff(path: String) -> bool:
+	var base := path.get_file().to_lower()
+	return base.contains("kotordiff")
 
 
 static func _looks_like_python_launcher(path: String) -> bool:

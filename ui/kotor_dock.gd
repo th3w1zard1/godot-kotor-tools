@@ -1326,6 +1326,20 @@ func _execute_kotordiff_cli(output_log: String) -> void:
 	_append_activity(report)
 
 
+func _holopatcher_cli_path_for_bridge() -> String:
+	if _editor_state == null:
+		return ""
+	var configured := str(_editor_state.pykotor_cli_path).strip_edges()
+	if configured.is_empty():
+		return ""
+	var base := configured.get_file().to_lower()
+	if base.contains("holopatcher"):
+		return configured
+	if base.begins_with("python") or configured.ends_with("py"):
+		return configured
+	return ""
+
+
 func _run_holopatcher_cli_dialog(mode: String) -> void:
 	if not _has_valid_game_path():
 		_show_gamefs_report("Configure a game install path first.")
@@ -1351,9 +1365,11 @@ func _execute_holopatcher_cli(mode: String) -> void:
 		"game_dir": _editor_state.game_path,
 		"tslpatchdata": _holopatcher_tslpatchdata,
 		"mode": mode,
-		"pykotor_cli_path": _editor_state.pykotor_cli_path if _editor_state != null else "",
+		"holopatcher_cli_path": _holopatcher_cli_path_for_bridge(),
 	})
 	var report := str(result.get("message", "HoloPatcher failed."))
+	for warning in result.get("warnings", []):
+		report += "\n\nWarning: %s" % str(warning)
 	if not str(result.get("stdout", "")).strip_edges().is_empty():
 		report += "\n\n" + str(result.get("stdout", "")).strip_edges()
 	_show_gamefs_report(report)
