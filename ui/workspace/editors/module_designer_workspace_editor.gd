@@ -33,6 +33,8 @@ var _bundle_label: Label
 var _summary_label: Label
 var _detail_label: Label
 var _bundle_tree: Tree
+var _room_models_header: Label
+var _room_models_tree: Tree
 var _instance_tree: Tree
 var _map_view: ModuleDesignerMapView
 var _viewport_3d: ModuleDesignerViewport3D
@@ -472,7 +474,22 @@ func _build_ui() -> void:
 	_bundle_tree.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_bundle_tree.hide_root = true
 	_bundle_tree.item_activated.connect(_on_bundle_tree_item_activated)
+	_bundle_tree.item_selected.connect(_on_bundle_tree_item_selected)
 	left_panel.add_child(_bundle_tree)
+
+	_room_models_header = Label.new()
+	_room_models_header.text = "Room Models"
+	_room_models_header.visible = false
+	left_panel.add_child(_room_models_header)
+
+	_room_models_tree = Tree.new()
+	_room_models_tree.custom_minimum_size = Vector2(0, 100)
+	_room_models_tree.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_room_models_tree.hide_root = true
+	_room_models_tree.visible = false
+	_room_models_tree.item_selected.connect(_on_room_models_tree_item_selected)
+	_room_models_tree.item_activated.connect(_on_room_models_tree_item_activated)
+	left_panel.add_child(_room_models_tree)
 
 	_instance_tree = Tree.new()
 	_instance_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -517,6 +534,7 @@ func _refresh_view() -> void:
 	_refresh_path_label()
 	_refresh_bundle_label()
 	_refresh_bundle_tree()
+	_refresh_room_models_tree()
 	_refresh_summary()
 	_refresh_instance_tree()
 	_refresh_map()
@@ -559,6 +577,18 @@ func _refresh_bundle_tree() -> void:
 		item.set_metadata(0, record)
 
 
+func _on_bundle_tree_item_selected() -> void:
+	if _bundle_tree == null:
+		return
+	var selected := _bundle_tree.get_selected()
+	if selected == null:
+		return
+	var record: Variant = selected.get_metadata(0)
+	if typeof(record) != TYPE_DICTIONARY:
+		return
+	_show_bundle_resource_detail(record)
+
+
 func _on_bundle_tree_item_activated() -> void:
 	if _bundle_tree == null:
 		return
@@ -574,6 +604,102 @@ func _on_bundle_tree_item_activated() -> void:
 		_refresh_status()
 		return
 	bundle_resource_open_requested.emit(entry)
+
+
+func _refresh_room_models_tree() -> void:
+	if _room_models_tree == null or _room_models_header == null:
+		return
+	_room_models_tree.clear()
+	var gamefs = _editor_state.gamefs if _editor_state != null else null
+	var records := KotorModuleContext.get_room_model_entries(_parsed_layout, gamefs)
+	var has_records := not records.is_empty()
+	_room_models_header.visible = has_records
+	_room_models_tree.visible = has_records
+	if not has_records:
+		return
+	var root := _room_models_tree.create_item()
+	for record in records:
+		var item := _room_models_tree.create_item(root)
+		item.set_text(
+			0,
+			"%s (%s)" % [
+				str(record.get("model", "")),
+				KotorModuleContext.format_room_model_presence(record),
+			]
+		)
+		item.set_metadata(0, record)
+
+
+func _on_room_models_tree_item_selected() -> void:
+	if _room_models_tree == null:
+		return
+	var selected := _room_models_tree.get_selected()
+	if selected == null:
+		return
+	var record: Variant = selected.get_metadata(0)
+	if typeof(record) != TYPE_DICTIONARY:
+		return
+	_show_room_model_detail(record)
+
+
+func _on_room_models_tree_item_activated() -> void:
+	if _room_models_tree == null:
+		return
+	var selected := _room_models_tree.get_selected()
+	if selected == null:
+		return
+	var record: Variant = selected.get_metadata(0)
+	if typeof(record) != TYPE_DICTIONARY:
+		return
+	var entry: Dictionary = record.get("open_entry", {})
+	if entry.is_empty():
+		_status_text = "Selected room model has no indexed MDL to open."
+		_refresh_status()
+		return
+	bundle_resource_open_requested.emit(entry)
+
+
+func _show_bundle_resource_detail(record: Dictionary) -> void:
+	if _detail_label == null:
+		return
+	var label := str(record.get("label", ""))
+	var description := str(record.get("description", ""))
+	var extension := str(record.get("extension", ""))
+	var lines: Array[String] = [
+		"Module Resource: %s" % label,
+		"Status: %s" % description,
+	]
+	if extension == "lyt" and not _parsed_layout.is_empty():
+		lines.append(KotorModuleContext.format_layout_summary(_parsed_layout))
+	elif extension == "vis" and not _parsed_visibility.is_empty():
+		lines.append(KotorModuleContext.format_visibility_summary(_parsed_visibility))
+	elif extension == "pth" and _path_resource != null:
+		lines.append(KotorModuleContext.format_path_summary(_path_resource))
+	elif extension == "wok" and not _parsed_walkmesh.is_empty():
+		lines.append(
+			"Walkmesh: %d face(s), %d vertex/vertices"
+			% [
+				int(_parsed_walkmesh.get("face_count", 0)),
+				int(_parsed_walkmesh.get("vertex_count", 0)),
+			]
+		)
+	_detail_label.text = "\n".join(lines)
+
+
+func _show_room_model_detail(record: Dictionary) -> void:
+	if _detail_label == null:
+		return
+	var position: Vector3 = record.get("position", Vector3.ZERO)
+	_detail_label.text = (
+		"Room Model: %s\nPosition: %.2f, %.2f, %.2f\nAssets: %s"
+		% [
+			str(record.get("model", "")),
+			position.x,
+			position.y,
+			position.z,
+			KotorModuleContext.format_room_model_presence(record),
+		]
+	)
 
 
 func _refresh_summary() -> void:

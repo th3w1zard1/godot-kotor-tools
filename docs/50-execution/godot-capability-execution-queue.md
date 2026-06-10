@@ -89,12 +89,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q72 | Module Designer PTH connection add | Loaded `.pth` graphs can grow new edges via toolbar-armed source-to-target placement with snapshot undo and install-ready persistence; headless `test_module_designer_pth_connection_add.gd`. |
 | Q73 | Module Designer PTH connection remove | Loaded `.pth` graphs can drop individual edges via toolbar action on selected connection with snapshot undo and install-ready persistence; headless `test_module_designer_pth_connection_remove.gd`. |
 | Q74 | Module Designer bundle resources utility panel | Module Designer lists indexed GIT/ARE/IFO/LYT/VIS/PTH/WOK bundle files and opens selected siblings in workspace editors; headless `test_module_designer_bundle_utility_panel.gd`. |
+| Q75 | Module Designer room models utility panel | Module Designer lists unique LYT room models with MDL/MDX/WOK presence, detail context, and MDL open routing; headless `test_module_designer_room_models_utility_panel.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q74 shipped Module Designer bundle resources utility panel. | Next: advanced utility tools, module designer depth, or parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q75 shipped Module Designer room models utility panel. | Next: advanced utility tools (references, modulekit, texture batch) or parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 

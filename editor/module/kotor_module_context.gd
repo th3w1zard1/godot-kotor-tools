@@ -187,6 +187,49 @@ static func describe_bundle(bundle: Dictionary) -> String:
 	return " · ".join(parts)
 
 
+static func get_room_model_entries(parsed_layout: Dictionary, gamefs: RefCounted) -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
+	if parsed_layout.is_empty():
+		return records
+	var rooms: Array = parsed_layout.get("rooms", [])
+	var seen: Dictionary = {}
+	for raw_room in rooms:
+		if typeof(raw_room) != TYPE_DICTIONARY:
+			continue
+		var room: Dictionary = raw_room
+		var model_name := str(room.get("model", "")).strip_edges().to_lower()
+		if model_name.is_empty() or seen.has(model_name):
+			continue
+		seen[model_name] = true
+		var position: Vector3 = room.get("position", Vector3.ZERO)
+		var mdl_entry := _resolve_model_asset_entry(gamefs, model_name, "mdl")
+		var mdx_entry := _resolve_model_asset_entry(gamefs, model_name, "mdx")
+		var wok_entry := _resolve_model_asset_entry(gamefs, model_name, "wok")
+		records.append({
+			"model": model_name,
+			"position": position,
+			"mdl_entry": mdl_entry,
+			"mdx_entry": mdx_entry,
+			"wok_entry": wok_entry,
+			"has_mdl": not mdl_entry.is_empty(),
+			"has_mdx": not mdx_entry.is_empty(),
+			"has_wok": not wok_entry.is_empty(),
+			"open_entry": mdl_entry if not mdl_entry.is_empty() else {},
+		})
+	records.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return str(a.get("model", "")) < str(b.get("model", ""))
+	)
+	return records
+
+
+static func format_room_model_presence(record: Dictionary) -> String:
+	var parts: Array[String] = []
+	parts.append("MDL ✓" if record.get("has_mdl", false) else "MDL missing")
+	parts.append("MDX ✓" if record.get("has_mdx", false) else "MDX missing")
+	parts.append("WOK ✓" if record.get("has_wok", false) else "WOK missing")
+	return ", ".join(parts)
+
+
 static func get_bundle_resource_entries(bundle: Dictionary) -> Array[Dictionary]:
 	var records: Array[Dictionary] = []
 	if bundle.is_empty():
@@ -238,3 +281,13 @@ static func _entry_source_rank(entry: Dictionary) -> int:
 	if SOURCE_RANK.has(source):
 		return int(SOURCE_RANK[source])
 	return 99
+
+
+static func _resolve_model_asset_entry(gamefs: RefCounted, model_name: String, extension: String) -> Dictionary:
+	if gamefs == null or model_name.is_empty():
+		return {}
+	if gamefs.has_method("resolve_resource"):
+		var resolved: Dictionary = gamefs.resolve_resource(model_name, extension)
+		if not resolved.is_empty():
+			return resolved.duplicate(true)
+	return {}

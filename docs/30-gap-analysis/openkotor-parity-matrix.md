@@ -114,7 +114,8 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 47. **Q72 (shipped 2026-06-07):** Module Designer PTH connection add — loaded path graphs can grow new edges via toolbar-armed source-to-target placement with typed mutation, dirty-state tracking, and install-ready persistence; see `docs/plans/2026-06-07-004-feat-q72-pth-connection-add-plan.md`.
 48. **Q73 (shipped 2026-06-07):** Module Designer PTH connection remove — loaded path graphs can drop individual edges via toolbar action on selected connection with typed mutation, dirty-state tracking, and install-ready persistence; see `docs/plans/2026-06-07-005-feat-q73-pth-connection-remove-plan.md`.
 49. **Q74 (shipped 2026-06-07):** Module Designer bundle resources utility panel — indexed module bundle files (GIT/ARE/IFO/LYT/VIS/PTH/WOK) surface in a left-panel tree with open-in-workspace routing; see `docs/plans/2026-06-07-006-feat-q74-module-bundle-utility-panel-plan.md`.
-50. Module/area designer parity wave (advanced tooling, utility panels).
+50. **Q75 (shipped 2026-06-07):** Module Designer room models utility panel — unique LYT room models list MDL/MDX/WOK presence with detail context and MDL open routing; see `docs/plans/2026-06-07-007-feat-q75-room-models-utility-panel-plan.md`.
+51. Module/area designer parity wave (advanced tooling, utility panels).
 
 ## Evidence Notes
 
