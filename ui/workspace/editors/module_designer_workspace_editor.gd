@@ -2,6 +2,8 @@
 extends "./kotor_workspace_editor.gd"
 class_name KotorModuleDesignerWorkspaceEditor
 
+signal bundle_resource_open_requested(entry: Dictionary)
+
 const GFFParser := preload("../../../formats/gff_parser.gd")
 const GFFResourceFactory := preload("../../../resources/gff_resource_factory.gd")
 const GITResource := preload("../../../resources/typed/git_resource.gd")
@@ -30,6 +32,7 @@ var _path_label: Label
 var _bundle_label: Label
 var _summary_label: Label
 var _detail_label: Label
+var _bundle_tree: Tree
 var _instance_tree: Tree
 var _map_view: ModuleDesignerMapView
 var _viewport_3d: ModuleDesignerViewport3D
@@ -460,6 +463,17 @@ func _build_ui() -> void:
 	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	split.add_child(left_panel)
 
+	var bundle_header := Label.new()
+	bundle_header.text = "Module Resources"
+	left_panel.add_child(bundle_header)
+
+	_bundle_tree = Tree.new()
+	_bundle_tree.custom_minimum_size = Vector2(0, 120)
+	_bundle_tree.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_bundle_tree.hide_root = true
+	_bundle_tree.item_activated.connect(_on_bundle_tree_item_activated)
+	left_panel.add_child(_bundle_tree)
+
 	_instance_tree = Tree.new()
 	_instance_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_instance_tree.item_selected.connect(_on_instance_tree_selected)
@@ -502,6 +516,7 @@ func _refresh_view() -> void:
 		return
 	_refresh_path_label()
 	_refresh_bundle_label()
+	_refresh_bundle_tree()
 	_refresh_summary()
 	_refresh_instance_tree()
 	_refresh_map()
@@ -528,6 +543,37 @@ func _refresh_bundle_label() -> void:
 		module_resref,
 		KotorModuleContext.describe_bundle(_module_bundle),
 	]
+
+
+func _refresh_bundle_tree() -> void:
+	if _bundle_tree == null:
+		return
+	_bundle_tree.clear()
+	var root := _bundle_tree.create_item()
+	for record in KotorModuleContext.get_bundle_resource_entries(_module_bundle):
+		var item := _bundle_tree.create_item(root)
+		item.set_text(
+			0,
+			"%s (%s)" % [str(record.get("label", "")), str(record.get("description", ""))]
+		)
+		item.set_metadata(0, record)
+
+
+func _on_bundle_tree_item_activated() -> void:
+	if _bundle_tree == null:
+		return
+	var selected := _bundle_tree.get_selected()
+	if selected == null:
+		return
+	var record: Variant = selected.get_metadata(0)
+	if typeof(record) != TYPE_DICTIONARY:
+		return
+	var entry: Dictionary = record.get("entry", {})
+	if entry.is_empty():
+		_status_text = "Selected module resource is not available in the install index."
+		_refresh_status()
+		return
+	bundle_resource_open_requested.emit(entry)
 
 
 func _refresh_summary() -> void:

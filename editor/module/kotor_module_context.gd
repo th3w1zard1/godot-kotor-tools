@@ -187,6 +187,27 @@ static func describe_bundle(bundle: Dictionary) -> String:
 	return " · ".join(parts)
 
 
+static func get_bundle_resource_entries(bundle: Dictionary) -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
+	if bundle.is_empty():
+		return records
+	for extension in MODULE_EXTENSIONS:
+		var entry: Dictionary = bundle.get(extension, {})
+		var description := ""
+		if entry.is_empty():
+			description = "missing" if extension in CORE_MODULE_EXTENSIONS else "not indexed"
+		else:
+			description = str(entry.get("source", "indexed"))
+		records.append({
+			"extension": extension,
+			"label": extension.to_upper(),
+			"description": description,
+			"entry": entry.duplicate(true) if not entry.is_empty() else {},
+			"available": not entry.is_empty(),
+		})
+	return records
+
+
 static func _resolve_best_entry(gamefs: RefCounted, module_resref: String, extension: String) -> Dictionary:
 	if gamefs.has_method("resolve_resource"):
 		var resolved: Dictionary = gamefs.resolve_resource(module_resref, extension)
