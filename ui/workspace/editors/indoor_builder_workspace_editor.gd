@@ -1068,6 +1068,7 @@ func _export_pykotor_mod_dialog() -> void:
 func _export_mod_to_path(path: String) -> void:
 	if _document == null:
 		return
+	_refresh_kit_library()
 	var kits_path := _kits_path_edit.text.strip_edges() if _kits_path_edit != null else ""
 	if kits_path.is_empty() and _editor_state != null:
 		kits_path = _editor_state.indoor_kits_path
