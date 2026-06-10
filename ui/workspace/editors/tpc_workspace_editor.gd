@@ -4,6 +4,7 @@ class_name KotorTPCWorkspaceEditor
 
 const TPCReader := preload("../../../formats/tpc_reader.gd")
 const TPCWriter := preload("../../../formats/tpc_writer.gd")
+const TpcBatchConverter := preload("../../../formats/tpc_batch_converter.gd")
 const KotorMediaToolBridge := preload("../../../resources/scripts/kotor_media_tool_bridge.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
@@ -143,6 +144,11 @@ func _build_ui() -> void:
 	import_image_btn.pressed.connect(_import_image_as_tpc)
 	_toolbar.add_child(import_image_btn)
 
+	var batch_convert_btn := Button.new()
+	batch_convert_btn.text = "Batch Convert TGA/PNG→TPC..."
+	batch_convert_btn.pressed.connect(_batch_convert_images_to_tpc)
+	_toolbar.add_child(batch_convert_btn)
+
 	var export_tga_btn := Button.new()
 	export_tga_btn.text = "Export TGA..."
 	export_tga_btn.pressed.connect(_export_tga)
@@ -216,6 +222,32 @@ func _refresh_metadata() -> void:
 		"[b]TXI length:[/b] %d bytes" % _metadata.get("txi_length", 0),
 	])
 	_meta_label.text = "\n".join(lines)
+
+
+func _batch_convert_images_to_tpc() -> void:
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.title = "Batch Convert TGA/PNG to TPC"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(dir_path: String) -> void:
+		_run_batch_convert(dir_path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_convert(dir_path: String) -> void:
+	var result := TpcBatchConverter.batch_directory(dir_path)
+	_status_text = str(result.get("summary", "Batch TPC finished."))
+	var failed: Array = result.get("failed", [])
+	if not failed.is_empty():
+		var first: Dictionary = failed[0]
+		_status_text += " First error: %s (%s)" % [
+			first.get("message", "?"),
+			str(first.get("image_path", "")).get_file(),
+		]
+	_refresh_status()
 
 
 func _import_image_as_tpc() -> void:
