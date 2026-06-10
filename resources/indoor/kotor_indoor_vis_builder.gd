@@ -50,16 +50,23 @@ static func _build_visibility_map(document: KotorIndoorDocument) -> Dictionary:
 		var parent_name := _room_component_name(document, index)
 		if parent_name.is_empty():
 			continue
-		var child_names: Array[String] = []
 		var child_lookup := {}
+		var merged: Array[String] = []
+		if visibility.has(parent_name):
+			for raw_child in visibility[parent_name]:
+				var existing_child := str(raw_child)
+				if child_lookup.has(existing_child):
+					continue
+				child_lookup[existing_child] = true
+				merged.append(existing_child)
 		for visible_index in document.get_visible_room_indices(index):
 			var child_name := _room_component_name(document, visible_index)
 			if child_name.is_empty() or child_lookup.has(child_name):
 				continue
 			child_lookup[child_name] = true
-			child_names.append(child_name)
-		child_names.sort()
-		visibility[parent_name] = child_names
+			merged.append(child_name)
+		merged.sort()
+		visibility[parent_name] = merged
 	return visibility
 
 

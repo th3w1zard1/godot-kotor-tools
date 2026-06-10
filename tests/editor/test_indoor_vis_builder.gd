@@ -17,6 +17,7 @@ func _run_tests() -> void:
 	_test_single_room_self_visibility()
 	_test_connected_room_visibility()
 	_test_vis_round_trip()
+	_test_duplicate_component_visibility_union()
 	_test_manifest_includes_vis()
 	print("✓ Indoor VIS builder tests passed")
 	quit()
@@ -73,6 +74,63 @@ func _test_vis_round_trip() -> void:
 	assert(room_b_children.has("room_a"))
 	assert(room_b_children.has("room_b"))
 	print("✓ Indoor VIS builder round trip passed")
+
+
+func _test_duplicate_component_visibility_union() -> void:
+	var document := KotorIndoorDocument.new()
+	document.load_from_dictionary({
+		"module_id": "test01",
+		"warp": "test01",
+		"name": {"stringref": -1},
+		"lighting": [0.5, 0.5, 0.5],
+		"skybox": "",
+		"embedded_components": [
+			{
+				"id": "room_a",
+				"name": "room_a",
+				"bwm": "",
+				"hooks": [{"position": [1.0, 0.0, 0.0]}],
+			},
+			{
+				"id": "room_b",
+				"name": "room_b",
+				"bwm": "",
+				"hooks": [{"position": [-1.0, 0.0, 0.0]}],
+			},
+		],
+		"rooms": [
+			{
+				"position": [0.0, 0.0, 0.0],
+				"rotation": 0.0,
+				"flip_x": false,
+				"flip_y": false,
+				"kit": KotorIndoorMapIO.EMBEDDED_KIT_ID,
+				"component": "room_a",
+			},
+			{
+				"position": [10.0, 0.0, 0.0],
+				"rotation": 0.0,
+				"flip_x": false,
+				"flip_y": false,
+				"kit": KotorIndoorMapIO.EMBEDDED_KIT_ID,
+				"component": "room_a",
+			},
+			{
+				"position": [2.0, 0.0, 0.0],
+				"rotation": 0.0,
+				"flip_x": false,
+				"flip_y": false,
+				"kit": KotorIndoorMapIO.EMBEDDED_KIT_ID,
+				"component": "room_b",
+			},
+		],
+	})
+	var result := KotorIndoorVisBuilder.build_from_document(document)
+	assert(result.get("ok", false))
+	var text := str(result.get("text", ""))
+	assert(text.find("room_a 2") >= 0, "Duplicate room_a placements should union hook neighbors")
+	assert(text.find("  room_b") >= 0)
+	print("✓ Indoor VIS builder duplicate component union passed")
 
 
 func _test_manifest_includes_vis() -> void:
