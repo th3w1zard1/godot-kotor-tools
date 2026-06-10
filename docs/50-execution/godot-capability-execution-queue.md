@@ -90,12 +90,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q73 | Module Designer PTH connection remove | Loaded `.pth` graphs can drop individual edges via toolbar action on selected connection with snapshot undo and install-ready persistence; headless `test_module_designer_pth_connection_remove.gd`. |
 | Q74 | Module Designer bundle resources utility panel | Module Designer lists indexed GIT/ARE/IFO/LYT/VIS/PTH/WOK bundle files and opens selected siblings in workspace editors; headless `test_module_designer_bundle_utility_panel.gd`. |
 | Q75 | Module Designer room models utility panel | Module Designer lists unique LYT room models with MDL/MDX/WOK presence, detail context, and MDL open routing; headless `test_module_designer_room_models_utility_panel.gd`. |
+| Q76 | Install ResRef references finder | Workspace resource browser scans override GFF/NSS resources for selected resref usages with formatted hit reports; headless `test_resref_reference_scanner.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q75 shipped Module Designer room models utility panel. | Next: advanced utility tools (references, modulekit, texture batch) or parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q76 shipped install ResRef references finder. | Next: modulekit, texture batch, or parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
