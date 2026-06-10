@@ -37,5 +37,9 @@ func set_point_position(index: int, x: float, y: float, z: Variant = null) -> bo
 	return (create_document() as KotorPTHDocument).set_point_position(index, x, y, z)
 
 
+func set_connection_destination(connection_index: int, target_index: int) -> bool:
+	return (create_document() as KotorPTHDocument).set_connection_destination(connection_index, target_index)
+
+
 func _create_document():
 	return KotorPTHDocument.new().setup(file_type, gff_data, self)

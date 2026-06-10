@@ -455,6 +455,7 @@ func _build_ui() -> void:
 	_map_view.instance_selected.connect(_on_map_instance_selected)
 	_map_view.path_point_selected.connect(_on_map_path_point_selected)
 	_map_view.path_connection_selected.connect(_on_map_path_connection_selected)
+	_map_view.path_connection_retarget_requested.connect(_on_map_path_connection_retarget_requested)
 	_map_view.instance_drag_finished.connect(_on_map_instance_drag_finished)
 	_map_view.path_point_drag_finished.connect(_on_map_path_point_drag_finished)
 	_map_view.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
@@ -795,6 +796,16 @@ func _on_map_path_point_selected(index: int) -> void:
 
 func _on_map_path_connection_selected(index: int) -> void:
 	_select_path_connection(index)
+
+
+func _on_map_path_connection_retarget_requested(connection_index: int, target_index: int) -> void:
+	var connection_record := _module_path_connection_by_index(connection_index)
+	if connection_record.is_empty():
+		return
+	var old_target := int(connection_record.get("target_index", -1))
+	if old_target == target_index:
+		return
+	_apply_path_connection_retarget_with_undo(connection_index, old_target, target_index)
 
 
 func _on_map_instance_drag_finished(
@@ -1464,6 +1475,29 @@ func _exec_path_point_position(index: int, x: float, y: float) -> void:
 	if not _path_document.set_point_position(index, x, y):
 		return
 	_select_path_point(index)
+
+
+func _apply_path_connection_retarget_with_undo(
+	connection_index: int,
+	old_target: int,
+	new_target: int
+) -> void:
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Retarget PTH connection", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_connection_retarget", connection_index, new_target)
+		ur.add_undo_method(self, "_exec_path_connection_retarget", connection_index, old_target)
+		ur.commit_action()
+	else:
+		_exec_path_connection_retarget(connection_index, new_target)
+
+
+func _exec_path_connection_retarget(connection_index: int, target_index: int) -> void:
+	if _path_document == null:
+		return
+	if not _path_document.set_connection_destination(connection_index, target_index):
+		return
+	_select_path_connection(connection_index)
 
 
 func _apply_instance_bearing_with_undo(

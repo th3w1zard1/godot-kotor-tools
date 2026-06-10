@@ -83,12 +83,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q66 | Module Designer PTH point inspection | Loaded `.pth` points become tree/map/3D selectable with detail-panel connection context; headless `test_module_designer_pth_point_inspection.gd`. |
 | Q67 | Module Designer PTH connection inspection | Loaded `.pth` edges become tree/map/3D selectable with source/target detail context and viewport edge highlighting; headless `test_module_designer_pth_connection_inspection.gd`. |
 | Q68 | Module Designer PTH point drag-move | Loaded `.pth` points can be repositioned from the 2D map with undo-safe typed mutation and install-ready persistence; headless `test_module_designer_pth_point_drag.gd`. |
+| Q69 | Module Designer PTH connection retarget | Loaded `.pth` connection destinations can be retargeted from the 2D map with undo-safe typed mutation and install-ready persistence; headless `test_module_designer_pth_connection_retarget.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q68 shipped Module Designer PTH point drag-move. | Next: deeper path-graph editing, module designer utility panels, or parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q69 shipped Module Designer PTH connection retarget. | Next: add/remove path points or connections, module designer utility panels, or parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 

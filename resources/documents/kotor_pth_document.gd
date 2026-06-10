@@ -111,6 +111,34 @@ func find_point_record(index: int) -> Dictionary:
 	return {}
 
 
+func find_connection_record(connection_index: int) -> Dictionary:
+	for connection_record in get_connection_records():
+		if int(connection_record.get("index", -1)) == connection_index:
+			return connection_record
+	return {}
+
+
+func set_connection_destination(connection_index: int, target_index: int) -> bool:
+	var connection_field := get_connection_field_name()
+	if connection_field.is_empty():
+		return false
+	var point_count := get_point_count()
+	if target_index < 0 or target_index >= point_count:
+		return false
+	var connections := get_struct_list(connection_field)
+	if connection_index < 0 or connection_index >= connections.size():
+		return false
+	var source_index := _connection_source_index(connection_index)
+	if source_index < 0 or source_index == target_index:
+		return false
+	var raw_connection: Dictionary = connections[connection_index]
+	var target_field := _connection_target_field_name(raw_connection)
+	if target_field.is_empty():
+		return false
+	var path := [connection_field, connection_index, target_field]
+	return set_field_at_path(path, target_index)
+
+
 func set_point_position(index: int, x: float, y: float, z: Variant = null) -> bool:
 	var point_record := find_point_record(index)
 	if point_record.is_empty():
@@ -169,5 +197,29 @@ func _set_point_float(base_path: Array, raw_point: Dictionary, field_names: Arra
 static func _point_field_name(point: Dictionary, field_names: Array) -> String:
 	for field_name in field_names:
 		if point.has(field_name):
+			return String(field_name)
+	return ""
+
+
+func _connection_source_index(connection_index: int) -> int:
+	var points := get_point_records()
+	var connection_field := get_connection_field_name()
+	if connection_field.is_empty():
+		return -1
+	var connections := get_struct_list(connection_field)
+	for source_index in range(points.size()):
+		var point: Dictionary = points[source_index]
+		var raw_point: Dictionary = point.get("raw", {})
+		var connection_count := _point_int(raw_point, POINT_CONNECTION_COUNT_FIELDS, 0)
+		var first_connection := _point_int(raw_point, POINT_FIRST_CONNECTION_FIELDS, 0)
+		for offset in range(connection_count):
+			if first_connection + offset == connection_index:
+				return source_index
+	return -1
+
+
+static func _connection_target_field_name(connection: Dictionary) -> String:
+	for field_name in CONNECTION_TARGET_FIELDS:
+		if connection.has(field_name):
 			return String(field_name)
 	return ""

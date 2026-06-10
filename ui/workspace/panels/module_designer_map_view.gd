@@ -7,6 +7,7 @@ const KotorWorldCoordinates := preload("../../../editor/module/kotor_world_coord
 signal instance_selected(category: String, index: int)
 signal path_point_selected(index: int)
 signal path_connection_selected(index: int)
+signal path_connection_retarget_requested(connection_index: int, target_index: int)
 signal instance_drag_updated(category: String, index: int, x: float, y: float)
 signal instance_drag_finished(
 	category: String,
@@ -212,6 +213,10 @@ func _gui_input(event: InputEvent) -> void:
 			var picked_point := _pick_path_point(mouse_event.position)
 			if not picked_point.is_empty():
 				var point_index := int(picked_point.get("index", -1))
+				if _selected_path_connection_index >= 0:
+					path_connection_retarget_requested.emit(_selected_path_connection_index, point_index)
+					accept_event()
+					return
 				path_point_selected.emit(point_index)
 				_path_drag_active = true
 				_path_drag_index = point_index
