@@ -14,6 +14,7 @@ func _run_tests() -> void:
 	_test_preflight_missing_cli(fixture_root)
 	_test_build_kotordiff_command(fixture_root)
 	_test_build_pykotor_diff_command(fixture_root)
+	_test_build_configured_pykotorcli_command(fixture_root)
 	_test_dry_run(fixture_root)
 	_cleanup_fixture(fixture_root)
 	print("✓ KotorDiff tool bridge tests passed")
@@ -77,6 +78,24 @@ func _test_build_pykotor_diff_command(fixture_root: String) -> void:
 	assert(args.has("pykotor"))
 	assert(args.has("diff"))
 	print("✓ KotorDiff bridge pykotor diff command passed")
+
+
+func _test_build_configured_pykotorcli_command(fixture_root: String) -> void:
+	var fake_cli := fixture_root.path_join("pykotorcli")
+	OS.execute("ln", PackedStringArray(["-sf", "/bin/true", fake_cli]), [], true)
+	var path2 := fixture_root.path_join("override")
+	var built := KotorDiffToolBridge.build_command({
+		"path1": fixture_root,
+		"path2": path2,
+		"pykotor_cli_path": fake_cli,
+	})
+	assert(built.get("ok", false))
+	assert(str(built.get("cli_kind", "")) == "pykotor")
+	assert(str(built.get("executable", "")) == fake_cli)
+	var args: PackedStringArray = built.get("arguments", PackedStringArray())
+	assert(args.has("diff"))
+	assert(not args.has("-m"))
+	print("✓ KotorDiff bridge configured pykotorcli command passed")
 
 
 func _test_dry_run(fixture_root: String) -> void:

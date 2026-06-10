@@ -57,6 +57,13 @@ static func resolve_cli(configured_path: String) -> Dictionary:
 				"source": "configured_python",
 				"cli_kind": "pykotor",
 			}
+		if _looks_like_pykotor_cli(configured):
+			return {
+				"executable": configured,
+				"module_args": PackedStringArray(),
+				"source": "configured_pykotor",
+				"cli_kind": "pykotor",
+			}
 		return {
 			"executable": configured,
 			"module_args": PackedStringArray(),
@@ -204,6 +211,11 @@ static func _looks_like_kotordiff(path: String) -> bool:
 static func _looks_like_python_launcher(path: String) -> bool:
 	var base := path.get_file().to_lower()
 	return base.begins_with("python") or path.ends_with("py")
+
+
+static func _looks_like_pykotor_cli(path: String) -> bool:
+	var base := path.get_file().to_lower()
+	return base.contains("pykotorcli") or base == "pykotor" or base.begins_with("pykotor")
 
 
 static func _command_exists(command: String) -> bool:
