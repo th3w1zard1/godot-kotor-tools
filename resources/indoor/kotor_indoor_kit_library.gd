@@ -3,9 +3,11 @@ class_name KotorIndoorKitLibrary
 extends RefCounted
 
 const KotorIndoorKitLoader := preload("./kotor_indoor_kit_loader.gd")
+const KotorModuleKitLoader := preload("./kotor_module_kit_loader.gd")
 
 var _kits_path := ""
 var _kits_by_id: Dictionary = {}
+var _module_kit_ids: Array[String] = []
 var _last_errors: Array[String] = []
 
 
@@ -19,6 +21,7 @@ func get_kits_path() -> String:
 
 func refresh() -> void:
 	_kits_by_id.clear()
+	_module_kit_ids.clear()
 	_last_errors.clear()
 	if _kits_path.is_empty() or not DirAccess.dir_exists_absolute(_kits_path):
 		if not _kits_path.is_empty():
@@ -37,6 +40,36 @@ func refresh() -> void:
 		_kits_by_id[kit_id] = kit
 
 
+func register_module_kits_from_gamefs(gamefs: RefCounted, source_filter: String = "") -> Dictionary:
+	var loaded := 0
+	var failed: Array[Dictionary] = []
+	for module_root in KotorModuleKitLoader.discover_module_roots(gamefs, source_filter):
+		var result := KotorModuleKitLoader.load_module_kit(gamefs, module_root)
+		if not result.get("ok", false):
+			failed.append({
+				"module_root": module_root,
+				"message": str(result.get("message", "Failed to load module kit.")),
+			})
+			continue
+		var kit: Dictionary = result.get("kit", {})
+		if kit.is_empty():
+			continue
+		var kit_id := str(kit.get("id", module_root))
+		_kits_by_id[kit_id] = kit
+		if kit_id not in _module_kit_ids:
+			_module_kit_ids.append(kit_id)
+		loaded += 1
+	return {"loaded": loaded, "failed": failed}
+
+
+func is_module_kit(kit_id: String) -> bool:
+	return kit_id in _module_kit_ids
+
+
+func get_module_kit_ids() -> Array[String]:
+	return _module_kit_ids.duplicate()
+
+
 func get_kit_count() -> int:
 	return _kits_by_id.size()
 
@@ -53,7 +86,10 @@ func get_kit_name(kit_id: String) -> String:
 	var kit: Dictionary = _kits_by_id.get(kit_id, {})
 	if kit.is_empty():
 		return kit_id
-	return str(kit.get("name", kit_id))
+	var display_name := str(kit.get("name", kit_id))
+	if is_module_kit(kit_id) and not display_name.begins_with("[Module]"):
+		return "[Module] %s" % display_name
+	return display_name
 
 
 func get_component_summaries(kit_id: String) -> Array[Dictionary]:

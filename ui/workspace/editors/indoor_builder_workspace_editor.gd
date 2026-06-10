@@ -52,6 +52,7 @@ func _on_workspace_setup() -> void:
 	_kit_library.configure(_editor_state.indoor_kits_path)
 	_kit_library.refresh()
 	_build_ui()
+	_refresh_module_kits(false)
 	_refresh_kit_ui()
 	if not _pending_bytes.is_empty():
 		var pending_bytes := _pending_bytes
@@ -230,6 +231,11 @@ func _build_ui() -> void:
 	refresh_kits_btn.text = "Refresh"
 	refresh_kits_btn.pressed.connect(_refresh_kit_library)
 	left_panel.add_child(refresh_kits_btn)
+
+	var refresh_module_kits_btn := Button.new()
+	refresh_module_kits_btn.text = "Refresh Module Kits"
+	refresh_module_kits_btn.pressed.connect(_refresh_module_kits)
+	left_panel.add_child(refresh_module_kits_btn)
 
 	var cli_label := Label.new()
 	cli_label.text = "PyKotor CLI (optional)"
@@ -576,6 +582,7 @@ func _refresh_kit_library() -> void:
 		kits_path = _editor_state.indoor_kits_path
 	_kit_library.configure(kits_path)
 	_kit_library.refresh()
+	_refresh_module_kits(false)
 	if _document != null:
 		_document.set_kit_library(_kit_library)
 	_refresh_kit_ui()
@@ -604,7 +611,29 @@ func _refresh_kit_ui() -> void:
 		_kit_option.set_item_metadata(_kit_option.item_count - 1, kit_id)
 	_populate_component_list_for_kit(_get_selected_kit_id())
 	if _kit_status_label != null:
-		_kit_status_label.text = "Loaded %d kit(s)." % kit_count
+		var module_count := _kit_library.get_module_kit_ids().size() if _kit_library != null else 0
+		_kit_status_label.text = "Loaded %d kit(s) (%d module kit(s))." % [kit_count, module_count]
+
+
+func _refresh_module_kits(update_ui: bool = true) -> void:
+	if _kit_library == null:
+		return
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		return
+	_kit_library.register_module_kits_from_gamefs(gamefs)
+	if _document != null:
+		_document.set_kit_library(_kit_library)
+	if update_ui:
+		_refresh_kit_ui()
+
+
+func _resolve_gamefs() -> RefCounted:
+	if _editor_state == null:
+		return null
+	if _editor_state.has_method("refresh_gamefs"):
+		_editor_state.refresh_gamefs()
+	return _editor_state.gamefs
 
 
 func _on_kit_selected(_index: int) -> void:

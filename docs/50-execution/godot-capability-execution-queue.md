@@ -92,12 +92,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q75 | Module Designer room models utility panel | Module Designer lists unique LYT room models with MDL/MDX/WOK presence, detail context, and MDL open routing; headless `test_module_designer_room_models_utility_panel.gd`. |
 | Q76 | Install ResRef references finder | Workspace resource browser scans override GFF/NSS resources for selected resref usages with formatted hit reports; headless `test_resref_reference_scanner.gd`. |
 | Q77 | Batch TGA/PNG to TPC converter | `TpcBatchConverter` scans flat image folders and writes RGBA `.tpc` files; TPC editor **Batch Convert TGA/PNG→TPC...**; headless `test_tpc_batch_converter.gd`. |
+| Q78 | ModuleKit loader for Indoor Builder | `KotorModuleKitLoader` synthesizes kit components from module LYT rooms; Indoor Builder **Refresh Module Kits**; headless `test_module_kit_loader.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q77 shipped batch TGA/PNG→TPC converter. | Next: modulekit, batch TPC export, or parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q78 shipped ModuleKit loader for Indoor Builder. | Next: batch TPC export, model helpers, or parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
