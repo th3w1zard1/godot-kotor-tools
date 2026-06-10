@@ -6,8 +6,10 @@ signal resource_requested(entry: Dictionary)
 signal install_requested(entry: Dictionary)
 signal compare_requested(entry: Dictionary)
 signal export_requested(entry: Dictionary)
+signal references_requested(entry: Dictionary)
 
 const KotorResourceLocator := preload("../../../editor/navigation/kotor_resource_locator.gd")
+const KotorResRefReferenceScanner := preload("../../../editor/tools/kotor_resref_reference_scanner.gd")
 
 var _target_context: RefCounted
 var _status_label: Label
@@ -89,6 +91,11 @@ func _build_ui() -> void:
 			export_requested.emit(entry)
 	)
 	actions_row.add_child(export_btn)
+
+	var references_btn := Button.new()
+	references_btn.text = "Find References"
+	references_btn.pressed.connect(_find_references_for_selected)
+	actions_row.add_child(references_btn)
 
 	var search_row := HBoxContainer.new()
 	add_child(search_row)
@@ -195,3 +202,18 @@ func _open_selected_entry() -> void:
 func _set_detail_text(text: String) -> void:
 	if _detail != null:
 		_detail.text = text
+
+
+func _find_references_for_selected() -> void:
+	var entry := get_selected_entry()
+	if entry.is_empty():
+		_set_detail_text("Select a resource to find references.")
+		return
+	references_requested.emit(entry)
+	if _target_context == null or not _target_context.has_method("get_gamefs"):
+		_set_detail_text("Target context is unavailable for reference scan.")
+		return
+	var gamefs: RefCounted = _target_context.get_gamefs()
+	var target_resref := str(entry.get("resref", ""))
+	var result := KotorResRefReferenceScanner.scan_install_references(gamefs, target_resref)
+	_set_detail_text(KotorResRefReferenceScanner.format_report(result))

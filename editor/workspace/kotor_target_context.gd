@@ -67,6 +67,10 @@ func load_entry_bytes(entry: Dictionary) -> PackedByteArray:
 	return gamefs.load_resource_entry_bytes(entry)
 
 
+func get_gamefs() -> RefCounted:
+	return _resolve_gamefs()
+
+
 func switch_target(path: String, allow_dirty_switch: bool = false) -> Dictionary:
 	var blocked := _can_switch_target()
 	if blocked.get("blocked", false) and not allow_dirty_switch:
