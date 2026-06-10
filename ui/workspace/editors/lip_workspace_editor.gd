@@ -458,7 +458,9 @@ func _batch_generate_lip() -> void:
 
 func _run_batch_generate(dir_path: String) -> void:
 	var result := LipBatchGenerator.batch_directory(dir_path)
-	_status_text = str(result.get("summary", "Batch LIP finished."))
+	_status_text = str(result.get("summary", ""))
+	if _status_text.is_empty():
+		_status_text = str(result.get("message", "Batch LIP finished."))
 	var failed: Array = result.get("failed", [])
 	if not failed.is_empty():
 		var first: Dictionary = failed[0]
