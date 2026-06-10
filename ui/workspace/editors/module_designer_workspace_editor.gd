@@ -433,6 +433,11 @@ func _build_ui() -> void:
 	add_pth_connection_btn.pressed.connect(_arm_add_path_connection)
 	_toolbar.add_child(add_pth_connection_btn)
 
+	var remove_pth_connection_btn := Button.new()
+	remove_pth_connection_btn.text = "Remove Path Connection"
+	remove_pth_connection_btn.pressed.connect(_remove_selected_path_connection)
+	_toolbar.add_child(remove_pth_connection_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -857,6 +862,19 @@ func _arm_add_path_connection() -> void:
 	_map_view.set_add_path_connection_armed(true)
 	_status_text = "Click a target path point to connect from the selected source."
 	_refresh_status()
+
+
+func _remove_selected_path_connection() -> void:
+	if _map_view == null or _path_document == null:
+		return
+	var connection_index := _map_view._selected_path_connection_index
+	if connection_index < 0:
+		_status_text = "Select a path connection to remove."
+		_refresh_status()
+		return
+	_status_text = ""
+	_refresh_status()
+	_apply_path_connection_remove_with_undo(connection_index)
 
 
 func _on_map_path_connection_add_requested(source_index: int, target_index: int) -> void:
@@ -1588,6 +1606,35 @@ func _exec_path_connection_add(source_index: int, target_index: int) -> void:
 	if connection_index < 0:
 		return
 	_select_path_connection(connection_index)
+
+
+func _apply_path_connection_remove_with_undo(connection_index: int) -> void:
+	if _path_document == null:
+		return
+	var snapshot := _path_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Remove PTH connection", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_connection_remove", connection_index)
+		ur.add_undo_method(self, "_exec_path_point_restore_snapshot", snapshot)
+		ur.commit_action()
+	else:
+		_exec_path_connection_remove(connection_index)
+
+
+func _exec_path_connection_remove(connection_index: int) -> void:
+	if _path_document == null:
+		return
+	if not _path_document.remove_connection(connection_index):
+		return
+	if _detail_label != null:
+		_detail_label.text = ""
+	if _map_view != null:
+		_map_view.set_path_point_selection(-1)
+		_map_view.set_path_connection_selection(-1)
+	if _viewport_3d != null:
+		_viewport_3d.set_path_point_selection(-1)
+		_viewport_3d.set_path_connection_selection(-1)
 
 
 func _apply_path_point_add_with_undo(x: float, y: float) -> void:

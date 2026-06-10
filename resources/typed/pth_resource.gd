@@ -45,6 +45,10 @@ func add_connection(source_index: int, target_index: int) -> int:
 	return (create_document() as KotorPTHDocument).add_connection(source_index, target_index)
 
 
+func remove_connection(connection_index: int) -> bool:
+	return (create_document() as KotorPTHDocument).remove_connection(connection_index)
+
+
 func add_point(x: float, y: float, z: float = 0.0) -> int:
 	return (create_document() as KotorPTHDocument).add_point(x, y, z)
 

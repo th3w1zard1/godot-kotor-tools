@@ -118,6 +118,21 @@ func find_connection_record(connection_index: int) -> Dictionary:
 	return {}
 
 
+func remove_connection(connection_index: int) -> bool:
+	if connection_index < 0 or connection_index >= get_connection_count():
+		return false
+	var surviving_edges: Array[Dictionary] = []
+	for connection_record in get_connection_records():
+		if int(connection_record.get("index", -1)) == connection_index:
+			continue
+		surviving_edges.append({
+			"source_index": int(connection_record.get("source_index", -1)),
+			"target_index": int(connection_record.get("target_index", -1)),
+			"raw": (connection_record.get("raw", {}) as Dictionary).duplicate(true),
+		})
+	return _rebuild_connection_topology(surviving_edges)
+
+
 func add_connection(source_index: int, target_index: int) -> int:
 	if source_index < 0 or source_index >= get_point_count():
 		return -1

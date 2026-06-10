@@ -112,7 +112,8 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 45. **Q70 (shipped 2026-06-07):** Module Designer PTH point add — loaded path graphs can grow via toolbar-armed map placement with typed mutation, dirty-state tracking, and install-ready persistence; see `docs/plans/2026-06-07-002-feat-q70-pth-point-add-plan.md`.
 46. **Q71 (shipped 2026-06-07):** Module Designer PTH point remove — loaded path graphs can shrink via topology-safe point removal with typed mutation, dirty-state tracking, and install-ready persistence; see `docs/plans/2026-06-07-003-feat-q71-pth-point-remove-plan.md`.
 47. **Q72 (shipped 2026-06-07):** Module Designer PTH connection add — loaded path graphs can grow new edges via toolbar-armed source-to-target placement with typed mutation, dirty-state tracking, and install-ready persistence; see `docs/plans/2026-06-07-004-feat-q72-pth-connection-add-plan.md`.
-48. Module/area designer parity wave (advanced tooling, utility panels).
+48. **Q73 (shipped 2026-06-07):** Module Designer PTH connection remove — loaded path graphs can drop individual edges via toolbar action on selected connection with typed mutation, dirty-state tracking, and install-ready persistence; see `docs/plans/2026-06-07-005-feat-q73-pth-connection-remove-plan.md`.
+49. Module/area designer parity wave (advanced tooling, utility panels).
 
 ## Evidence Notes
 
