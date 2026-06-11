@@ -270,6 +270,7 @@ func _run_batch_convert_wav_folder(dir_path: String) -> void:
 	var result := WavBatchConverter.batch_directory(dir_path, {
 		"pykotor_cli_path": _editor_state.get("pykotor_cli_path") if _editor_state != null else "",
 		"sound_type": sound_type,
+		"recursive": true,
 	})
 	_apply_batch_wav_status(result, "Batch WAV convert finished.")
 
@@ -392,7 +393,9 @@ func _prompt_batch_copy_wav_output_dir(source_dir: String) -> void:
 
 
 func _run_batch_copy_wav_folder(source_dir: String, output_dir: String) -> void:
-	var result := WavBatchExporter.batch_directory(source_dir, output_dir)
+	var result := WavBatchExporter.batch_directory(source_dir, output_dir, {
+		"recursive": true,
+	})
 	_apply_batch_wav_status(result, "Folder batch WAV export finished.")
 
 
@@ -413,6 +416,7 @@ func _run_batch_import_wav_folder_to_override(gamefs: RefCounted, source_dir: St
 	var result := WavGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir, {
 		"pykotor_cli_path": _editor_state.get("pykotor_cli_path") if _editor_state != null else "",
 		"sound_type": sound_type,
+		"recursive": true,
 	})
 	_apply_batch_wav_status(result, "Install batch WAV import finished.")
 	if not (result.get("generated", []) as Array).is_empty():
@@ -420,7 +424,9 @@ func _run_batch_import_wav_folder_to_override(gamefs: RefCounted, source_dir: St
 
 
 func _run_batch_copy_wav_folder_to_override(gamefs: RefCounted, source_dir: String) -> void:
-	var result := WavGamefsBatchImporter.batch_folder_copy_to_override(gamefs, source_dir)
+	var result := WavGamefsBatchImporter.batch_folder_copy_to_override(gamefs, source_dir, {
+		"recursive": true,
+	})
 	_apply_batch_wav_status(result, "Install batch WAV copy finished.")
 	if not (result.get("generated", []) as Array).is_empty():
 		_refresh_gamefs()

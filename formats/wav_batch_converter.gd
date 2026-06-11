@@ -1,23 +1,56 @@
 ## Batch WAV sound conversion via PyKotor sound-convert CLI bridge.
 class_name WavBatchConverter
 
+const BatchDirectoryScanner := preload("batch_directory_scanner.gd")
 const KotorMediaToolBridge := preload("../resources/scripts/kotor_media_tool_bridge.gd")
 
+const SUPPORTED_EXTENSIONS := ["wav"]
 
-## Convert each `.wav` in a flat directory to a matching `{resref}_clean.wav` in-place.
+
+## Convert each `.wav` in a directory to a matching `{resref}_clean.wav` in-place.
+## Options include `recursive` (bool).
 static func batch_directory(
 		dir_path: String,
 		options: Dictionary = {}
 ) -> Dictionary:
-	return batch_directory_to_output(dir_path, dir_path, options)
+	var recursive := bool(options.get("recursive", false))
+	return _batch_wav_paths(
+		BatchDirectoryScanner.list_files(dir_path, PackedStringArray(SUPPORTED_EXTENSIONS), recursive),
+		dir_path,
+		dir_path,
+		options,
+		false
+	)
 
 
 ## Convert each `.wav` in `source_dir` and write `{resref}_clean.wav` into `output_dir`.
+## Options include `recursive` (bool).
 static func batch_directory_to_output(
 		source_dir: String,
 		output_dir: String,
 		options: Dictionary = {}
 ) -> Dictionary:
+	return _batch_wav_paths(
+		BatchDirectoryScanner.list_files(
+			source_dir,
+			PackedStringArray(SUPPORTED_EXTENSIONS),
+			bool(options.get("recursive", false))
+		),
+		source_dir,
+		output_dir,
+		options,
+		true
+	)
+
+
+static func _batch_wav_paths(
+		wav_paths: Array[String],
+		source_dir: String,
+		output_dir: String,
+		options: Dictionary,
+		flatten_outputs: bool
+) -> Dictionary:
+	var recursive := bool(options.get("recursive", false))
 	var skip_existing := bool(options.get("skip_existing", true))
 	var dry_run := bool(options.get("dry_run", false))
 	var pykotor_cli_path := str(options.get("pykotor_cli_path", "")).strip_edges()
@@ -29,30 +62,31 @@ static func batch_directory_to_output(
 	if output_dir.is_empty() or not DirAccess.dir_exists_absolute(output_dir):
 		return {"ok": false, "message": "Output directory not found: %s" % output_dir}
 
-	var dir := DirAccess.open(source_dir)
-	if dir == null:
-		return {"ok": false, "message": "Failed to open source directory: %s" % source_dir}
-
-	dir.list_dir_begin()
 	var generated: Array[Dictionary] = []
 	var skipped: Array[Dictionary] = []
 	var failed: Array[Dictionary] = []
+	var seen_resrefs: Dictionary = {}
 
-	while true:
-		var entry_name := dir.get_next()
-		if entry_name.is_empty():
-			break
-		if dir.current_is_dir():
-			continue
-		if entry_name.get_extension().to_lower() != "wav":
-			continue
-
-		var resref := entry_name.get_basename()
+	for wav_path in wav_paths:
+		var resref := wav_path.get_file().get_basename()
 		if resref.ends_with("_clean"):
 			continue
 
-		var wav_path := source_dir.path_join(entry_name)
-		var output_path := _clean_output_path_for_resref(output_dir, resref)
+		if flatten_outputs and recursive and seen_resrefs.has(resref):
+			failed.append({
+				"resref": resref,
+				"wav_path": wav_path,
+				"output_path": _clean_output_path_for_resref(output_dir, resref),
+				"message": "Duplicate resref across subfolders: %s" % resref,
+			})
+			continue
+		seen_resrefs[resref] = wav_path
+
+		var output_path := (
+			_clean_output_path_for_resref(output_dir, resref)
+			if flatten_outputs
+			else _clean_output_path_for_wav(wav_path)
+		)
 		if skip_existing and FileAccess.file_exists(output_path):
 			skipped.append({
 				"resref": resref,
@@ -86,8 +120,6 @@ static func batch_directory_to_output(
 			"sound_type": sound_type,
 			"dry_run": dry_run,
 		})
-
-	dir.list_dir_end()
 
 	return {
 		"ok": failed.is_empty() or not generated.is_empty(),
@@ -178,7 +210,10 @@ static func _convert_single(
 
 
 static func _clean_output_path_for_wav(wav_path: String) -> String:
-	return _clean_output_path_for_resref(wav_path.get_base_dir(), wav_path.get_basename())
+	return _clean_output_path_for_resref(
+		wav_path.get_base_dir(),
+		wav_path.get_file().get_basename()
+	)
 
 
 static func _clean_output_path_for_resref(output_dir: String, resref: String) -> String:

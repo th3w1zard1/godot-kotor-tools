@@ -21,6 +21,7 @@ func _run_tests() -> void:
 	_test_batch_folder_copy_dry_run()
 	_test_batch_folder_copy_writes_wav()
 	_test_batch_folder_copy_skip_existing()
+	_test_batch_folder_copy_recursive()
 	_test_skip_existing()
 	var button_ok := await _test_wav_editor_batch_buttons()
 	if not button_ok:
@@ -167,6 +168,27 @@ func _test_batch_folder_copy_skip_existing() -> void:
 	_cleanup(install_root)
 	_cleanup(source_root)
 	print("✓ GameFS batch WAV copy skip-existing passed")
+
+
+func _test_batch_folder_copy_recursive() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	var nested := source_root.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+	_write_file(source_root.path_join("root.wav"), _build_pcm_wav(8000, 1, 400))
+	_write_file(nested.path_join("nested.wav"), _build_pcm_wav(8000, 1, 800))
+	var gamefs := _build_gamefs(install_root)
+
+	var result := WavGamefsBatchImporter.batch_folder_copy_to_override(gamefs, source_root, {
+		"recursive": true,
+	})
+	assert(result.get("ok", false))
+	var override_dir := install_root.path_join("override")
+	assert(FileAccess.file_exists(override_dir.path_join("root.wav")))
+	assert(FileAccess.file_exists(override_dir.path_join("nested.wav")))
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch WAV folder copy recursive passed")
 
 
 func _test_skip_existing() -> void:

@@ -18,6 +18,8 @@ func _run_tests() -> void:
 	_test_batch_directory_to_output_dry_run()
 	_test_skip_existing()
 	_test_skip_clean_sources()
+	_test_batch_directory_recursive_in_place()
+	_test_batch_directory_to_output_recursive()
 	var button_ok := await _test_wav_editor_batch_convert_button()
 	_cleanup()
 	if not button_ok:
@@ -98,6 +100,51 @@ func _test_skip_clean_sources() -> void:
 	assert((batch.get("generated", []) as Array).is_empty())
 	assert((batch.get("skipped", []) as Array).is_empty())
 	print("✓ WAV batch skip clean sources passed")
+
+
+func _test_batch_directory_recursive_in_place() -> void:
+	var batch_dir := _test_root.path_join("recursive_inplace")
+	var nested := batch_dir.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+	_write_file(batch_dir.path_join("root.wav"), _build_pcm_wav(8000, 1, 400))
+	_write_file(nested.path_join("nested.wav"), _build_pcm_wav(8000, 1, 800))
+
+	var batch := WavBatchConverter.batch_directory(batch_dir, {
+		"dry_run": true,
+		"pykotor_cli_path": "/bin/true",
+		"recursive": true,
+	})
+	assert(batch.get("ok", false))
+	var generated: Array = batch.get("generated", [])
+	assert(generated.size() == 2)
+	var paths: Array[String] = []
+	for raw_record in generated:
+		paths.append(str((raw_record as Dictionary).get("output_path", "")))
+	assert(paths.has(batch_dir.path_join("root_clean.wav")))
+	assert(paths.has(nested.path_join("nested_clean.wav")))
+	print("✓ WAV batch directory recursive in-place passed")
+
+
+func _test_batch_directory_to_output_recursive() -> void:
+	var source_dir := _test_root.path_join("recursive_source")
+	var output_dir := _test_root.path_join("recursive_output")
+	var nested := source_dir.path_join("child")
+	DirAccess.make_dir_recursive_absolute(nested)
+	DirAccess.make_dir_recursive_absolute(output_dir)
+	_write_file(source_dir.path_join("flat.wav"), _build_pcm_wav(8000, 1, 400))
+	_write_file(nested.path_join("nested.wav"), _build_pcm_wav(8000, 1, 800))
+
+	var batch := WavBatchConverter.batch_directory_to_output(source_dir, output_dir, {
+		"dry_run": true,
+		"pykotor_cli_path": "/bin/true",
+		"recursive": true,
+	})
+	assert(batch.get("ok", false))
+	var generated: Array = batch.get("generated", [])
+	assert(generated.size() == 2)
+	var first: Dictionary = generated[0]
+	assert(str(first.get("output_path", "")).begins_with(output_dir))
+	print("✓ WAV batch directory-to-output recursive passed")
 
 
 func _test_wav_editor_batch_convert_button() -> bool:

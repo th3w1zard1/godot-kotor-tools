@@ -1,11 +1,15 @@
-## Batch WAV copy from a flat filesystem folder.
+## Batch WAV copy from a flat or recursive filesystem folder.
 class_name WavBatchExporter
 
+const BatchDirectoryScanner := preload("batch_directory_scanner.gd")
 const WavGamefsBatchExporter := preload("wav_gamefs_batch_exporter.gd")
 const WavMetadata := preload("wav_metadata.gd")
 
+const SUPPORTED_EXTENSIONS := ["wav"]
+
 
 ## Copy each `.wav` in `source_dir` to `{resref}.wav` in `output_dir`.
+## Options: `skip_existing`, `dry_run`, `include_metadata`, `recursive`.
 static func batch_directory(
 		source_dir: String,
 		output_dir: String,
@@ -14,34 +18,36 @@ static func batch_directory(
 	var skip_existing := bool(options.get("skip_existing", true))
 	var dry_run := bool(options.get("dry_run", false))
 	var include_metadata := bool(options.get("include_metadata", true))
+	var recursive := bool(options.get("recursive", false))
 
 	if source_dir.is_empty() or not DirAccess.dir_exists_absolute(source_dir):
 		return {"ok": false, "message": "Source directory not found: %s" % source_dir}
 	if output_dir.is_empty() or not DirAccess.dir_exists_absolute(output_dir):
 		return {"ok": false, "message": "Output directory not found: %s" % output_dir}
 
-	var dir := DirAccess.open(source_dir)
-	if dir == null:
-		return {"ok": false, "message": "Failed to open source directory: %s" % source_dir}
-
-	dir.list_dir_begin()
+	var wav_paths := BatchDirectoryScanner.list_files(
+		source_dir,
+		PackedStringArray(SUPPORTED_EXTENSIONS),
+		recursive
+	)
 	var generated: Array[Dictionary] = []
 	var skipped: Array[Dictionary] = []
 	var failed: Array[Dictionary] = []
+	var seen_resrefs: Dictionary = {}
 
-	while true:
-		var entry_name := dir.get_next()
-		if entry_name.is_empty():
-			break
-		if dir.current_is_dir():
+	for wav_path in wav_paths:
+		var resref := wav_path.get_file().get_basename()
+		if recursive and seen_resrefs.has(resref):
+			failed.append({
+				"resref": resref,
+				"source_wav": wav_path,
+				"wav_path": output_dir.path_join("%s.wav" % resref),
+				"message": "Duplicate resref across subfolders: %s" % resref,
+			})
 			continue
-		if entry_name.get_extension().to_lower() != "wav":
-			continue
+		seen_resrefs[resref] = wav_path
 
-		var resref := entry_name.get_basename()
-		var source_wav := source_dir.path_join(entry_name)
 		var dest_wav := output_dir.path_join("%s.wav" % resref)
-
 		if skip_existing and FileAccess.file_exists(dest_wav):
 			skipped.append({
 				"resref": resref,
@@ -50,7 +56,7 @@ static func batch_directory(
 			})
 			continue
 
-		var wav_bytes := FileAccess.get_file_as_bytes(source_wav)
+		var wav_bytes := FileAccess.get_file_as_bytes(wav_path)
 		if wav_bytes.is_empty():
 			failed.append({
 				"resref": resref,
@@ -71,7 +77,7 @@ static func batch_directory(
 
 		var record := {
 			"resref": resref,
-			"source_wav": source_wav,
+			"source_wav": wav_path,
 			"wav_path": dest_wav,
 			"dry_run": dry_run,
 		}
@@ -84,8 +90,6 @@ static func batch_directory(
 				record["format_label"] = str(metadata.get("format_label", ""))
 				record["metadata_summary"] = _format_metadata_summary(metadata)
 		generated.append(record)
-
-	dir.list_dir_end()
 
 	return {
 		"ok": failed.is_empty() or not generated.is_empty(),

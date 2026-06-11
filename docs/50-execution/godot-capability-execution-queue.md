@@ -129,12 +129,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q113 | TPC DXT3 batch/import toolbar parity | `TpcBatchConverter` `dxt3` encoding + TPC editor import/batch/install/folder DXT3 toolbar actions; headless batch/importer/re-encode tests. |
 | Q114 | TPC editor TXI file import/export | **Import TXI...** / **Export TXI...** toolbar actions via `import_txi_from_file` / `export_txi_to_file`; headless `test_tpc_txi_editor.gd`. |
 | Q115 | TPC recursive batch directory scan | `BatchDirectoryScanner` + `recursive` option on `TpcBatchConverter`; editor batch convert/folder import enable recursion; headless scanner/batch tests. |
+| Q116 | WAV recursive batch directory scan | `recursive` on `WavBatchExporter` / `WavBatchConverter`; WAV editor folder batch actions enable recursion; headless WAV batch/importer tests. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q115 shipped recursive TPC batch scan. | Next: propagate recursive scan to WAV/BWM/MDL batch tools or module/area wave. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q116 shipped recursive WAV batch scan. | Next: BWM/MDL recursive batch scan or module/area designer wave. |
 
 ## Next Slices (Deferred)
 

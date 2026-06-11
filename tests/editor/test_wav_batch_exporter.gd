@@ -15,6 +15,8 @@ func _run_tests() -> void:
 	_test_batch_directory_dry_run()
 	_test_batch_directory_writes_wav()
 	_test_skip_existing()
+	_test_batch_directory_recursive()
+	_test_batch_directory_duplicate_resref()
 	var button_ok := await _test_wav_editor_batch_copy_button()
 	if not button_ok:
 		push_error("WAV batch exporter toolbar test failed")
@@ -77,6 +79,44 @@ func _test_skip_existing() -> void:
 	_cleanup(source_root)
 	_cleanup(output_root)
 	print("✓ WAV folder batch skip-existing passed")
+
+
+func _test_batch_directory_recursive() -> void:
+	var source_root := _make_dir("recursive_source")
+	var output_root := _make_dir("recursive_output")
+	var nested := source_root.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+	_write_file(source_root.path_join("root.wav"), _build_pcm_wav(8000, 1, 400))
+	_write_file(nested.path_join("nested.wav"), _build_pcm_wav(8000, 1, 800))
+
+	var result := WavBatchExporter.batch_directory(source_root, output_root, {
+		"recursive": true,
+	})
+	assert(result.get("ok", false))
+	assert(int((result.get("generated", []) as Array).size()) == 2)
+	assert(FileAccess.file_exists(output_root.path_join("root.wav")))
+	assert(FileAccess.file_exists(output_root.path_join("nested.wav")))
+	_cleanup(source_root)
+	_cleanup(output_root)
+	print("✓ WAV folder batch recursive passed")
+
+
+func _test_batch_directory_duplicate_resref() -> void:
+	var source_root := _make_dir("duplicate_source")
+	var output_root := _make_dir("duplicate_output")
+	DirAccess.make_dir_recursive_absolute(source_root.path_join("a"))
+	DirAccess.make_dir_recursive_absolute(source_root.path_join("b"))
+	_write_file(source_root.path_join("a").path_join("same.wav"), _build_pcm_wav(8000, 1, 400))
+	_write_file(source_root.path_join("b").path_join("same.wav"), _build_pcm_wav(8000, 1, 800))
+
+	var result := WavBatchExporter.batch_directory(source_root, output_root, {
+		"recursive": true,
+	})
+	assert(int((result.get("generated", []) as Array).size()) == 1)
+	assert(int((result.get("failed", []) as Array).size()) == 1)
+	_cleanup(source_root)
+	_cleanup(output_root)
+	print("✓ WAV folder batch duplicate resref passed")
 
 
 func _test_wav_editor_batch_copy_button() -> bool:
