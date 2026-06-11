@@ -1,7 +1,7 @@
 ---
 title: "feat: Q138 ERF extract all members to override"
 type: feat
-status: active
+status: completed
 date: 2026-06-12
 origin: docs/50-execution/godot-capability-execution-queue.md
 phase: Q138
