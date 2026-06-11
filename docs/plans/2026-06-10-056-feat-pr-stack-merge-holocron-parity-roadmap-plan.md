@@ -330,7 +330,9 @@ flowchart TD
 
 **Test scenarios:** Deferred to Q128 child plan.
 
-**Verification:** Q128 plan written; execution queue updated with Q128 entry; no code churn in U7 beyond audit notes.
+**Verification:** Q128 plan written (`docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md`); execution queue active slice → Q128a; parity matrix DLG row updated (2026-06-10).
+
+**Status (2026-06-10):** U7 planning complete — Holocron audit captured; implementation deferred to Q128a/Q128b child slices.
 
 ---
 

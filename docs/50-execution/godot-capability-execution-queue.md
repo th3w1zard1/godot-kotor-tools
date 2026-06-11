@@ -148,7 +148,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q128 | DLG graph editor depth (planning) | Audit Holocron DLG graph operations and produce child implementation plan. | Q127 ERF workspace UX shipped with headless archive tests green. | Planning-heavy unit U7 — no graph canvas in this wave. |
+| Q128a | DLG node CRUD and orphan hygiene | Add/remove Entry/Reply/Start nodes with reference-safe index repair, orphan dock, toolbar undo. | Q128 child plan written; Holocron `editors/dlg/` audit captured. | See `docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md` § Q128a. |
 
 ## Next Slices (Deferred)
 

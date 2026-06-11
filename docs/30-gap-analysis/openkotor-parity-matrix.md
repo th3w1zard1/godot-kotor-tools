@@ -30,7 +30,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 | --- | --- | --- | --- |
 | Core GFF parsing/editing | Holocron editors: utc/utp/uti/utd/ute/utm/uts/utt/utw, gff; PyKotor `formats/gff/*` | Partial | Q13: typed factory for all Holocron blueprint families; Q14 (shipped 2026-05-29): script hooks, trap fields, map notes, appearance IDs in summaries and GFF tree pickers. |
 | Extended GFF-family routes | jrl, pth, fac editor surfaces in Holocron | Partial | Routing parity expanded in current slice (`jrl`, `pth`, `fac` route into GFF workspace editor). |
-| DLG editing | Holocron DLG editor stack (`editors/dlg/*`) | Partial | Q6 shipped struct/array mutation UI; Q33 (shipped 2026-06-04): jump-to-target link navigation in DLG tree. |
+| DLG editing | Holocron DLG editor stack (`editors/dlg/*`) | Partial | Q6 struct/array mutation; Q33 jump-to-target (2026-06-04). **Q128 planned (2026-06-10):** Holocron audit → phased node CRUD (Q128a), read-only graph canvas (Q128b), interactive graph deferred (Q128c); see `docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md`. |
 | 2DA editing | Holocron `twoda` editor; PyKotor `formats/twoda/*` | Shipped | Parser/importer/editor/write-back available. |
 | TLK editing | Holocron `tlk` editor; PyKotor `formats/tlk/*` | Shipped | Parser/importer/editor/write-back available. |
 | NSS/script editing | Holocron `nss` editor; PyKotor NCS/NSS tooling | Partial | Q26 (shipped 2026-05-29): PyKotor CLI bridge for `assemble`/`decompile`/`disassemble` in Script tab (Compile/Decompile/Disassemble toolbar); reuses `pykotor_cli_path` + install inference. Prior: text editor, validation, counterpart lookup. |
@@ -161,7 +161,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 94. **Q124 (PR #119, 2026-06-10):** Module Designer GIT instance CRUD — **Add Instance…** / **Remove Instance** with map placement, undo, and headless `test_module_designer_git_instance_crud.gd`; see `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` U3.
 95. **Q125 (PR #119, 2026-06-10):** UTP typed parity expansion — trap scalar and script hook typed helpers with factory mapping tests; see `docs/plans/2026-06-03-001-feat-utp-typed-parity-expansion-plan.md`.
 96. **Q126 (PR #119, 2026-06-10):** Module Designer BWM walkmesh paint foundations — **Paint Walkmesh** 3D face pick, material toggle with undo/dirty baseline; see `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` U5.
-97. ERF archive workspace UX (Q127) and DLG graph depth (Q128+).
+97. ERF archive workspace UX (Q127, PR #119) and DLG graph depth (Q128a–c per `docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md`).
 
 ## Evidence Notes
 
