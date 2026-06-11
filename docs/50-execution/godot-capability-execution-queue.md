@@ -144,19 +144,21 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q128a | DLG node CRUD and orphan hygiene *(PR #119)* | **Add Entry/Reply/Start** and **Remove Node** toolbar actions, orphan dock with restore-link, document index repair + topology snapshot undo; headless `test_dlg_workspace_editor.gd` node CRUD tests. |
 | Q128b | DLG read-only graph canvas *(PR #119)* | **Graph View** toolbar toggle with read-only `GraphEdit` layout (entries left, replies right), node click selects tree row; headless `test_dlg_graph_layout.gd`. |
 | Q128c1 | DLG jump back-navigation *(PR #119)* | **Back** toolbar restores prior selection after jump-to-target; navigation stack cleared on document open; headless `test_dlg_workspace_editor.gd` back-nav tests. |
+| Q128c2 | DLG delete-all-references *(PR #119)* | **Delete References** toolbar + detail panel + tree context menu call `remove_all_references_to_node` with topology undo; headless `test_dlg_workspace_editor.gd` delete-references tests. |
 
-> **Branch note:** Q124–Q128c1 are implemented on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)) and move to unconditional shipped status when merged to `main`. `main` @ Q123 remains the merge base until that PR lands.
+> **Branch note:** Q124–Q128c2 are implemented on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)) and move to unconditional shipped status when merged to `main`. `main` @ Q123 remains the merge base until that PR lands.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q128c2 | DLG delete-all-references | Context action on entry/reply nodes calling `remove_all_references_to_node` before orphan/delete. | Q128c1 back-nav shipped. | See `docs/plans/2026-06-11-059-feat-q128c-dlg-graph-interactive-plan.md` § Q128c2. |
+| Q128c3 | DLG graph port drag-connect | `connection_request` on graph view appends typed link structs with undo. | Q128c2 delete-references shipped. | See `docs/plans/2026-06-11-059-feat-q128c-dlg-graph-interactive-plan.md` § Q128c3. |
 
 ## Next Slices (Deferred)
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
+| Q128c4 | DLG orphan drag-restore parity | Holocron-style restore orphan by linking from selected tree node (verify orphan dock gaps). | Q128c3 graph connect shipped. | Mostly in Q128a — see child plan § Q128c4. |
 | Q10 | GFF inventory array editing | Add/remove/reorder `Inventory`, `EquippedInventory`, and proper `itemList` defaults. | Q9 item picker shipped. | **Shipped** — inventory arrays editable with shared item struct defaults. |
 | Q11 | GFF skill/feat array editing | Add/remove/reorder `SkillList` and `FeatList` with Rank/Feat defaults. | Q7 array machinery shipped. | **Shipped** — creature skill/feat lists editable in GFF tree. |
 | Q12 | Install-aware feat/skill 2DA labels | Feat values and SkillList indices show install 2DA labels in GFF tree. | Q9 enum registry + Q11 arrays shipped. | **Shipped** — feat.2da and skills.2da labels in creature editing. |

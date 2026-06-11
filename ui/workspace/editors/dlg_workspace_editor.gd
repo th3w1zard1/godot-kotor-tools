@@ -28,6 +28,9 @@ var _dlg_details: VBoxContainer
 var _validation_panel: KotorValidationPanel
 var _preflight_dialog: KotorPreflightDialog
 var _array_context_menu: PopupMenu
+var _node_context_menu: PopupMenu
+var _context_node_kind := ""
+var _context_node_index := -1
 
 var _modding_pipeline: RefCounted
 var _dlg_resource: DLGResource
@@ -373,6 +376,11 @@ func _build_ui() -> void:
 	remove_node_btn.pressed.connect(_on_remove_node_pressed)
 	_toolbar.add_child(remove_node_btn)
 
+	var delete_refs_btn := Button.new()
+	delete_refs_btn.text = "Delete References"
+	delete_refs_btn.pressed.connect(_on_delete_references_pressed)
+	_toolbar.add_child(delete_refs_btn)
+
 	var graph_view_btn := Button.new()
 	graph_view_btn.text = "Graph View"
 	graph_view_btn.toggle_mode = true
@@ -444,6 +452,10 @@ func _build_ui() -> void:
 	_array_context_menu = PopupMenu.new()
 	_array_context_menu.id_pressed.connect(_on_array_context_menu_selected)
 	_dlg_tree.add_child(_array_context_menu)
+
+	_node_context_menu = PopupMenu.new()
+	_node_context_menu.id_pressed.connect(_on_node_context_menu_selected)
+	_dlg_tree.add_child(_node_context_menu)
 
 	var detail_panel := VBoxContainer.new()
 	detail_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -651,13 +663,23 @@ func _on_dlg_item_mouse_selected(item: TreeItem, column: int, at_position: Vecto
 	var button_index = _dlg_tree.get_button_index_at_position(at_position)
 	if button_index != 2:
 		return
-	if item == null or not item.has_meta(GFFTreePopulator.META_IS_DLG_ARRAY_ITEM):
+	if item == null:
 		return
-	
-	_context_array_field = item.get_meta(GFFTreePopulator.META_ARRAY_FIELD)
-	_context_array_index = item.get_meta(GFFTreePopulator.META_ARRAY_INDEX)
-	
-	_show_array_context_menu(_context_array_field, _context_array_index, at_position)
+	if item.has_meta(GFFTreePopulator.META_IS_DLG_ARRAY_ITEM):
+		_context_array_field = item.get_meta(GFFTreePopulator.META_ARRAY_FIELD)
+		_context_array_index = item.get_meta(GFFTreePopulator.META_ARRAY_INDEX)
+		_show_array_context_menu(_context_array_field, _context_array_index, at_position)
+		return
+
+	var metadata = item.get_metadata(0)
+	if typeof(metadata) != TYPE_DICTIONARY:
+		return
+	var kind := str(metadata.get("kind", ""))
+	if kind != KotorDLGDocument.KIND_ENTRY and kind != KotorDLGDocument.KIND_REPLY:
+		return
+	_context_node_kind = kind
+	_context_node_index = int(metadata.get("index", -1))
+	_show_node_context_menu(at_position)
 
 
 func _show_array_context_menu(array_field: String, index: int, position: Vector2) -> void:
@@ -691,6 +713,34 @@ func _show_array_context_menu(array_field: String, index: int, position: Vector2
 		_array_context_menu.set_item_disabled(_array_context_menu.get_item_count() - 1, true)
 	
 	_array_context_menu.popup_rect(Rect2(position, Vector2.ZERO))
+
+
+func _show_node_context_menu(position: Vector2) -> void:
+	if _node_context_menu == null:
+		return
+	_node_context_menu.clear()
+	_node_context_menu.add_item("Delete All References", 0)
+	_node_context_menu.popup_rect(Rect2(position, Vector2.ZERO))
+
+
+func _on_node_context_menu_selected(menu_id: int) -> void:
+	if _context_node_kind.is_empty() or _context_node_index < 0:
+		return
+	if menu_id == 0:
+		_apply_remove_all_references(_context_node_kind, _context_node_index)
+	_context_node_kind = ""
+	_context_node_index = -1
+
+
+func _on_delete_references_pressed() -> void:
+	if _dlg_document == null:
+		return
+	var kind := str(_dlg_selection.get("kind", ""))
+	if kind != KotorDLGDocument.KIND_ENTRY and kind != KotorDLGDocument.KIND_REPLY:
+		_dlg_status_text = "Select an entry or reply node to delete references."
+		_refresh_dlg_status()
+		return
+	_apply_remove_all_references(kind, int(_dlg_selection.get("index", -1)))
 
 
 func _on_array_context_menu_selected(menu_id: int) -> void:
@@ -750,6 +800,12 @@ func _refresh_dlg_detail() -> void:
 				"Text", "Speaker", "Listener", "Comment", "AnimList",
 				"Script", "Delay", "Quest", "PlotIndex", "Sound", "VO_ResRef",
 			])
+			var delete_refs_btn := Button.new()
+			delete_refs_btn.text = "Delete All References"
+			delete_refs_btn.pressed.connect(func() -> void:
+				_apply_remove_all_references(kind, index)
+			)
+			_dlg_details.add_child(delete_refs_btn)
 			_add_dlg_link_summary(kind, index)
 		"start":
 			var start_index := int(_dlg_selection.get("index", -1))
@@ -1670,6 +1726,31 @@ func _on_add_start_pressed() -> void:
 	if str(_dlg_selection.get("kind", "")) == "entry":
 		entry_index = int(_dlg_selection.get("index", 0))
 	_apply_start_add(entry_index)
+
+
+func _apply_remove_all_references(kind: String, index: int) -> void:
+	if _dlg_document == null or index < 0:
+		return
+	var snapshot := _dlg_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Delete DLG references", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_remove_all_references", kind, index)
+		ur.add_undo_method(self, "_exec_restore_topology", snapshot)
+		ur.commit_action()
+	else:
+		_exec_remove_all_references(kind, index)
+
+
+func _exec_remove_all_references(kind: String, index: int) -> void:
+	if _dlg_document == null:
+		return
+	var removed_count := _dlg_document.remove_all_references_to_node(kind, index)
+	if removed_count <= 0:
+		_dlg_status_text = "No incoming references found for %s %d." % [kind, index]
+	else:
+		_dlg_status_text = "Removed %d reference(s) to %s %d." % [removed_count, kind, index]
+	_refresh_after_topology_change({"kind": kind, "index": index})
 
 
 func _on_remove_node_pressed() -> void:

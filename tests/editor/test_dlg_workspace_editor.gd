@@ -87,6 +87,10 @@ func _assert_editor_behavior() -> void:
 	_test_navigation_back_after_jump()
 	_test_navigation_back_empty_stack()
 
+	_test_remove_all_references_entry_via_editor()
+	_test_remove_all_references_reply_via_editor()
+	_test_remove_all_references_undo_redo()
+
 	_cleanup()
 	quit()
 
@@ -715,6 +719,55 @@ func _test_navigation_back_empty_stack() -> void:
 	_editor.open_resource(resource, "", "test_dialogue.dlg")
 	_editor._on_navigation_back_pressed()
 	assert(_editor.get_navigation_stack_depth() == 0, "Back on empty stack should remain empty")
+
+
+func _test_remove_all_references_entry_via_editor() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	assert(doc.get_start_count() >= 1, "Fixture should include a start pointing at entry 0")
+	_editor._apply_remove_all_references("entry", 0)
+	assert(doc.get_start_count() == 0, "Delete references should remove StartingList links to entry 0")
+	var orphans := doc.find_orphaned_nodes()
+	var found_entry_zero := false
+	for orphan in orphans:
+		if str(orphan.get("kind", "")) == "entry" and int(orphan.get("index", -1)) == 0:
+			found_entry_zero = true
+	assert(found_entry_zero, "Entry 0 should be orphaned after start reference removed")
+	assert(doc.validate().is_empty(), "Orphaned entry should still validate")
+
+
+func _test_remove_all_references_reply_via_editor() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	assert(doc.get_node_links("entry", 0).size() >= 1, "Fixture should link entry 0 to reply 0")
+	_editor._apply_remove_all_references("reply", 0)
+	assert(doc.get_node_links("entry", 0).is_empty(), "Delete references should clear incoming reply links")
+	var orphans := doc.find_orphaned_nodes()
+	var found_reply_zero := false
+	for orphan in orphans:
+		if str(orphan.get("kind", "")) == "reply" and int(orphan.get("index", -1)) == 0:
+			found_reply_zero = true
+	assert(found_reply_zero, "Reply 0 should appear in orphan list after references removed")
+
+
+func _test_remove_all_references_undo_redo() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var initial_link_count := doc.get_node_links("entry", 0).size()
+	_editor._apply_remove_all_references("reply", 0)
+	assert(doc.get_node_links("entry", 0).is_empty(), "Apply delete references should remove reply links")
+	var ur := _editor._get_undo_redo()
+	if ur != null:
+		ur.undo()
+		assert(
+			doc.get_node_links("entry", 0).size() == initial_link_count,
+			"Undo delete references should restore reply links"
+		)
+		ur.redo()
+		assert(doc.get_node_links("entry", 0).is_empty(), "Redo delete references should remove reply links again")
 
 
 func _test_node_add_remove_undo_redo() -> void:
