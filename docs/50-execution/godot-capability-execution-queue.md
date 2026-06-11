@@ -150,16 +150,19 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 > **Branch note:** Q124–Q128c4 complete the Q128 child plan on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)). Merge to `main` to drop `*(PR #119)*` qualifiers. `main` @ Q123 remains merge base until landed.
 
+| Q131 | LTR parser + workspace editor | `LTRParser`/`LTRWriter`, Letter Table workspace tab, `.ltr` routing, install/export. | `test_ltr_parser.gd`, `test_ltr_workspace_editor.gd`. | See `docs/plans/2026-06-12-062-feat-q131-ltr-parser-workspace-plan.md`. |
+
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q129 | Post-Q128 parity wave planning | Define next Holocron/PyKotor slices after DLG graph depth (MDL write-back, savegame, LTR, NSS IDE). | Q128c4 shipped; PR #119 ready for merge. | See `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` deferred tier. |
+| Q132 | Savegame inspector foundations | Read-only save metadata workspace surface. | Q131 shipped. | Holocron `savegame.py`. |
 
 ## Next Slices (Deferred)
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
+| Q130 | NSS compile-to-override UX | After PyKotor assemble, install `.ncs` to override with preflight. | PR #120 open on `feat/q130-nss-compile-install`. | Stacks after Q128 merge wave. |
 | Q10 | GFF inventory array editing | Add/remove/reorder `Inventory`, `EquippedInventory`, and proper `itemList` defaults. | Q9 item picker shipped. | **Shipped** — inventory arrays editable with shared item struct defaults. |
 | Q11 | GFF skill/feat array editing | Add/remove/reorder `SkillList` and `FeatList` with Rank/Feat defaults. | Q7 array machinery shipped. | **Shipped** — creature skill/feat lists editable in GFF tree. |
 | Q12 | Install-aware feat/skill 2DA labels | Feat values and SkillList indices show install 2DA labels in GFF tree. | Q9 enum registry + Q11 arrays shipped. | **Shipped** — feat.2da and skills.2da labels in creature editing. |

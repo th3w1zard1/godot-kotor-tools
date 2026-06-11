@@ -17,6 +17,8 @@ const SSFWriter := preload("../../formats/ssf_writer.gd")
 const SSFResource := preload("../../resources/ssf_resource.gd")
 const LIPWriter := preload("../../formats/lip_writer.gd")
 const LIPResource := preload("../../resources/lip_resource.gd")
+const LTRWriter := preload("../../formats/ltr_writer.gd")
+const LTRResource := preload("../../resources/ltr_resource.gd")
 const TPCWriter := preload("../../formats/tpc_writer.gd")
 const GFFCompare := preload("../../formats/gff_compare.gd")
 const SSFCompare := preload("../../formats/ssf_compare.gd")
@@ -369,6 +371,18 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"type": "bytes",
 					"payload": lip_bytes,
 					"size": lip_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+		"ltr":
+			if payload is LTRResource:
+				var ltr_bytes := LTRWriter.serialize(payload as LTRResource)
+				if ltr_bytes.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": ltr_bytes,
+					"size": ltr_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
 		"tpc":
