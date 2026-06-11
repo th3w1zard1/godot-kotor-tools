@@ -311,9 +311,39 @@ func compare_selected_member_with_override() -> Dictionary:
 	return result
 
 
+func compare_all_members_with_override() -> Dictionary:
+	if _document == null:
+		_status_text = "No archive is loaded."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	if _document.is_empty():
+		_status_text = "Archive has no members to compare."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before compare."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var members: Array = []
+	for index in range(_document.get_entry_count()):
+		var entry := _document.get_entry(index)
+		if entry == null:
+			continue
+		members.append({
+			"resref": entry.resref,
+			"extension": entry.extension,
+		})
+	var result := KotorModdingPipeline.compare_member_batch_with_override(gamefs, members)
+	_last_compare_result = result
+	_status_text = str(result.get("message", KotorModdingPipeline.format_compare_result_text(result)))
+	_refresh_status()
+	return result
+
+
 func export_compare_report_to_path(path: String) -> Dictionary:
 	if _last_compare_result.is_empty():
-		_status_text = "Run Compare Member with Override first."
+		_status_text = "Run a compare action first."
 		_refresh_status()
 		return {"ok": false, "message": "No compare result is available."}
 	var target_path := path
@@ -590,6 +620,11 @@ func _build_ui() -> void:
 	compare_btn.text = "Compare Member with Override..."
 	compare_btn.pressed.connect(compare_selected_member_with_override)
 	_toolbar.add_child(compare_btn)
+
+	var compare_all_btn := Button.new()
+	compare_all_btn.text = "Compare All Members with Override"
+	compare_all_btn.pressed.connect(compare_all_members_with_override)
+	_toolbar.add_child(compare_all_btn)
 
 	var export_compare_btn := Button.new()
 	export_compare_btn.text = "Export Compare Report..."

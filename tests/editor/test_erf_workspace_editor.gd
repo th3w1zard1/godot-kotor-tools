@@ -29,6 +29,7 @@ func _run_tests() -> void:
 	await _test_replace_member()
 	await _test_compare_member_toolbar_buttons()
 	await _test_compare_member_with_override()
+	await _test_compare_all_members_with_override()
 	await _test_install_archive_to_modules()
 	_test_install_sav_to_modules_blocked()
 	await _test_extract_all_members_to_override()
@@ -158,6 +159,7 @@ func _test_replace_member() -> void:
 func _test_compare_member_toolbar_buttons() -> void:
 	var editor := _build_editor()
 	assert(_find_button(editor, "Compare Member with Override...") != null)
+	assert(_find_button(editor, "Compare All Members with Override") != null)
 	assert(_find_button(editor, "Export Compare Report...") != null)
 	print("✓ ERF compare toolbar buttons passed")
 
@@ -197,6 +199,44 @@ func _test_compare_member_with_override() -> void:
 	assert(export_result.get("ok", false), str(export_result))
 	assert(FileAccess.file_exists("%s.txt" % report_path))
 	print("✓ ERF compare member with override passed")
+
+
+func _test_compare_all_members_with_override() -> void:
+	var modules_dir := _install_root.path_join("modules")
+	DirAccess.make_dir_recursive_absolute(modules_dir)
+	var core_git := _build_empty_git_bytes()
+	var mod_bytes := ERFWriter.build("MOD ", [
+		{"resref": "tar_m02aa", "extension": "git", "bytes": core_git},
+		{"resref": "extra_are", "extension": "are", "bytes": _build_empty_are_bytes()},
+	])
+	var mod_path := modules_dir.path_join("batch_compare.mod")
+	var mod_file := FileAccess.open(mod_path, FileAccess.WRITE)
+	mod_file.store_buffer(mod_bytes)
+	mod_file.close()
+
+	var override_path := _install_root.path_join("override").path_join("tar_m02aa.git")
+	var override_file := FileAccess.open(override_path, FileAccess.WRITE)
+	override_file.store_buffer(_build_empty_are_bytes())
+	override_file.close()
+
+	var editor := _build_editor()
+	editor._editor_state.refresh_gamefs()
+	editor.open_archive_file(mod_path)
+	await process_frame
+
+	var result := editor.compare_all_members_with_override()
+	assert(result.get("ok", false), str(result))
+	var counts: Dictionary = result.get("counts", {})
+	assert(int(counts.get("total", 0)) == 2)
+	assert(int(counts.get("different", 0)) == 1)
+
+	var report_path := _install_root.path_join("archive-compare-report")
+	if FileAccess.file_exists("%s.txt" % report_path):
+		DirAccess.remove_absolute("%s.txt" % report_path)
+	var export_result := editor.export_compare_report_to_path(report_path)
+	assert(export_result.get("ok", false), str(export_result))
+	assert(FileAccess.file_exists("%s.txt" % report_path))
+	print("✓ ERF compare all members with override passed")
 
 
 func _test_install_archive_to_modules() -> void:

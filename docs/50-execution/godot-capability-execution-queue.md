@@ -155,6 +155,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q139 | Extract all members to folder | **Extract All to Folder...** writes every archive member to a chosen directory (`{resref}.{ext}`); headless `test_erf_workspace_editor.gd`. |
 | Q140 | Export selected member to file | **Export Selected...** saves the selected archive member to a chosen path via mutation export preflight; headless `test_erf_workspace_editor.gd`. |
 | Q141 | Open game archive dialog | **Open Game Archive...** roots the picker at install `modules/`, `lips/`, or `rims/`; headless `test_erf_workspace_editor.gd`. |
+| Q142 | Compare all members with override | **Compare All Members with Override** batch-scans archive members via `compare_member_batch_with_override`; headless `test_erf_workspace_editor.gd`. |
 
 > **Branch note:** Q124–Q128c4 complete the Q128 child plan on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)). Merge to `main` to drop `*(PR #119)*` qualifiers. `main` @ Q123 remains merge base until landed.
 
@@ -162,7 +163,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q130–Q141 PR wave; define next Holocron slices after archive open/export parity. | Q141 game archive open shipped. | PRs #120–#130 open; consolidate merge order in roadmap plan. |
+| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q130–Q142 PR wave; define next Holocron slices after archive compare batch parity. | Q142 batch compare shipped. | PRs #120–#131 open; consolidate merge order in roadmap plan. |
 
 ## Next Slices (Deferred)
 
