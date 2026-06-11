@@ -13,6 +13,7 @@ const KotorMutationService := preload("../../../editor/transactions/kotor_mutati
 const KotorModuleContext := preload("../../../editor/module/kotor_module_context.gd")
 const BWMWriter := preload("../../../formats/bwm_writer.gd")
 const BwmBatchExporter := preload("../../../formats/bwm_batch_exporter.gd")
+const BwmGamefsBatchImporter := preload("../../../formats/bwm_gamefs_batch_importer.gd")
 const GFFWriter := preload("../../../formats/gff_writer.gd")
 const LYTWriter := preload("../../../formats/lyt_writer.gd")
 const VISWriter := preload("../../../formats/vis_writer.gd")
@@ -396,6 +397,11 @@ func _build_ui() -> void:
 	batch_copy_wok_btn.text = "Batch Copy WOK Folder..."
 	batch_copy_wok_btn.pressed.connect(_batch_copy_wok_folder)
 	_toolbar.add_child(batch_copy_wok_btn)
+
+	var batch_import_wok_btn := Button.new()
+	batch_import_wok_btn.text = "Batch Import WOK Folder to Override..."
+	batch_import_wok_btn.pressed.connect(_batch_import_wok_folder_to_override)
+	_toolbar.add_child(batch_import_wok_btn)
 
 	var export_layout_btn := Button.new()
 	export_layout_btn.text = "Export LYT Preview…"
@@ -1356,6 +1362,39 @@ func _run_batch_copy_wok_folder(source_dir: String, output_dir: String) -> void:
 	var result := BwmBatchExporter.batch_directory(source_dir, output_dir)
 	_status_text = BwmBatchExporter.format_report(result)
 	_refresh_status()
+
+
+func _batch_import_wok_folder_to_override() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch import."
+		_refresh_status()
+		return
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select WOK source folder for override import"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	dialog.dir_selected.connect(func(source_dir: String) -> void:
+		_run_batch_import_wok_folder_to_override(gamefs, source_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_import_wok_folder_to_override(gamefs: RefCounted, source_dir: String) -> void:
+	var result := BwmGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir)
+	_status_text = BwmGamefsBatchImporter.format_report(result)
+	_refresh_status()
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_gamefs()
 
 
 func _export_walkmesh_preview_dialog() -> void:

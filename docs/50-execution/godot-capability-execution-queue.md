@@ -111,12 +111,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q95 | MDL compare MDX sidecar pairing | `MdlCompare` optional MDX args; GameFS loads paired MDX per source; headless `test_mdl_compare.gd`. |
 | Q96 | Install-scoped GameFS WOK batch export | `BwmGamefsBatchExporter` scans indexed `.wok`, copies to folder with `BwmMetadataHelper` summaries; resource browser **Batch Export Install WOK...**; headless `test_bwm_gamefs_batch_exporter.gd`. |
 | Q97 | Flat-folder WOK batch export | `BwmBatchExporter` copies `.wok` from source folder to output; Module Designer **Batch Copy WOK Folder...**; headless `test_bwm_batch_exporter.gd`. |
+| Q98 | Flat-folder WOK batch import to override | `BwmGamefsBatchImporter` copies `.wok` from source folder into install override; Module Designer **Batch Import WOK Folder to Override...**; headless `test_bwm_gamefs_batch_importer.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q97 shipped flat-folder WOK batch export. | Next: parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q98 shipped flat-folder WOK batch import to override. | Next: parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
