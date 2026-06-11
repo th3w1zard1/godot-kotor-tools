@@ -786,6 +786,7 @@ func _clear_document_state(message: String) -> void:
 		_map_view.set_instances([], Rect2())
 	if _viewport_3d != null:
 		_viewport_3d.set_instances([], {})
+		_viewport_3d.set_path_points([])
 		_viewport_3d.set_walkmesh({})
 		_viewport_3d.set_room_meshes([])
 	if _detail_label != null:
