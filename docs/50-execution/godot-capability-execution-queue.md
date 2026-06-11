@@ -104,12 +104,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q88 | Batch TGA/PNG→DXT TPC | `TpcBatchConverter` `encoding` option (`rgba`/`dxt1`/`dxt5`); TPC editor **Batch Convert DXT1/DXT5...**; headless `test_tpc_batch_converter.gd`. |
 | Q89 | GameFS batch install DXT import | `TpcGamefsBatchImporter` `encoding` option; TPC editor **Batch Import Install DXT1/DXT5...**; headless `test_tpc_gamefs_batch_importer.gd`. |
 | Q90 | TPC editor import image as DXT | **Import TGA/PNG as DXT1/DXT5...** toolbar actions; headless `test_tpc_dxt_reencode.gd`. |
+| Q91 | MDL semantic compare | `MdlCompare` vertex/face/bounds summaries in GameFS diff; headless `test_mdl_compare.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q90 shipped single-image DXT import. | Next: parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q91 shipped MDL semantic compare. | Next: parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 

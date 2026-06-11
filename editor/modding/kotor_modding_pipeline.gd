@@ -22,6 +22,7 @@ const GFFCompare := preload("../../formats/gff_compare.gd")
 const SSFCompare := preload("../../formats/ssf_compare.gd")
 const LIPCompare := preload("../../formats/lip_compare.gd")
 const TPCCompare := preload("../../formats/tpc_compare.gd")
+const MdlCompare := preload("../../formats/mdl_compare.gd")
 const WavCompare := preload("../../formats/wav_compare.gd")
 
 const SOURCE_OVERRIDE := "override"
@@ -517,6 +518,11 @@ static func _build_difference_report(extension: String, base_bytes: PackedByteAr
 			var wav_report := WavCompare.build_difference_report(base_bytes, mod_bytes)
 			if not wav_report.is_empty():
 				return wav_report
+			return _build_binary_difference_report(base_bytes, mod_bytes)
+		"mdl":
+			var mdl_report := MdlCompare.build_difference_report(base_bytes, mod_bytes)
+			if not mdl_report.is_empty():
+				return mdl_report
 			return _build_binary_difference_report(base_bytes, mod_bytes)
 		_:
 			if GFFCompare.is_gff_extension(extension):
