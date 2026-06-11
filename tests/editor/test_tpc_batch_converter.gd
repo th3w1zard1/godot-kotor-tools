@@ -16,9 +16,11 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	_test_convert_from_png_file()
+	_test_convert_from_png_dxt1()
+	_test_batch_directory_dxt5()
 	_test_invalid_image_rejected()
 	_test_batch_directory()
-	var button_ok := await _test_tpc_editor_batch_button()
+	var button_ok := await _test_tpc_editor_batch_buttons()
 	_cleanup()
 	if not button_ok:
 		push_error("TPC editor batch convert button test failed")
@@ -42,6 +44,44 @@ func _test_convert_from_png_file() -> void:
 	assert(int(metadata.get("width", 0)) == 32)
 	assert(int(metadata.get("height", 0)) == 16)
 	print("✓ TPC convert from PNG file passed")
+
+
+func _test_convert_from_png_dxt1() -> void:
+	var png_path := _test_root.path_join("dxt1.png")
+	_write_png(png_path, 16, 16)
+
+	var result := TpcBatchConverter.convert_from_image_file(png_path, {"encoding": "dxt1"})
+	assert(result.get("ok", false))
+
+	var bytes: PackedByteArray = result.get("bytes", PackedByteArray())
+	assert(not bytes.is_empty())
+
+	var metadata := TPCReader.read_metadata(bytes)
+	assert(metadata.get("ok", false))
+	assert(int(metadata.get("encoding", -1)) == TPCReader.ENC_DXT1)
+	print("✓ TPC convert from PNG DXT1 passed")
+
+
+func _test_batch_directory_dxt5() -> void:
+	var batch_dir := _test_root.path_join("batch_dxt5")
+	DirAccess.make_dir_recursive_absolute(batch_dir)
+
+	_write_png(batch_dir.path_join("tex_dxt5.png"), 8, 8)
+
+	var batch := TpcBatchConverter.batch_directory(batch_dir, {"encoding": "dxt5"})
+	assert(batch.get("ok", false))
+	var generated: Array = batch.get("generated", [])
+	assert(generated.size() == 1)
+
+	var tpc_path := batch_dir.path_join("tex_dxt5.tpc")
+	assert(FileAccess.file_exists(tpc_path))
+
+	var file := FileAccess.open(tpc_path, FileAccess.READ)
+	var metadata := TPCReader.read_metadata(file.get_buffer(file.get_length()))
+	file.close()
+	assert(metadata.get("ok", false))
+	assert(int(metadata.get("encoding", -1)) == TPCReader.ENC_DXT5)
+	print("✓ TPC batch directory DXT5 passed")
 
 
 func _test_invalid_image_rejected() -> void:
@@ -74,18 +114,19 @@ func _test_batch_directory() -> void:
 	print("✓ TPC batch directory passed")
 
 
-func _test_tpc_editor_batch_button() -> bool:
+func _test_tpc_editor_batch_buttons() -> bool:
 	var editor := KotorTPCWorkspaceEditor.new()
 	var holder := Node.new()
 	root.add_child(holder)
 	holder.add_child(editor)
 	await process_frame
 
-	var button := _find_button(editor, "Batch Convert TGA/PNG→TPC...")
-	assert(button != null)
+	assert(_find_button(editor, "Batch Convert TGA/PNG→TPC...") != null)
+	assert(_find_button(editor, "Batch Convert DXT1...") != null)
+	assert(_find_button(editor, "Batch Convert DXT5...") != null)
 	holder.queue_free()
 	await process_frame
-	print("✓ TPC editor batch convert button passed")
+	print("✓ TPC editor batch convert buttons passed")
 	return true
 
 

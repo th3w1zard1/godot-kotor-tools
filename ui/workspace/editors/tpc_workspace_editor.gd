@@ -162,6 +162,16 @@ func _build_ui() -> void:
 	batch_convert_btn.pressed.connect(_batch_convert_images_to_tpc)
 	_toolbar.add_child(batch_convert_btn)
 
+	var batch_convert_dxt1_btn := Button.new()
+	batch_convert_dxt1_btn.text = "Batch Convert DXT1..."
+	batch_convert_dxt1_btn.pressed.connect(_batch_convert_images_to_dxt1)
+	_toolbar.add_child(batch_convert_dxt1_btn)
+
+	var batch_convert_dxt5_btn := Button.new()
+	batch_convert_dxt5_btn.text = "Batch Convert DXT5..."
+	batch_convert_dxt5_btn.pressed.connect(_batch_convert_images_to_dxt5)
+	_toolbar.add_child(batch_convert_dxt5_btn)
+
 	var export_tga_btn := Button.new()
 	export_tga_btn.text = "Export TGA..."
 	export_tga_btn.pressed.connect(_export_tga)
@@ -253,13 +263,25 @@ func _refresh_metadata() -> void:
 
 
 func _batch_convert_images_to_tpc() -> void:
+	_prompt_batch_convert_directory("rgba", "Batch Convert TGA/PNG to TPC")
+
+
+func _batch_convert_images_to_dxt1() -> void:
+	_prompt_batch_convert_directory("dxt1", "Batch Convert TGA/PNG to DXT1 TPC")
+
+
+func _batch_convert_images_to_dxt5() -> void:
+	_prompt_batch_convert_directory("dxt5", "Batch Convert TGA/PNG to DXT5 TPC")
+
+
+func _prompt_batch_convert_directory(encoding: String, title: String) -> void:
 	var dialog := EditorFileDialog.new()
 	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
-	dialog.title = "Batch Convert TGA/PNG to TPC"
+	dialog.title = title
 	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
 		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
 	dialog.dir_selected.connect(func(dir_path: String) -> void:
-		_run_batch_convert(dir_path)
+		_run_batch_convert(dir_path, encoding)
 		dialog.queue_free()
 	)
 	dialog.canceled.connect(dialog.queue_free)
@@ -267,8 +289,8 @@ func _batch_convert_images_to_tpc() -> void:
 	dialog.popup_centered_ratio(0.6)
 
 
-func _run_batch_convert(dir_path: String) -> void:
-	var result := TpcBatchConverter.batch_directory(dir_path)
+func _run_batch_convert(dir_path: String, encoding: String = "rgba") -> void:
+	var result := TpcBatchConverter.batch_directory(dir_path, {"encoding": encoding})
 	_status_text = str(result.get("summary", "Batch TPC finished."))
 	var failed: Array = result.get("failed", [])
 	if not failed.is_empty():

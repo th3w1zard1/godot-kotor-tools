@@ -55,7 +55,7 @@ static func batch_install_to_override(
 			})
 			continue
 
-		var result := TpcBatchConverter.convert_from_image_file(image_path, alpha_test)
+		var result := TpcBatchConverter.convert_from_image_file(image_path, {"alpha_test": alpha_test})
 		if not result.get("ok", false):
 			failed.append({
 				"resref": resref,
