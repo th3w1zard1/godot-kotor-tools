@@ -1293,6 +1293,7 @@ func _clear_document_state(message: String) -> void:
 	if _bundle_label != null:
 		_bundle_label.text = ""
 	_refresh_bundle_tree()
+	_refresh_room_models_tree()
 	_refresh_path_label()
 	_refresh_status()
 
