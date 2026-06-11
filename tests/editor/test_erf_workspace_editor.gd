@@ -26,6 +26,8 @@ func _run_tests() -> void:
 	await _test_add_member_and_save_archive()
 	await _test_remove_member_and_save_archive()
 	await _test_replace_member()
+	await _test_compare_member_toolbar_buttons()
+	await _test_compare_member_with_override()
 	_cleanup()
 	print("✓ ERF workspace editor tests passed")
 	quit()
@@ -145,6 +147,50 @@ func _test_replace_member() -> void:
 	print("✓ ERF replace member passed")
 
 
+func _test_compare_member_toolbar_buttons() -> void:
+	var editor := _build_editor()
+	assert(_find_button(editor, "Compare Member with Override...") != null)
+	assert(_find_button(editor, "Export Compare Report...") != null)
+	print("✓ ERF compare toolbar buttons passed")
+
+
+func _test_compare_member_with_override() -> void:
+	var modules_dir := _install_root.path_join("modules")
+	DirAccess.make_dir_recursive_absolute(modules_dir)
+	var core_git := _build_empty_git_bytes()
+	var mod_bytes := ERFWriter.build("MOD ", [
+		{"resref": "tar_m02aa", "extension": "git", "bytes": core_git},
+	])
+	var mod_path := modules_dir.path_join("test_area.mod")
+	var mod_file := FileAccess.open(mod_path, FileAccess.WRITE)
+	mod_file.store_buffer(mod_bytes)
+	mod_file.close()
+
+	var override_path := _install_root.path_join("override").path_join("tar_m02aa.git")
+	var override_file := FileAccess.open(override_path, FileAccess.WRITE)
+	override_file.store_buffer(_build_empty_are_bytes())
+	override_file.close()
+
+	var editor := _build_editor()
+	editor._editor_state.refresh_gamefs()
+	editor.open_archive_file(mod_path)
+	await process_frame
+	editor._tree.get_root().get_first_child().select(0)
+	await process_frame
+
+	var compare_result := editor.compare_selected_member_with_override()
+	assert(compare_result.get("ok", false), str(compare_result))
+	assert(str(compare_result.get("status", "")) == "different")
+
+	var report_path := _install_root.path_join("tar_m02aa-compare-report")
+	if FileAccess.file_exists("%s.txt" % report_path):
+		DirAccess.remove_absolute("%s.txt" % report_path)
+	var export_result := editor.export_compare_report_to_path(report_path)
+	assert(export_result.get("ok", false), str(export_result))
+	assert(FileAccess.file_exists("%s.txt" % report_path))
+	print("✓ ERF compare member with override passed")
+
+
 func _test_invalid_extract_file_name() -> void:
 	var editor := _build_editor()
 	var mod_bytes := ERFWriter.build("MOD ", [
@@ -154,6 +200,16 @@ func _test_invalid_extract_file_name() -> void:
 	var result := editor.install_entry_to_override(0)
 	assert(not result.get("ok", true))
 	print("✓ ERF invalid extract file name blocked passed")
+
+
+func _find_button(node: Node, text: String) -> Button:
+	if node is Button and (node as Button).text == text:
+		return node as Button
+	for child in node.get_children():
+		var found := _find_button(child, text)
+		if found != null:
+			return found
+	return null
 
 
 func _build_editor() -> KotorErfWorkspaceEditor:

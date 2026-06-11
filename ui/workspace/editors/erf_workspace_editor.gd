@@ -7,6 +7,7 @@ signal member_open_requested(resref: String, extension: String, payload: PackedB
 const ERFParser := preload("../../../formats/erf_parser.gd")
 const KotorErfDocument := preload("../../../resources/documents/kotor_erf_document.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
+const KotorModdingPipeline := preload("../../../editor/modding/kotor_modding_pipeline.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 
@@ -34,6 +35,7 @@ var _preflight_pending_preview: Dictionary = {}
 var _preflight_pending_kind := ""
 var _preflight_pending_entry_index := -1
 var _skip_preflight_for_testing := false
+var _last_compare_result: Dictionary = {}
 
 
 static func archive_extension_allowed(extension: String) -> bool:
@@ -113,6 +115,46 @@ func install_selected_entry_to_override() -> Dictionary:
 
 func is_document_dirty() -> bool:
 	return _document != null and _document.is_dirty()
+
+
+func compare_selected_member_with_override() -> Dictionary:
+	if _document == null:
+		return {"ok": false, "message": "No archive is loaded."}
+	var index := get_selected_entry_index()
+	if index < 0:
+		_status_text = "Select an archive member to compare."
+		_refresh_status()
+		return {"ok": false, "message": "Select an archive member to compare."}
+	var entry := _document.get_entry(index)
+	if entry == null:
+		return {"ok": false, "message": "Selected archive member is unavailable."}
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before compare."
+		_refresh_status()
+		return {"ok": false, "message": "Configure a valid game install before compare."}
+	var resource_type := -1
+	if gamefs.has_method("resource_type_for_extension"):
+		resource_type = int(gamefs.call("resource_type_for_extension", entry.extension))
+	var result := KotorModdingPipeline.compare_gamefs_resource(gamefs, entry.resref, resource_type)
+	_last_compare_result = result
+	_status_text = KotorModdingPipeline.format_compare_result_text(result)
+	_refresh_status()
+	return result
+
+
+func export_compare_report_to_path(path: String) -> Dictionary:
+	if _last_compare_result.is_empty():
+		_status_text = "Run Compare Member with Override first."
+		_refresh_status()
+		return {"ok": false, "message": "No compare result is available."}
+	var target_path := path
+	if target_path.get_extension().to_lower() != "txt":
+		target_path = "%s.txt" % target_path
+	var export_result := KotorModdingPipeline.export_compare_result_to_path(target_path, _last_compare_result)
+	_status_text = str(export_result.get("message", "Export failed."))
+	_refresh_status()
+	return export_result
 
 
 func remove_selected_member() -> Dictionary:
@@ -300,6 +342,16 @@ func _build_ui() -> void:
 	replace_member_btn.pressed.connect(_replace_member_dialog)
 	_toolbar.add_child(replace_member_btn)
 
+	var compare_btn := Button.new()
+	compare_btn.text = "Compare Member with Override..."
+	compare_btn.pressed.connect(compare_selected_member_with_override)
+	_toolbar.add_child(compare_btn)
+
+	var export_compare_btn := Button.new()
+	export_compare_btn.text = "Export Compare Report..."
+	export_compare_btn.pressed.connect(_export_compare_report_dialog)
+	_toolbar.add_child(export_compare_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -368,6 +420,40 @@ func _open_selected_member() -> void:
 	member_open_requested.emit(entry.resref, entry.extension, payload)
 	_status_text = "Opened member %s.%s" % [entry.resref, entry.extension]
 	_refresh_status()
+
+
+func _export_compare_report_dialog() -> void:
+	if _last_compare_result.is_empty():
+		_status_text = "Run Compare Member with Override first."
+		_refresh_status()
+		return
+	var index := get_selected_entry_index()
+	var resref := "member"
+	if index >= 0 and _document != null:
+		var entry := _document.get_entry(index)
+		if entry != null:
+			resref = entry.resref
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_SAVE_FILE,
+		PackedStringArray(["*.txt ; Text Report"]),
+		"Export Compare Report",
+		start_dir,
+		"%s-compare-report.txt" % resref
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		export_compare_report_to_path(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	if Engine.is_editor_hint():
+		EditorInterface.get_editor_main_screen().add_child(dialog)
+	else:
+		add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
 
 
 func _replace_member_dialog() -> void:

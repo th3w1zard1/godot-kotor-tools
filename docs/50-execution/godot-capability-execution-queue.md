@@ -149,6 +149,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q128c4 | DLG orphan restore UX *(PR #119)* | Double-click orphan restore, tree context **Link Selected Orphan Here**, detail-panel linkable orphans, `find_linkable_orphans_for_owner`; headless orphan-restore tests. |
 | Q134 | ERF member add foundations | Archive Browser **Add Member...** + **Save Archive...** with `KotorErfDocument.add_member`, duplicate rejection, dirty tracking, and pipeline repack export; headless `test_erf_document_add_member.gd` + `test_erf_workspace_editor.gd`. |
 | Q135 | ERF member remove/replace | **Remove Member** / **Replace Member...** with `remove_member_at`, `replace_member_at`, `restore_members` undo snapshots, and save integration; headless `test_erf_document_remove_replace.gd` + `test_erf_workspace_editor.gd`. |
+| Q136 | ERF member compare with override | **Compare Member with Override...** + **Export Compare Report...** for selected archive members via `compare_gamefs_resource`; headless `test_erf_workspace_editor.gd`. |
 
 > **Branch note:** Q124–Q128c4 complete the Q128 child plan on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)). Merge to `main` to drop `*(PR #119)*` qualifiers. `main` @ Q123 remains merge base until landed.
 
@@ -156,7 +157,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q129 | Post-Q128 parity wave planning | Define next Holocron/PyKotor slices after archive mutation depth (savegame, LTR, NSS IDE, MDL write-back). | Q135 archive remove/replace shipped. | See `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` deferred tier. |
+| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q130–Q136 PR wave; define next slices after archive compare parity. | Q136 archive compare shipped. | PRs #120–#125 open; stack merge order documented in roadmap plan. |
 
 ## Next Slices (Deferred)
 
