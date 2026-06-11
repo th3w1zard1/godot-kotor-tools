@@ -31,6 +31,7 @@ Q26 ships Compile/Decompile/Disassemble in the Script tab, but `_install_script_
 | R3 | After successful compile, auto-offer NCS install (preflight dialog) | Compile success callback |
 | R4 | Script toolbar enables install for loaded NCS when bytes present | `_refresh_script_tool_buttons` |
 | R5 | Execution queue + parity docs mark Q130 shipped | Doc sync |
+| R6 | Workspace script editor installs NCS bytes to override | Headless workspace test in `test_script_compile_install.gd` |
 
 ## Implementation Units
 
@@ -58,6 +59,13 @@ Q26 ships Compile/Decompile/Disassemble in the Script tab, but `_install_script_
 ```bash
 godot --headless --path . --script tests/editor/test_script_compile_install.gd
 ```
+
+### U4. Workspace script editor NCS install
+
+**Files:** `ui/workspace/editors/script_workspace_editor.gd`, `resources/documents/kotor_script_document.gd`
+
+- Mirror dock NCS install path in `install_document_to_override()`.
+- Refresh install button label/disabled state for NSS vs NCS payloads.
 
 ### U3. Documentation authority
 

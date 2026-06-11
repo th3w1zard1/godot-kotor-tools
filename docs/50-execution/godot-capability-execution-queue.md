@@ -148,7 +148,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q128c3 | DLG graph port drag-connect | `connection_link_requested` on graph view calls `add_node_link` with topology undo; headless `test_dlg_workspace_editor.gd` + `test_dlg_graph_layout.gd` graph-link tests. |
 | Q128c4 | DLG orphan restore UX | Double-click orphan restore, tree context **Link Selected Orphan Here**, detail-panel linkable orphans, `find_linkable_orphans_for_owner`; headless orphan-restore tests. |
 | Q129 | Post-Q128 parity wave planning | Merged PR #119; post-merge doc authority sync; Q130+ wave sequenced in `docs/plans/2026-06-11-060-feat-q129-post-q128-parity-wave-plan.md`. |
-| Q130 | NSS compile-to-override UX | Script tab installs compiled `.ncs` to override with mutation preflight; auto-offer after successful compile. | Headless `test_script_compile_install.gd`. | See `docs/plans/2026-06-11-061-feat-q130-nss-compile-to-override-plan.md`. |
+| Q130 | NSS compile-to-override UX | Dock + workspace script editors install compiled `.ncs` to override with mutation preflight; auto-offer after successful compile. | Headless `test_script_compile_install.gd`. | See `docs/plans/2026-06-11-061-feat-q130-nss-compile-to-override-plan.md`. |
 
 ## Active Slice
 

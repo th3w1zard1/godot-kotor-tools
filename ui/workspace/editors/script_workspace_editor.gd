@@ -37,6 +37,7 @@ var _preflight_pending_path := ""
 var _preflight_pending_preview: Dictionary = {}
 var _preflight_pending_kind := ""  # "export" or "install"
 var _skip_preflight_for_testing := false
+var _install_btn: Button
 
 
 func _on_workspace_setup() -> void:
@@ -138,17 +139,20 @@ func save_document_to_path(path: String) -> Dictionary:
 func install_document_to_override() -> Dictionary:
 	if _document == null:
 		return {}
-	if _document.get_extension() != "nss":
-		_status_text = "NCS binaries are view-only until compile support lands."
+	var file_name := _install_override_file_name()
+	var payload: Variant = _install_override_payload()
+	if file_name.is_empty() or payload == null:
+		_status_text = "No compiled NCS bytes are loaded."
 		_refresh_view()
 		return {"ok": false, "message": _status_text}
-	var issues := _document.validate()
-	if not issues.is_empty():
-		_status_text = "Resolve script validation issues before installing to override."
-		_refresh_view()
-		return {"ok": false, "message": _status_text, "issues": issues}
+	if _document.get_extension() == "nss":
+		var issues := _document.validate()
+		if not issues.is_empty():
+			_status_text = "Resolve script validation issues before installing to override."
+			_refresh_view()
+			return {"ok": false, "message": _status_text, "issues": issues}
 	
-	var preview: Dictionary = _mutation_service.preview_install_to_override(_resolve_gamefs(), _document.get_file_name(), _document.get_text())
+	var preview: Dictionary = _mutation_service.preview_install_to_override(_resolve_gamefs(), file_name, payload)
 	if not preview.get("ok", false):
 		_status_text = preview.get("message", "Install failed")
 		_refresh_view()
@@ -160,7 +164,7 @@ func install_document_to_override() -> Dictionary:
 		return preview
 	
 	if _skip_preflight_for_testing:
-		var result: Dictionary = _mutation_service.apply_install_to_override(_resolve_gamefs(), _document.get_file_name(), _document.get_text(), true)
+		var result: Dictionary = _mutation_service.apply_install_to_override(_resolve_gamefs(), file_name, payload, true)
 		_status_text = _mutation_message(result)
 		if result.get("applied", false):
 			_dirty = false
@@ -226,12 +230,16 @@ func _apply_export_mutation() -> void:
 
 
 func _apply_install_mutation() -> void:
-	if _preflight_pending_preview.is_empty():
+	if _preflight_pending_preview.is_empty() or _document == null:
+		return
+	var file_name := _install_override_file_name()
+	var payload: Variant = _install_override_payload()
+	if file_name.is_empty() or payload == null:
 		return
 	var result: Dictionary = _mutation_service.apply_install_to_override(
 		_resolve_gamefs(),
-		_document.get_file_name(),
-		_document.get_text(),
+		file_name,
+		payload,
 		true
 	)
 	_status_text = _mutation_message(result)
@@ -263,10 +271,10 @@ func _build_ui() -> void:
 	save_as_btn.pressed.connect(_save_script_as)
 	_toolbar.add_child(save_as_btn)
 
-	var install_btn := Button.new()
-	install_btn.text = "Install to Override"
-	install_btn.pressed.connect(_install_script_to_override)
-	_toolbar.add_child(install_btn)
+	_install_btn = Button.new()
+	_install_btn.text = "Install to Override"
+	_install_btn.pressed.connect(_install_script_to_override)
+	_toolbar.add_child(_install_btn)
 
 	var validate_btn := Button.new()
 	validate_btn.text = "Validate"
@@ -301,9 +309,11 @@ func _build_ui() -> void:
 func _refresh_view() -> void:
 	if _document == null:
 		_refresh_status()
+		_refresh_install_button()
 		_refresh_validation()
 		return
 	_refresh_status()
+	_refresh_install_button()
 	_summary_label.text = _document.build_summary_text()
 	_loading = true
 	_text_edit.text = _document.get_text()
@@ -335,9 +345,9 @@ func _refresh_validation() -> void:
 			"Counterpart: %s" % _document.counterpart_label(),
 		])
 		if _document.get_extension() == "ncs":
-			_validation_panel.set_success("NCS binaries are view-only in this slice.", [
+			_validation_panel.set_success("Compiled NWScript binary loaded.", [
 				"Matching source: %s" % _document.counterpart_label(),
-				"Compile/decompile support is not implemented yet.",
+				"Use Install NCS to Override to write bytecode to the game install.",
 			])
 			return
 	else:
@@ -521,6 +531,42 @@ func _ensure_extension(path: String, extension: String) -> String:
 	if path.get_extension().to_lower() == extension.to_lower():
 		return path
 	return "%s.%s" % [path, extension]
+
+
+static func ncs_override_file_name(file_name: String) -> String:
+	return "%s.ncs" % file_name.get_basename()
+
+
+func _install_override_file_name() -> String:
+	if _document == null:
+		return ""
+	if _document.get_extension() == "ncs":
+		return ncs_override_file_name(_document.get_file_name())
+	return _document.get_file_name()
+
+
+func _install_override_payload() -> Variant:
+	if _document == null:
+		return null
+	if _document.get_extension() == "ncs":
+		var bytes := _document.get_bytes()
+		if bytes.is_empty():
+			return null
+		return bytes
+	return _document.get_text()
+
+
+func _refresh_install_button() -> void:
+	if _install_btn == null:
+		return
+	if _document == null:
+		_install_btn.disabled = true
+		_install_btn.text = "Install to Override"
+		return
+	var can_install_nss := _document.get_extension() == "nss"
+	var can_install_ncs := _document.get_extension() == "ncs" and not _document.get_bytes().is_empty()
+	_install_btn.disabled = not (can_install_nss or can_install_ncs)
+	_install_btn.text = "Install NCS to Override" if _document.get_extension() == "ncs" else "Install to Override"
 
 
 func _mutation_message(result: Dictionary) -> String:
