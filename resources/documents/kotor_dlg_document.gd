@@ -150,7 +150,8 @@ func build_link_preview(kind: String, index: int, link_index: int) -> String:
 func set_struct_field(struct_value: Dictionary, field_name: String, value: Variant) -> bool:
 	if struct_value.is_empty():
 		return false
-	if struct_value.get(field_name, null) == value:
+	var current: Variant = struct_value.get(field_name, null)
+	if typeof(current) == typeof(value) and current == value:
 		return false
 	struct_value[field_name] = value
 	mark_changed()

@@ -70,6 +70,8 @@ var _preflight_pending_path := ""
 var _preflight_pending_preview: Dictionary = {}
 var _preflight_pending_kind := ""
 var _skip_preflight_for_testing := false
+var _pending_add_instance_category := ""
+var _pending_add_instance_template := ""
 
 
 func _on_workspace_setup() -> void:
@@ -461,6 +463,16 @@ func _build_ui() -> void:
 	install_pth_btn.pressed.connect(_install_pth_to_override)
 	_toolbar.add_child(install_pth_btn)
 
+	var add_instance_btn := Button.new()
+	add_instance_btn.text = "Add Instance…"
+	add_instance_btn.pressed.connect(_show_add_instance_dialog)
+	_toolbar.add_child(add_instance_btn)
+
+	var remove_instance_btn := Button.new()
+	remove_instance_btn.text = "Remove Instance"
+	remove_instance_btn.pressed.connect(_remove_selected_instance)
+	_toolbar.add_child(remove_instance_btn)
+
 	var add_pth_point_btn := Button.new()
 	add_pth_point_btn.text = "Add Path Point"
 	add_pth_point_btn.pressed.connect(_arm_add_path_point)
@@ -547,6 +559,7 @@ func _build_ui() -> void:
 	_map_view.path_connection_retarget_requested.connect(_on_map_path_connection_retarget_requested)
 	_map_view.path_connection_add_requested.connect(_on_map_path_connection_add_requested)
 	_map_view.path_point_add_requested.connect(_on_map_path_point_add_requested)
+	_map_view.instance_add_requested.connect(_on_map_instance_add_requested)
 	_map_view.instance_drag_finished.connect(_on_map_instance_drag_finished)
 	_map_view.path_point_drag_finished.connect(_on_map_path_point_drag_finished)
 	_map_view.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
@@ -1043,9 +1056,78 @@ func _on_map_path_connection_retarget_requested(connection_index: int, target_in
 	_apply_path_connection_retarget_with_undo(connection_index, old_target, target_index)
 
 
+func _show_add_instance_dialog() -> void:
+	if _document == null or _map_view == null:
+		return
+	var dialog := AcceptDialog.new()
+	dialog.title = "Add GIT Instance"
+	dialog.min_size = Vector2i(360, 160)
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 8)
+	var category_row := HBoxContainer.new()
+	var category_label := Label.new()
+	category_label.text = "Category"
+	category_label.custom_minimum_size = Vector2(90, 0)
+	category_row.add_child(category_label)
+	var category_option := OptionButton.new()
+	category_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for category in KotorGITDocument.LIST_FIELDS:
+		category_option.add_item(category)
+	category_row.add_child(category_option)
+	body.add_child(category_row)
+	var template_row := HBoxContainer.new()
+	var template_label := Label.new()
+	template_label.text = "Template"
+	template_label.custom_minimum_size = Vector2(90, 0)
+	template_row.add_child(template_label)
+	var template_field := LineEdit.new()
+	template_field.placeholder_text = "UTC/UTP/UTD resref"
+	template_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	template_row.add_child(template_field)
+	body.add_child(template_row)
+	dialog.add_child(body)
+	add_child(dialog)
+	dialog.confirmed.connect(func() -> void:
+		var category := category_option.get_item_text(category_option.selected)
+		var template_resref := template_field.text.strip_edges()
+		if template_resref.is_empty():
+			_status_text = "Template resref is required to add an instance."
+			_refresh_status()
+			dialog.queue_free()
+			return
+		_pending_add_instance_category = category
+		_pending_add_instance_template = template_resref
+		_map_view.set_add_path_point_armed(false)
+		_map_view.set_add_path_connection_armed(false)
+		_map_view.set_add_instance_armed(true)
+		_status_text = "Click the map to place a new %s (%s)." % [category, template_resref]
+		_refresh_status()
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func() -> void:
+		dialog.queue_free()
+	)
+	dialog.popup_centered()
+
+
+func _remove_selected_instance() -> void:
+	if _document == null or _map_view == null:
+		return
+	var category := _map_view._selected_category
+	var index := _map_view._selected_index
+	if category.is_empty() or index < 0:
+		_status_text = "Select a GIT instance to remove."
+		_refresh_status()
+		return
+	_status_text = ""
+	_refresh_status()
+	_apply_instance_remove_with_undo(category, index)
+
+
 func _arm_add_path_point() -> void:
 	if _map_view == null or _path_document == null:
 		return
+	_map_view.set_add_instance_armed(false)
 	_map_view.set_add_path_connection_armed(false)
 	_map_view.set_add_path_point_armed(true)
 	_status_text = "Click the map to place a new path point."
@@ -1073,6 +1155,7 @@ func _arm_add_path_connection() -> void:
 		_status_text = "Select a source path point before adding a connection."
 		_refresh_status()
 		return
+	_map_view.set_add_instance_armed(false)
 	_map_view.set_add_path_point_armed(false)
 	_map_view.set_add_path_connection_armed(true)
 	_status_text = "Click a target path point to connect from the selected source."
@@ -1098,6 +1181,22 @@ func _on_map_path_connection_add_requested(source_index: int, target_index: int)
 	_status_text = ""
 	_refresh_status()
 	_apply_path_connection_add_with_undo(source_index, target_index)
+
+
+func _on_map_instance_add_requested(x: float, y: float) -> void:
+	if _document == null:
+		return
+	if _map_view != null:
+		_map_view.set_add_instance_armed(false)
+	var category := _pending_add_instance_category
+	var template_resref := _pending_add_instance_template
+	_pending_add_instance_category = ""
+	_pending_add_instance_template = ""
+	if category.is_empty() or template_resref.is_empty():
+		_status_text = "Add instance was cancelled — choose category and template first."
+		_refresh_status()
+		return
+	_apply_instance_add_with_undo(category, template_resref, x, y)
 
 
 func _on_map_path_point_add_requested(x: float, y: float) -> void:
@@ -2046,6 +2145,77 @@ func _exec_path_connection_remove(connection_index: int) -> void:
 	if _detail_label != null:
 		_detail_label.text = ""
 	_reset_overlay_selection()
+
+
+func _apply_instance_add_with_undo(
+	category: String,
+	template_resref: String,
+	x: float,
+	y: float
+) -> void:
+	if _document == null:
+		return
+	var list_field := _document.get_list_field_for_category(category)
+	if list_field.is_empty():
+		_status_text = "Unknown GIT category: %s." % category
+		_refresh_status()
+		return
+	var expected_index := _document.get_struct_list_array(list_field).size()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Add GIT instance", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_instance_add", category, template_resref, x, y)
+		ur.add_undo_method(self, "_exec_instance_remove", category, expected_index)
+		ur.commit_action()
+	else:
+		_exec_instance_add(category, template_resref, x, y)
+
+
+func _apply_instance_remove_with_undo(category: String, index: int) -> void:
+	if _document == null:
+		return
+	var snapshot := _document.capture_instance_snapshot(category, index)
+	if snapshot.is_empty():
+		_status_text = "Failed to remove %s #%d." % [category, index]
+		_refresh_status()
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Remove GIT instance", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_instance_remove", category, index)
+		ur.add_undo_method(self, "_exec_instance_restore_snapshot", snapshot)
+		ur.commit_action()
+	else:
+		_exec_instance_remove(category, index)
+
+
+func _exec_instance_add(category: String, template_resref: String, x: float, y: float) -> void:
+	if _document == null:
+		return
+	var index := _document.add_instance(category, template_resref, x, y)
+	if index < 0:
+		return
+	_select_instance(category, index)
+
+
+func _exec_instance_remove(category: String, index: int) -> void:
+	if _document == null:
+		return
+	if not _document.remove_instance(category, index):
+		return
+	if _detail_label != null:
+		_detail_label.text = ""
+	_reset_overlay_selection()
+
+
+func _exec_instance_restore_snapshot(snapshot: Dictionary) -> void:
+	if _document == null:
+		return
+	if not _document.restore_instance_snapshot(snapshot):
+		return
+	var category := str(snapshot.get("category", ""))
+	var index := int(snapshot.get("index", -1))
+	_select_instance(category, index)
 
 
 func _apply_path_point_add_with_undo(x: float, y: float) -> void:

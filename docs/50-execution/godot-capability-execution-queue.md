@@ -137,12 +137,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q121 | Resource browser WOK/MDL install copy to override | Resource browser **Batch Copy Install WOK/MDL to Override...** wired to Q120 importers with GameFS refresh; headless browser button tests. |
 | Q122 | Module/MDL compare with override toolbar parity | Module Designer **Compare Walkmesh with Override...** + Model Editor **Compare MDL with Override...** via `KotorModdingPipeline.compare_gamefs_resource`; headless toolbar tests. |
 | Q123 | Module/MDL compare report export toolbar parity | **Export Compare Report...** in Module Designer + Model Editor after compare; uses `export_compare_result_to_path`; headless toolbar tests. |
+| Q124 | Module Designer GIT instance CRUD | **Add Instance…** / **Remove Instance** toolbar actions with category+template dialog, map placement, undo-safe typed mutation, install-ready persistence; headless `test_module_designer_git_instance_crud.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q123 shipped compare report export toolbar parity in Module Designer + Model Editor. | Next: module/area designer parity wave or next matrix backlog item. |
+| Q125 | UTP typed parity expansion | Ship trap scalar and script hook typed helpers on UTP blueprints. | Q124 GIT instance CRUD shipped with headless CRUD + install roundtrip tests green. | Per `docs/plans/2026-06-03-001-feat-utp-typed-parity-expansion-plan.md`. |
 
 ## Next Slices (Deferred)
 

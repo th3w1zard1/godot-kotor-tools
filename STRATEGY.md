@@ -1,6 +1,6 @@
 ---
 name: KotOR Tools
-last_updated: 2026-05-24
+last_updated: 2026-06-10
 ---
 
 # KotOR Tools Strategy
@@ -28,7 +28,7 @@ We commit to a Godot-native, install-aware workspace where parser/importer/edito
 
 ### Phase 2 Capability Expansion
 
-**Status:** Active (Q1–Q12 shipped)
+**Status:** Active (Q1–Q123 shipped on `main`; Q124+ in progress)
 
 Deliver vertical capability slices that combine editor ergonomics, mutation safety, and native Godot integration. Each slice lands parser/importer/editor/write-back parity for a format family or major editing surface.
 

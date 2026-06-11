@@ -169,6 +169,14 @@ func get_struct_list(name: String) -> Array[Dictionary]:
 	return result
 
 
+## Live backing array for a root-level struct list field (mutations visible to callers).
+func get_struct_list_array(name: String) -> Array:
+	var value = get_field(name, null)
+	if value == null or typeof(value) != TYPE_ARRAY:
+		return []
+	return value as Array
+
+
 func get_locstring(name: String) -> Dictionary:
 	var value = get_field(name, {})
 	if typeof(value) != TYPE_DICTIONARY:
@@ -235,9 +243,9 @@ func set_field_at_path(path: Array, value: Variant) -> bool:
 
 
 func insert_struct_at_array(array_field_name: String, index: int, struct_value: Dictionary) -> bool:
-	if not _root.has(array_field_name):
+	var array = get_struct_list_array(array_field_name)
+	if array.is_empty() and not _root.has(array_field_name):
 		return false
-	var array = _root[array_field_name]
 	if typeof(array) != TYPE_ARRAY:
 		return false
 	var arr := array as Array
@@ -249,9 +257,9 @@ func insert_struct_at_array(array_field_name: String, index: int, struct_value: 
 
 
 func remove_struct_from_array(array_field_name: String, index: int) -> bool:
-	if not _root.has(array_field_name):
+	var array = get_struct_list_array(array_field_name)
+	if array.is_empty() and not _root.has(array_field_name):
 		return false
-	var array = _root[array_field_name]
 	if typeof(array) != TYPE_ARRAY:
 		return false
 	var arr := array as Array
