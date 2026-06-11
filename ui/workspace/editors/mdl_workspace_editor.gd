@@ -3,6 +3,7 @@ extends "./kotor_workspace_editor.gd"
 class_name KotorMDLWorkspaceEditor
 
 const MdlBatchExporter := preload("../../../formats/mdl_batch_exporter.gd")
+const MdlGamefsBatchImporter := preload("../../../formats/mdl_gamefs_batch_importer.gd")
 const MdlModelMetadataHelper := preload("../../../editor/tools/mdl_model_metadata_helper.gd")
 const MdlPreviewViewport := preload("../panels/mdl_preview_viewport.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
@@ -174,6 +175,11 @@ func _build_ui() -> void:
 	batch_copy_btn.pressed.connect(_batch_copy_mdl_folder)
 	_toolbar.add_child(batch_copy_btn)
 
+	var batch_import_btn := Button.new()
+	batch_import_btn.text = "Batch Import MDL Folder to Override..."
+	batch_import_btn.pressed.connect(_batch_import_mdl_folder_to_override)
+	_toolbar.add_child(batch_import_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -344,6 +350,35 @@ func _run_batch_copy_mdl_folder(source_dir: String, output_dir: String) -> void:
 	var result := MdlBatchExporter.batch_directory(source_dir, output_dir)
 	_status_text = MdlBatchExporter.format_report(result)
 	_refresh_status()
+
+
+func _batch_import_mdl_folder_to_override() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch import."
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select MDL source folder for override import"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(source_dir: String) -> void:
+		_run_batch_import_mdl_folder_to_override(gamefs, source_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_import_mdl_folder_to_override(gamefs: RefCounted, source_dir: String) -> void:
+	var result := MdlGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir)
+	_status_text = MdlGamefsBatchImporter.format_report(result)
+	_refresh_status()
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_gamefs()
 
 
 func _show_preflight_dialog(preview: Dictionary) -> void:

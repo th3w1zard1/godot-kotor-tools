@@ -160,6 +160,7 @@ func _test_mdl_editor_toolbar_buttons() -> bool:
 	assert(_find_button(editor, "Export MDL...") != null)
 	assert(_find_button(editor, "Install MDL to Override") != null)
 	assert(_find_button(editor, "Batch Copy MDL Folder...") != null)
+	assert(_find_button(editor, "Batch Import MDL Folder to Override...") != null)
 	holder.queue_free()
 	await process_frame
 	print("✓ MDL editor toolbar buttons passed")
