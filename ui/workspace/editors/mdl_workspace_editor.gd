@@ -3,6 +3,7 @@ extends "./kotor_workspace_editor.gd"
 class_name KotorMDLWorkspaceEditor
 
 const MdlModelMetadataHelper := preload("../../../editor/tools/mdl_model_metadata_helper.gd")
+const MdlPreviewViewport := preload("../panels/mdl_preview_viewport.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
@@ -10,6 +11,7 @@ const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 var _toolbar: HBoxContainer
 var _path_label: Label
 var _meta_label: RichTextLabel
+var _preview_viewport: MdlPreviewViewport
 var _export_mdx_btn: Button
 var _preflight_dialog: KotorPreflightDialog
 
@@ -176,12 +178,30 @@ func _build_ui() -> void:
 	_meta_label.scroll_active = false
 	add_child(_meta_label)
 
+	_preview_viewport = MdlPreviewViewport.new()
+	_preview_viewport.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(_preview_viewport)
+
 	_refresh_status()
 
 
 func _refresh_view() -> void:
 	_refresh_metadata()
+	_refresh_preview()
 	_refresh_status()
+
+
+func _refresh_preview() -> void:
+	if _preview_viewport == null:
+		return
+	if _mdl_bytes.is_empty():
+		_preview_viewport.clear_preview()
+		return
+	var metadata := MdlModelMetadataHelper.summarize_bytes(_mdl_bytes, _mdx_bytes)
+	if not metadata.get("ok", false):
+		_preview_viewport.clear_preview()
+		return
+	_preview_viewport.set_mdl_bytes(_mdl_bytes, _mdx_bytes)
 
 
 func _refresh_metadata() -> void:

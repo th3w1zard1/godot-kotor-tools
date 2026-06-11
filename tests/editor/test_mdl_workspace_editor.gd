@@ -3,6 +3,7 @@ extends SceneTree
 
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const KotorMDLWorkspaceEditor := preload("../../ui/workspace/editors/mdl_workspace_editor.gd")
+const MdlPreviewViewport := preload("../../ui/workspace/panels/mdl_preview_viewport.gd")
 const KotorResourceLocator := preload("../../editor/navigation/kotor_resource_locator.gd")
 const MDLParser := preload("../../formats/mdl_parser.gd")
 
@@ -19,6 +20,7 @@ func _run_tests() -> void:
 	await _test_open_valid_mdl_bytes()
 	await _test_invalid_mdl_bytes()
 	await _test_mdx_button_visibility()
+	await _test_mdl_preview_viewport()
 	_test_resource_locator_mdl_metadata()
 	var button_ok := await _test_mdl_editor_toolbar_buttons()
 	_cleanup()
@@ -98,6 +100,38 @@ func _test_mdx_button_visibility() -> void:
 	holder.queue_free()
 	await process_frame
 	print("✓ MDL editor MDX button visibility passed")
+
+
+func _test_mdl_preview_viewport() -> void:
+	var editor := KotorMDLWorkspaceEditor.new()
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(editor)
+	await process_frame
+
+	var mdl_bytes := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(3.0, 0.0, 0.0), Vector3(0.0, 3.0, 0.0)],
+		[0, 1, 2]
+	)
+	editor.open_mdl_bytes(mdl_bytes, "", "preview.mdl")
+	await process_frame
+
+	var preview: MdlPreviewViewport = null
+	for child in editor.get_children():
+		if child is MdlPreviewViewport:
+			preview = child
+			break
+	assert(preview != null)
+	assert(preview.has_valid_mesh())
+	assert(preview.get_triangle_count() == 1)
+	assert(preview.get_orbit_distance() > 0.0)
+
+	editor.open_mdl_bytes("bad".to_utf8_buffer())
+	await process_frame
+	assert(not preview.has_valid_mesh())
+	holder.queue_free()
+	await process_frame
+	print("✓ MDL editor 3D preview passed")
 
 
 func _test_resource_locator_mdl_metadata() -> void:
