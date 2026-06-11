@@ -17,8 +17,10 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_batch_install_dry_run()
 	_test_batch_install_writes_tpc()
+	_test_batch_install_writes_dxt1()
+	_test_batch_install_writes_dxt5()
 	_test_skip_existing()
-	var button_ok := await _test_tpc_editor_batch_install_import_button()
+	var button_ok := await _test_tpc_editor_batch_install_import_buttons()
 	if not button_ok:
 		push_error("TPC editor install batch import button test failed")
 		quit(1)
@@ -59,6 +61,40 @@ func _test_batch_install_writes_tpc() -> void:
 	print("✓ GameFS batch install import write passed")
 
 
+func _test_batch_install_writes_dxt1() -> void:
+	var install_root := _make_install_root()
+	_seed_install_images(install_root)
+	var gamefs := _build_gamefs(install_root)
+	var result := TpcGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"encoding": "dxt1",
+	})
+	assert(result.get("ok", false))
+
+	var override_dir := install_root.path_join("override")
+	var metadata := TPCReader.read_metadata(FileAccess.get_file_as_bytes(override_dir.path_join("tex_a.tpc")))
+	assert(metadata.get("ok", false))
+	assert(int(metadata.get("encoding", -1)) == TPCReader.ENC_DXT1)
+	_cleanup(install_root)
+	print("✓ GameFS batch install import DXT1 passed")
+
+
+func _test_batch_install_writes_dxt5() -> void:
+	var install_root := _make_install_root()
+	_seed_install_images(install_root)
+	var gamefs := _build_gamefs(install_root)
+	var result := TpcGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"encoding": "dxt5",
+	})
+	assert(result.get("ok", false))
+
+	var override_dir := install_root.path_join("override")
+	var metadata := TPCReader.read_metadata(FileAccess.get_file_as_bytes(override_dir.path_join("tex_b.tpc")))
+	assert(metadata.get("ok", false))
+	assert(int(metadata.get("encoding", -1)) == TPCReader.ENC_DXT5)
+	_cleanup(install_root)
+	print("✓ GameFS batch install import DXT5 passed")
+
+
 func _test_skip_existing() -> void:
 	var install_root := _make_install_root()
 	_seed_install_images(install_root)
@@ -76,18 +112,19 @@ func _test_skip_existing() -> void:
 	print("✓ GameFS batch import skip-existing passed")
 
 
-func _test_tpc_editor_batch_install_import_button() -> bool:
+func _test_tpc_editor_batch_install_import_buttons() -> bool:
 	var editor := KotorTPCWorkspaceEditor.new()
 	var holder := Node.new()
 	root.add_child(holder)
 	holder.add_child(editor)
 	await process_frame
 
-	var button := _find_button(editor, "Batch Import Install TGA/PNG→TPC...")
-	assert(button != null)
+	assert(_find_button(editor, "Batch Import Install TGA/PNG→TPC...") != null)
+	assert(_find_button(editor, "Batch Import Install DXT1...") != null)
+	assert(_find_button(editor, "Batch Import Install DXT5...") != null)
 	holder.queue_free()
 	await process_frame
-	print("✓ TPC editor install batch import button passed")
+	print("✓ TPC editor install batch import buttons passed")
 	return true
 
 

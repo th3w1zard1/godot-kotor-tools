@@ -12,6 +12,7 @@ static func batch_install_to_override(
 	var skip_existing := bool(options.get("skip_existing", true))
 	var dry_run := bool(options.get("dry_run", false))
 	var alpha_test := float(options.get("alpha_test", 0.0))
+	var encoding := str(options.get("encoding", "rgba")).to_lower()
 	var source_filter := str(options.get("source_filter", "override")).strip_edges().to_lower()
 	var query := str(options.get("query", "")).strip_edges()
 	var limit := int(options.get("limit", 0))
@@ -55,7 +56,10 @@ static func batch_install_to_override(
 			})
 			continue
 
-		var result := TpcBatchConverter.convert_from_image_file(image_path, {"alpha_test": alpha_test})
+		var result := TpcBatchConverter.convert_from_image_file(image_path, {
+			"alpha_test": alpha_test,
+			"encoding": encoding,
+		})
 		if not result.get("ok", false):
 			failed.append({
 				"resref": resref,
@@ -81,6 +85,7 @@ static func batch_install_to_override(
 			"tpc_path": tpc_path,
 			"width": int(result.get("width", 0)),
 			"height": int(result.get("height", 0)),
+			"encoding": str(result.get("encoding", encoding)),
 		})
 
 	return {

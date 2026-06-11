@@ -192,6 +192,16 @@ func _build_ui() -> void:
 	batch_install_import_btn.pressed.connect(_batch_import_install_tpc)
 	_toolbar.add_child(batch_install_import_btn)
 
+	var batch_install_import_dxt1_btn := Button.new()
+	batch_install_import_dxt1_btn.text = "Batch Import Install DXT1..."
+	batch_install_import_dxt1_btn.pressed.connect(_batch_import_install_dxt1)
+	_toolbar.add_child(batch_install_import_dxt1_btn)
+
+	var batch_install_import_dxt5_btn := Button.new()
+	batch_install_import_dxt5_btn.text = "Batch Import Install DXT5..."
+	batch_install_import_dxt5_btn.pressed.connect(_batch_import_install_dxt5)
+	_toolbar.add_child(batch_install_import_dxt5_btn)
+
 	var save_btn := Button.new()
 	save_btn.text = "Save TPC"
 	save_btn.pressed.connect(_save_tpc)
@@ -454,17 +464,30 @@ func _run_batch_install_export(gamefs: RefCounted, output_dir: String) -> void:
 
 
 func _batch_import_install_tpc() -> void:
+	_run_batch_import_install_with_encoding("rgba")
+
+
+func _batch_import_install_dxt1() -> void:
+	_run_batch_import_install_with_encoding("dxt1")
+
+
+func _batch_import_install_dxt5() -> void:
+	_run_batch_import_install_with_encoding("dxt5")
+
+
+func _run_batch_import_install_with_encoding(encoding: String) -> void:
 	var gamefs := _resolve_gamefs()
 	if gamefs == null:
 		_status_text = "Configure a valid game install before batch import."
 		_refresh_status()
 		return
-	_run_batch_install_import(gamefs)
+	_run_batch_install_import(gamefs, encoding)
 
 
-func _run_batch_install_import(gamefs: RefCounted) -> void:
+func _run_batch_install_import(gamefs: RefCounted, encoding: String = "rgba") -> void:
 	var result := TpcGamefsBatchImporter.batch_install_to_override(gamefs, {
 		"source_filter": "override",
+		"encoding": encoding,
 	})
 	_apply_batch_export_status(result, "Install batch TPC import finished.")
 	if not (result.get("generated", []) as Array).is_empty():
