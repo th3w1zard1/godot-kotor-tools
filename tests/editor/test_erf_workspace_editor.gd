@@ -16,6 +16,7 @@ var _install_root := ""
 func _initialize() -> void:
 	_install_root = ProjectSettings.globalize_path("user://erf_workspace_editor_test")
 	DirAccess.make_dir_recursive_absolute(_install_root.path_join("override"))
+	DirAccess.make_dir_recursive_absolute(_install_root.path_join("modules"))
 	call_deferred("_run_tests")
 
 
@@ -28,6 +29,8 @@ func _run_tests() -> void:
 	await _test_replace_member()
 	await _test_compare_member_toolbar_buttons()
 	await _test_compare_member_with_override()
+	await _test_install_archive_to_modules()
+	_test_install_sav_to_modules_blocked()
 	_cleanup()
 	print("✓ ERF workspace editor tests passed")
 	quit()
@@ -189,6 +192,36 @@ func _test_compare_member_with_override() -> void:
 	assert(export_result.get("ok", false), str(export_result))
 	assert(FileAccess.file_exists("%s.txt" % report_path))
 	print("✓ ERF compare member with override passed")
+
+
+func _test_install_archive_to_modules() -> void:
+	var editor := _build_editor()
+	editor.open_archive_bytes("deploy_module.mod", _build_test_mod_bytes(), "")
+	await process_frame
+
+	var target_path := _install_root.path_join("modules").path_join("deploy_module.mod")
+	if FileAccess.file_exists(target_path):
+		DirAccess.remove_absolute(target_path)
+
+	var result := editor.install_archive_to_modules()
+	assert(result.get("applied", false), str(result))
+	assert(FileAccess.file_exists(target_path))
+	var file := FileAccess.open(target_path, FileAccess.READ)
+	var bytes := file.get_buffer(file.get_length())
+	file.close()
+	assert(bytes.size() > 0)
+	print("✓ ERF install archive to modules passed")
+
+
+func _test_install_sav_to_modules_blocked() -> void:
+	var editor := _build_editor()
+	var sav_bytes := ERFWriter.build("SAV ", [
+		{"resref": "save", "extension": "ifo", "bytes": PackedByteArray([0x01, 0x02])},
+	])
+	editor.open_archive_bytes("quicksave.sav", sav_bytes, "")
+	var result := editor.install_archive_to_modules()
+	assert(not result.get("ok", true))
+	print("✓ ERF install SAV to modules blocked passed")
 
 
 func _test_invalid_extract_file_name() -> void:

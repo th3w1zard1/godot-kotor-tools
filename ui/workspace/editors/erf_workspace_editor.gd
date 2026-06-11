@@ -6,12 +6,14 @@ signal member_open_requested(resref: String, extension: String, payload: PackedB
 
 const ERFParser := preload("../../../formats/erf_parser.gd")
 const KotorErfDocument := preload("../../../resources/documents/kotor_erf_document.gd")
+const KotorIndoorModuleInstaller := preload("../../../resources/indoor/kotor_indoor_module_installer.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorModdingPipeline := preload("../../../editor/modding/kotor_modding_pipeline.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 
 const ARCHIVE_EXTENSIONS := ["erf", "rim", "mod", "sav"]
+const MODULE_INSTALL_EXTENSIONS := ["erf", "rim", "mod"]
 
 var _toolbar: HBoxContainer
 var _path_label: Label
@@ -40,6 +42,10 @@ var _last_compare_result: Dictionary = {}
 
 static func archive_extension_allowed(extension: String) -> bool:
 	return ARCHIVE_EXTENSIONS.has(extension.strip_edges().to_lower())
+
+
+static func modules_install_allowed(extension: String) -> bool:
+	return MODULE_INSTALL_EXTENSIONS.has(extension.strip_edges().to_lower())
 
 
 func _on_workspace_setup() -> void:
@@ -224,6 +230,49 @@ func add_member_from_file(path: String) -> Dictionary:
 	return result
 
 
+func install_archive_to_modules() -> Dictionary:
+	if _document == null:
+		return {"ok": false, "message": "No archive is loaded."}
+	var file_name := _current_file_name()
+	var extension := file_name.get_extension().to_lower()
+	if not modules_install_allowed(extension):
+		_status_text = "Only MOD, ERF, and RIM archives can be installed to modules."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var editor_state := get_editor_state()
+	var game_path := ""
+	if editor_state != null:
+		game_path = str(editor_state.get("game_path"))
+	var modules_path := KotorIndoorModuleInstaller.resolve_modules_path(game_path)
+	if modules_path.is_empty():
+		_status_text = "Configure a valid game install with a modules folder."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var target_path := modules_path.path_join(file_name)
+	var payload: Dictionary = _document.serialize_for_pipeline()
+	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, payload)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Install failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "Archive is already up to date in modules")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		var result: Dictionary = _mutation_service.apply_export_to_path(target_path, payload, true)
+		_status_text = _mutation_message(result)
+		if result.get("applied", false):
+			_refresh_gamefs()
+		_refresh_status()
+		return result
+	_preflight_pending_path = target_path
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "install_modules"
+	_show_preflight_dialog(preview)
+	return {}
+
+
 func save_archive_to_path(path: String) -> Dictionary:
 	if _document == null:
 		return {}
@@ -351,6 +400,11 @@ func _build_ui() -> void:
 	export_compare_btn.text = "Export Compare Report..."
 	export_compare_btn.pressed.connect(_export_compare_report_dialog)
 	_toolbar.add_child(export_compare_btn)
+
+	var install_modules_btn := Button.new()
+	install_modules_btn.text = "Install Archive to Modules"
+	install_modules_btn.pressed.connect(install_archive_to_modules)
+	_toolbar.add_child(install_modules_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -554,6 +608,16 @@ func _on_preflight_proceed() -> void:
 			_document.mark_clean()
 			_register_controller_document()
 			_remove_previous_controller_document(previous_key)
+	elif _preflight_pending_kind == "install_modules" and not _preflight_pending_path.is_empty() and _document != null:
+		var payload: Dictionary = _document.serialize_for_pipeline()
+		var result: Dictionary = _mutation_service.apply_export_to_path(
+			_preflight_pending_path,
+			payload,
+			true
+		)
+		_status_text = _mutation_message(result)
+		if result.get("applied", false):
+			_refresh_gamefs()
 	elif _preflight_pending_kind == "install_entry" and _preflight_pending_entry_index >= 0 and _document != null:
 		var file_name := _document.entry_file_name(_preflight_pending_entry_index)
 		var payload := _document.get_entry_payload(_preflight_pending_entry_index)
