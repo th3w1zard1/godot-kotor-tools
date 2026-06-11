@@ -347,7 +347,9 @@ func _prompt_batch_copy_output_dir(source_dir: String) -> void:
 
 
 func _run_batch_copy_mdl_folder(source_dir: String, output_dir: String) -> void:
-	var result := MdlBatchExporter.batch_directory(source_dir, output_dir)
+	var result := MdlBatchExporter.batch_directory(source_dir, output_dir, {
+		"recursive": true,
+	})
 	_status_text = MdlBatchExporter.format_report(result)
 	_refresh_status()
 
@@ -374,7 +376,9 @@ func _batch_import_mdl_folder_to_override() -> void:
 
 
 func _run_batch_import_mdl_folder_to_override(gamefs: RefCounted, source_dir: String) -> void:
-	var result := MdlGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir)
+	var result := MdlGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir, {
+		"recursive": true,
+	})
 	_status_text = MdlGamefsBatchImporter.format_report(result)
 	_refresh_status()
 	if not (result.get("generated", []) as Array).is_empty():

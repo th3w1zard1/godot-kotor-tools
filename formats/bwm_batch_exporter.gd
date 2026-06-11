@@ -1,17 +1,16 @@
-## Batch WOK copy from a flat filesystem folder.
+## Batch WOK copy from a flat or recursive filesystem folder.
 class_name BwmBatchExporter
 
+const BatchDirectoryScanner := preload("batch_directory_scanner.gd")
 const BwmGamefsBatchExporter := preload("bwm_gamefs_batch_exporter.gd")
 const BwmMetadataHelper := preload("../editor/tools/bwm_metadata_helper.gd")
 
-const WALKMESH_SOURCE_EXTENSIONS := {
-	"wok": true,
-	"bwm": true,
-}
+const WALKMESH_SOURCE_EXTENSIONS := ["wok", "bwm"]
 const WALKMESH_OUTPUT_EXTENSION := "wok"
 
 
 ## Copy each `.wok` or `.bwm` in `source_dir` to `{resref}.wok` in `output_dir`.
+## Options: `skip_existing`, `dry_run`, `include_metadata`, `recursive`.
 static func batch_directory(
 		source_dir: String,
 		output_dir: String,
@@ -20,35 +19,36 @@ static func batch_directory(
 	var skip_existing := bool(options.get("skip_existing", true))
 	var dry_run := bool(options.get("dry_run", false))
 	var include_metadata := bool(options.get("include_metadata", true))
+	var recursive := bool(options.get("recursive", false))
 
 	if source_dir.is_empty() or not DirAccess.dir_exists_absolute(source_dir):
 		return {"ok": false, "message": "Source directory not found: %s" % source_dir}
 	if output_dir.is_empty() or not DirAccess.dir_exists_absolute(output_dir):
 		return {"ok": false, "message": "Output directory not found: %s" % output_dir}
 
-	var dir := DirAccess.open(source_dir)
-	if dir == null:
-		return {"ok": false, "message": "Failed to open source directory: %s" % source_dir}
-
-	dir.list_dir_begin()
+	var source_paths := BatchDirectoryScanner.list_files(
+		source_dir,
+		PackedStringArray(WALKMESH_SOURCE_EXTENSIONS),
+		recursive
+	)
 	var generated: Array[Dictionary] = []
 	var skipped: Array[Dictionary] = []
 	var failed: Array[Dictionary] = []
+	var seen_resrefs: Dictionary = {}
 
-	while true:
-		var entry_name := dir.get_next()
-		if entry_name.is_empty():
-			break
-		if dir.current_is_dir():
+	for source_wok in source_paths:
+		var resref := source_wok.get_file().get_basename()
+		if recursive and seen_resrefs.has(resref):
+			failed.append({
+				"resref": resref,
+				"source_wok": source_wok,
+				"wok_path": output_dir.path_join("%s.%s" % [resref, WALKMESH_OUTPUT_EXTENSION]),
+				"message": "Duplicate resref across subfolders: %s" % resref,
+			})
 			continue
-		var extension := entry_name.get_extension().to_lower()
-		if not WALKMESH_SOURCE_EXTENSIONS.get(extension, false):
-			continue
+		seen_resrefs[resref] = source_wok
 
-		var resref := entry_name.get_basename()
-		var source_wok := source_dir.path_join(entry_name)
 		var dest_wok := output_dir.path_join("%s.%s" % [resref, WALKMESH_OUTPUT_EXTENSION])
-
 		if skip_existing and FileAccess.file_exists(dest_wok):
 			skipped.append({
 				"resref": resref,
@@ -90,8 +90,6 @@ static func batch_directory(
 				record["walkable_face_count"] = int(metadata.get("walkable_face_count", 0))
 				record["metadata_summary"] = BwmMetadataHelper.format_summary(metadata)
 		generated.append(record)
-
-	dir.list_dir_end()
 
 	return {
 		"ok": failed.is_empty() or not generated.is_empty(),

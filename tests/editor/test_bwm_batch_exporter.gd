@@ -19,6 +19,8 @@ func _run_tests() -> void:
 	_test_bwm_alias_dry_run()
 	_test_bwm_alias_writes_wok()
 	_test_bwm_alias_skip_existing()
+	_test_batch_directory_recursive()
+	_test_batch_directory_duplicate_resref()
 	var button_ok := await _test_module_designer_batch_copy_button()
 	if not button_ok:
 		push_error("BWM batch exporter toolbar test failed")
@@ -132,6 +134,57 @@ func _test_skip_existing() -> void:
 	_cleanup(source_root)
 	_cleanup(output_root)
 	print("✓ WOK folder batch skip-existing passed")
+
+
+func _test_batch_directory_recursive() -> void:
+	var source_root := _make_dir("recursive_source")
+	var output_root := _make_dir("recursive_output")
+	var nested := source_root.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+	_write_file(source_root.path_join("root.wok"), _build_minimal_wok(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2],
+		[1]
+	))
+	_write_file(nested.path_join("nested.wok"), _build_minimal_wok(
+		[Vector3(1.0, 0.0, 0.0), Vector3(3.0, 0.0, 0.0), Vector3(1.0, 2.0, 0.0)],
+		[0, 1, 2],
+		[1]
+	))
+
+	var result := BwmBatchExporter.batch_directory(source_root, output_root, {
+		"recursive": true,
+	})
+	assert(result.get("ok", false))
+	assert(int((result.get("generated", []) as Array).size()) == 2)
+	assert(FileAccess.file_exists(output_root.path_join("root.wok")))
+	assert(FileAccess.file_exists(output_root.path_join("nested.wok")))
+	_cleanup(source_root)
+	_cleanup(output_root)
+	print("✓ WOK folder batch recursive passed")
+
+
+func _test_batch_directory_duplicate_resref() -> void:
+	var source_root := _make_dir("duplicate_source")
+	var output_root := _make_dir("duplicate_output")
+	DirAccess.make_dir_recursive_absolute(source_root.path_join("a"))
+	DirAccess.make_dir_recursive_absolute(source_root.path_join("b"))
+	var wok := _build_minimal_wok(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2],
+		[1]
+	)
+	_write_file(source_root.path_join("a").path_join("same.wok"), wok)
+	_write_file(source_root.path_join("b").path_join("same.wok"), wok)
+
+	var result := BwmBatchExporter.batch_directory(source_root, output_root, {
+		"recursive": true,
+	})
+	assert(int((result.get("generated", []) as Array).size()) == 1)
+	assert(int((result.get("failed", []) as Array).size()) == 1)
+	_cleanup(source_root)
+	_cleanup(output_root)
+	print("✓ WOK folder batch duplicate resref passed")
 
 
 func _test_module_designer_batch_copy_button() -> bool:

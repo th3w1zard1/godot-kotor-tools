@@ -19,6 +19,7 @@ func _run_tests() -> void:
 	_test_batch_folder_import_writes_override()
 	_test_skip_existing()
 	_test_bwm_alias_import_writes_override()
+	_test_batch_folder_import_recursive()
 	var button_ok := await _test_module_designer_batch_import_button()
 	if not button_ok:
 		push_error("BWM GameFS batch importer toolbar test failed")
@@ -102,6 +103,37 @@ func _test_skip_existing() -> void:
 	_cleanup(install_root)
 	_cleanup(source_root)
 	print("✓ GameFS batch WOK import skip-existing passed")
+
+
+func _test_batch_folder_import_recursive() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	var nested := source_root.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+	var wok_root := _build_minimal_wok(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2],
+		[1]
+	)
+	var wok_nested := _build_minimal_wok(
+		[Vector3(1.0, 0.0, 0.0), Vector3(3.0, 0.0, 0.0), Vector3(1.0, 2.0, 0.0)],
+		[0, 1, 2],
+		[1]
+	)
+	_write_file(source_root.path_join("root.wok"), wok_root)
+	_write_file(nested.path_join("nested.wok"), wok_nested)
+	var gamefs := _build_gamefs(install_root)
+
+	var result := BwmGamefsBatchImporter.batch_folder_to_override(gamefs, source_root, {
+		"recursive": true,
+	})
+	assert(result.get("ok", false))
+	var override_dir := install_root.path_join("override")
+	assert(FileAccess.file_exists(override_dir.path_join("root.wok")))
+	assert(FileAccess.file_exists(override_dir.path_join("nested.wok")))
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch WOK folder import recursive passed")
 
 
 func _test_module_designer_batch_import_button() -> bool:

@@ -16,6 +16,8 @@ func _run_tests() -> void:
 	_test_batch_directory_dry_run()
 	_test_batch_directory_writes_mdl_and_mdx()
 	_test_skip_existing()
+	_test_batch_directory_recursive()
+	_test_batch_directory_duplicate_resref()
 	var button_ok := await _test_mdl_editor_batch_copy_button()
 	if not button_ok:
 		push_error("MDL batch exporter toolbar test failed")
@@ -76,6 +78,58 @@ func _test_skip_existing() -> void:
 	_cleanup(source_root)
 	_cleanup(output_root)
 	print("✓ MDL folder batch skip-existing passed")
+
+
+func _test_batch_directory_recursive() -> void:
+	var source_root := _make_dir("recursive_source")
+	var output_root := _make_dir("recursive_output")
+	var nested := source_root.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+	var mdl_root := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2]
+	)
+	var mdl_nested := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0)],
+		[0, 1, 2]
+	)
+	_write_file(source_root.path_join("root.mdl"), mdl_root)
+	_write_file(nested.path_join("nested.mdl"), mdl_nested)
+	_write_file(nested.path_join("nested.mdx"), PackedByteArray([0x01, 0x02]))
+
+	var result := MdlBatchExporter.batch_directory(source_root, output_root, {
+		"recursive": true,
+	})
+	assert(result.get("ok", false))
+	assert(int((result.get("generated", []) as Array).size()) == 2)
+	assert(FileAccess.file_exists(output_root.path_join("root.mdl")))
+	assert(FileAccess.file_exists(output_root.path_join("nested.mdl")))
+	assert(FileAccess.file_exists(output_root.path_join("nested.mdx")))
+	_cleanup(source_root)
+	_cleanup(output_root)
+	print("✓ MDL folder batch recursive passed")
+
+
+func _test_batch_directory_duplicate_resref() -> void:
+	var source_root := _make_dir("duplicate_source")
+	var output_root := _make_dir("duplicate_output")
+	DirAccess.make_dir_recursive_absolute(source_root.path_join("a"))
+	DirAccess.make_dir_recursive_absolute(source_root.path_join("b"))
+	var mdl := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2]
+	)
+	_write_file(source_root.path_join("a").path_join("same.mdl"), mdl)
+	_write_file(source_root.path_join("b").path_join("same.mdl"), mdl)
+
+	var result := MdlBatchExporter.batch_directory(source_root, output_root, {
+		"recursive": true,
+	})
+	assert(int((result.get("generated", []) as Array).size()) == 1)
+	assert(int((result.get("failed", []) as Array).size()) == 1)
+	_cleanup(source_root)
+	_cleanup(output_root)
+	print("✓ MDL folder batch duplicate resref passed")
 
 
 func _test_mdl_editor_batch_copy_button() -> bool:

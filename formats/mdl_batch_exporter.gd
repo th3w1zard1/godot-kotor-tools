@@ -1,11 +1,15 @@
-## Batch MDL copy from a flat filesystem folder (with optional MDX sidecar).
+## Batch MDL copy from a flat or recursive filesystem folder (with optional MDX sidecar).
 class_name MdlBatchExporter
 
+const BatchDirectoryScanner := preload("batch_directory_scanner.gd")
 const MdlGamefsBatchExporter := preload("mdl_gamefs_batch_exporter.gd")
 const MdlModelMetadataHelper := preload("../editor/tools/mdl_model_metadata_helper.gd")
 
+const SUPPORTED_EXTENSIONS := ["mdl"]
+
 
 ## Copy each `.mdl` in `source_dir` to `output_dir`, including paired `.mdx` when present.
+## Options: `skip_existing`, `dry_run`, `include_metadata`, `recursive`.
 static func batch_directory(
 		source_dir: String,
 		output_dir: String,
@@ -14,35 +18,38 @@ static func batch_directory(
 	var skip_existing := bool(options.get("skip_existing", true))
 	var dry_run := bool(options.get("dry_run", false))
 	var include_metadata := bool(options.get("include_metadata", true))
+	var recursive := bool(options.get("recursive", false))
 
 	if source_dir.is_empty() or not DirAccess.dir_exists_absolute(source_dir):
 		return {"ok": false, "message": "Source directory not found: %s" % source_dir}
 	if output_dir.is_empty() or not DirAccess.dir_exists_absolute(output_dir):
 		return {"ok": false, "message": "Output directory not found: %s" % output_dir}
 
-	var dir := DirAccess.open(source_dir)
-	if dir == null:
-		return {"ok": false, "message": "Failed to open source directory: %s" % source_dir}
-
-	dir.list_dir_begin()
+	var mdl_paths := BatchDirectoryScanner.list_files(
+		source_dir,
+		PackedStringArray(SUPPORTED_EXTENSIONS),
+		recursive
+	)
 	var generated: Array[Dictionary] = []
 	var skipped: Array[Dictionary] = []
 	var failed: Array[Dictionary] = []
+	var seen_resrefs: Dictionary = {}
 
-	while true:
-		var entry_name := dir.get_next()
-		if entry_name.is_empty():
-			break
-		if dir.current_is_dir():
+	for source_mdl in mdl_paths:
+		var resref := source_mdl.get_file().get_basename()
+		if recursive and seen_resrefs.has(resref):
+			failed.append({
+				"resref": resref,
+				"source_mdl": source_mdl,
+				"mdl_path": output_dir.path_join("%s.mdl" % resref),
+				"message": "Duplicate resref across subfolders: %s" % resref,
+			})
 			continue
-		if entry_name.get_extension().to_lower() != "mdl":
-			continue
+		seen_resrefs[resref] = source_mdl
 
-		var resref := entry_name.get_basename()
-		var source_mdl := source_dir.path_join(entry_name)
-		var source_mdx := "%s.mdx" % source_mdl.get_basename()
-		var dest_mdl := output_dir.path_join(entry_name)
+		var dest_mdl := output_dir.path_join("%s.mdl" % resref)
 		var dest_mdx := output_dir.path_join("%s.mdx" % resref)
+		var source_mdx := source_mdl.get_base_dir().path_join("%s.mdx" % resref)
 
 		if skip_existing and FileAccess.file_exists(dest_mdl):
 			skipped.append({
@@ -102,8 +109,6 @@ static func batch_directory(
 				record["face_count"] = int(metadata.get("face_count", 0))
 				record["metadata_summary"] = MdlModelMetadataHelper.format_summary(metadata)
 		generated.append(record)
-
-	dir.list_dir_end()
 
 	return {
 		"ok": failed.is_empty() or not generated.is_empty(),

@@ -18,6 +18,7 @@ func _run_tests() -> void:
 	_test_batch_folder_import_dry_run()
 	_test_batch_folder_import_writes_override()
 	_test_skip_existing()
+	_test_batch_folder_import_recursive()
 	var button_ok := await _test_mdl_editor_batch_import_button()
 	if not button_ok:
 		push_error("MDL GameFS batch importer toolbar test failed")
@@ -83,6 +84,37 @@ func _test_skip_existing() -> void:
 	_cleanup(install_root)
 	_cleanup(source_root)
 	print("✓ GameFS batch MDL import skip-existing passed")
+
+
+func _test_batch_folder_import_recursive() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	var nested := source_root.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+	var mdl_root := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2]
+	)
+	var mdl_nested := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0)],
+		[0, 1, 2]
+	)
+	_write_file(source_root.path_join("root.mdl"), mdl_root)
+	_write_file(nested.path_join("nested.mdl"), mdl_nested)
+	_write_file(nested.path_join("nested.mdx"), PackedByteArray([0x01, 0x02]))
+	var gamefs := _build_gamefs(install_root)
+
+	var result := MdlGamefsBatchImporter.batch_folder_to_override(gamefs, source_root, {
+		"recursive": true,
+	})
+	assert(result.get("ok", false))
+	var override_dir := install_root.path_join("override")
+	assert(FileAccess.file_exists(override_dir.path_join("root.mdl")))
+	assert(FileAccess.file_exists(override_dir.path_join("nested.mdl")))
+	assert(FileAccess.file_exists(override_dir.path_join("nested.mdx")))
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch MDL folder import recursive passed")
 
 
 func _test_mdl_editor_batch_import_button() -> bool:

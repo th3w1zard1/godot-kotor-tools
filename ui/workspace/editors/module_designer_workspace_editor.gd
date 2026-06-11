@@ -1359,7 +1359,9 @@ func _prompt_batch_copy_wok_output_dir(source_dir: String) -> void:
 
 
 func _run_batch_copy_wok_folder(source_dir: String, output_dir: String) -> void:
-	var result := BwmBatchExporter.batch_directory(source_dir, output_dir)
+	var result := BwmBatchExporter.batch_directory(source_dir, output_dir, {
+		"recursive": true,
+	})
 	_status_text = BwmBatchExporter.format_report(result)
 	_refresh_status()
 
@@ -1390,7 +1392,9 @@ func _batch_import_wok_folder_to_override() -> void:
 
 
 func _run_batch_import_wok_folder_to_override(gamefs: RefCounted, source_dir: String) -> void:
-	var result := BwmGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir)
+	var result := BwmGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir, {
+		"recursive": true,
+	})
 	_status_text = BwmGamefsBatchImporter.format_report(result)
 	_refresh_status()
 	if not (result.get("generated", []) as Array).is_empty():
