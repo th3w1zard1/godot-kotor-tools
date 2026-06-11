@@ -461,6 +461,7 @@ func _reencode_loaded_image(encoding: int) -> bool:
 		return false
 
 	var alpha_test := float(_metadata.get("alpha_test", 0.0))
+	var txi_bytes := TPCWriter.read_txi_bytes(_bytes)
 	var new_bytes := PackedByteArray()
 	match encoding:
 		TPCReader.ENC_DXT1:
@@ -476,6 +477,13 @@ func _reencode_loaded_image(encoding: int) -> bool:
 		_status_text = "Failed to re-encode TPC as %s." % _metadata.get("encoding_name", "DXT")
 		_refresh_status()
 		return false
+
+	if not txi_bytes.is_empty():
+		new_bytes = TPCWriter.append_txi_bytes(new_bytes, txi_bytes)
+		if new_bytes.is_empty():
+			_status_text = "Failed to preserve TXI metadata during re-encode."
+			_refresh_status()
+			return false
 
 	_bytes = new_bytes
 	_metadata = TPCReader.read_metadata(_bytes)

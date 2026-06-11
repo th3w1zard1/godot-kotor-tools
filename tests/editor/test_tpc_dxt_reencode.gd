@@ -18,6 +18,8 @@ func _run_tests() -> void:
 	DirAccess.make_dir_recursive_absolute(_test_root)
 	await _test_reencode_dxt1()
 	await _test_reencode_dxt5()
+	await _test_reencode_dxt1_preserves_txi()
+	await _test_reencode_dxt5_preserves_txi()
 	await _test_import_image_as_dxt1()
 	await _test_import_image_as_dxt5()
 	await _test_reencode_toolbar_buttons()
@@ -46,6 +48,28 @@ func _test_reencode_dxt5() -> void:
 	editor.get_parent().queue_free()
 	await process_frame
 	print("✓ TPC editor DXT5 re-encode passed")
+
+
+func _test_reencode_dxt1_preserves_txi() -> void:
+	var editor := await _make_editor_with_rgba_tpc_and_txi("envmap\n")
+	var ok := editor.reencode_loaded_as_dxt1()
+	assert(ok)
+	assert(int(editor.get("_metadata").get("txi_length", 0)) > 0)
+	assert(editor.get_txi_text().contains("envmap"))
+	editor.get_parent().queue_free()
+	await process_frame
+	print("✓ TPC editor DXT1 re-encode preserves TXI passed")
+
+
+func _test_reencode_dxt5_preserves_txi() -> void:
+	var editor := await _make_editor_with_rgba_tpc_and_txi("bumpmap\n")
+	var ok := editor.reencode_loaded_as_dxt5()
+	assert(ok)
+	assert(int(editor.get("_metadata").get("txi_length", 0)) > 0)
+	assert(editor.get_txi_text().contains("bumpmap"))
+	editor.get_parent().queue_free()
+	await process_frame
+	print("✓ TPC editor DXT5 re-encode preserves TXI passed")
 
 
 func _test_import_image_as_dxt1() -> void:
@@ -105,6 +129,20 @@ func _make_editor_with_rgba_tpc() -> KotorTPCWorkspaceEditor:
 		for x in 8:
 			image.set_pixel(x, y, Color(float(x) / 7.0, 0.3, 0.6, 1.0))
 	var bytes := TPCWriter.serialize_rgba(image)
+	return await _spawn_editor(bytes)
+
+
+func _make_editor_with_rgba_tpc_and_txi(txi_text: String) -> KotorTPCWorkspaceEditor:
+	var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	for y in 8:
+		for x in 8:
+			image.set_pixel(x, y, Color(float(x) / 7.0, 0.3, 0.6, 1.0))
+	var bytes := TPCWriter.serialize_rgba(image)
+	bytes = TPCWriter.append_txi_bytes(bytes, txi_text.to_utf8_buffer())
+	return await _spawn_editor(bytes)
+
+
+func _spawn_editor(bytes: PackedByteArray) -> KotorTPCWorkspaceEditor:
 	var editor := KotorTPCWorkspaceEditor.new()
 	var holder := Node.new()
 	root.add_child(holder)
