@@ -16,6 +16,9 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_dimension_diff()
 	_test_payload_diff_same_header()
+	_test_txi_line_diff_same_payload()
+	_test_txi_presence_diff()
+	_test_identical_with_txi_no_report()
 	_test_invalid_bytes_fallback()
 	_test_identical_no_report()
 	_test_pipeline_wiring()
@@ -40,6 +43,32 @@ func _test_payload_diff_same_header() -> void:
 	var report := TPCCompare.build_difference_report(base, mod)
 	assert(report.find("pixel payload differs") >= 0)
 	print("✓ TPC payload diff passed")
+
+
+func _test_txi_line_diff_same_payload() -> void:
+	var pixels := _make_rgba_tpc(4, 4, _solid_pixels(4, 4, 255, 0, 0, 255))
+	var base := TPCWriter.append_txi_bytes(pixels, "envmap\nproceduretype cycle\n".to_utf8_buffer())
+	var mod := TPCWriter.append_txi_bytes(pixels, "bumpmap\nproceduretype cycle\n".to_utf8_buffer())
+	var report := TPCCompare.build_difference_report(base, mod)
+	assert(not report.is_empty())
+	assert(report.find("TXI line 1: envmap -> bumpmap") >= 0)
+	assert(report.find("pixel payload differs") < 0)
+	print("✓ TPC TXI line diff passed")
+
+
+func _test_txi_presence_diff() -> void:
+	var base := _make_rgba_tpc(4, 4, _solid_pixels(4, 4, 0, 255, 0, 255))
+	var mod := TPCWriter.append_txi_bytes(base, "envmap\n".to_utf8_buffer())
+	var report := TPCCompare.build_difference_report(base, mod)
+	assert(report.find("TXI sidecar: absent -> present") >= 0)
+	print("✓ TPC TXI presence diff passed")
+
+
+func _test_identical_with_txi_no_report() -> void:
+	var base := _make_rgba_tpc(2, 2, _solid_pixels(2, 2, 0, 128, 255, 255))
+	var with_txi := TPCWriter.append_txi_bytes(base, "envmap\n".to_utf8_buffer())
+	assert(TPCCompare.build_difference_report(with_txi, with_txi.duplicate()).is_empty())
+	print("✓ TPC identical with TXI no report passed")
 
 
 func _test_invalid_bytes_fallback() -> void:
