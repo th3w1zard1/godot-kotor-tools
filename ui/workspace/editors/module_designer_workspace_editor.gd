@@ -1009,6 +1009,7 @@ func _select_tree_item(kind: String, category: String, index: int) -> void:
 
 func _reset_overlay_selection() -> void:
 	if _map_view != null:
+		_map_view.set_add_path_point_armed(false)
 		_map_view.set_selection("", -1)
 		_map_view.set_path_point_selection(-1)
 		_map_view.set_path_connection_selection(-1)
