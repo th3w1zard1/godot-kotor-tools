@@ -154,6 +154,11 @@ func _build_ui() -> void:
 	batch_import_btn.pressed.connect(_batch_import_wav_folder_to_override)
 	_toolbar.add_child(batch_import_btn)
 
+	var batch_copy_override_btn := Button.new()
+	batch_copy_override_btn.text = "Batch Copy WAV Folder to Override..."
+	batch_copy_override_btn.pressed.connect(_batch_copy_wav_folder_to_override)
+	_toolbar.add_child(batch_copy_override_btn)
+
 	var batch_install_convert_btn := Button.new()
 	batch_install_convert_btn.text = "Batch Convert Install WAV..."
 	batch_install_convert_btn.pressed.connect(_batch_convert_install_wav)
@@ -290,6 +295,27 @@ func _batch_import_wav_folder_to_override() -> void:
 	dialog.popup_centered_ratio(0.6)
 
 
+func _batch_copy_wav_folder_to_override() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch copy."
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select WAV source folder for override copy"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(source_dir: String) -> void:
+		_run_batch_copy_wav_folder_to_override(gamefs, source_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
 func _batch_convert_install_wav() -> void:
 	var gamefs := _resolve_gamefs()
 	if gamefs == null:
@@ -389,6 +415,13 @@ func _run_batch_import_wav_folder_to_override(gamefs: RefCounted, source_dir: St
 		"sound_type": sound_type,
 	})
 	_apply_batch_wav_status(result, "Install batch WAV import finished.")
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_gamefs()
+
+
+func _run_batch_copy_wav_folder_to_override(gamefs: RefCounted, source_dir: String) -> void:
+	var result := WavGamefsBatchImporter.batch_folder_copy_to_override(gamefs, source_dir)
+	_apply_batch_wav_status(result, "Install batch WAV copy finished.")
 	if not (result.get("generated", []) as Array).is_empty():
 		_refresh_gamefs()
 

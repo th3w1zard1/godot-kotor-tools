@@ -18,6 +18,9 @@ func _run_tests() -> void:
 	_test_batch_install_skip_existing()
 	_test_batch_install_skip_clean_sources()
 	_test_batch_folder_import_dry_run()
+	_test_batch_folder_copy_dry_run()
+	_test_batch_folder_copy_writes_wav()
+	_test_batch_folder_copy_skip_existing()
 	_test_skip_existing()
 	var button_ok := await _test_wav_editor_batch_buttons()
 	if not button_ok:
@@ -106,6 +109,66 @@ func _test_batch_folder_import_dry_run() -> void:
 	print("✓ GameFS batch WAV import dry-run passed")
 
 
+func _test_batch_folder_copy_dry_run() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	_seed_wavs(source_root)
+	var gamefs := _build_gamefs(install_root)
+
+	var result := WavGamefsBatchImporter.batch_folder_copy_to_override(gamefs, source_root, {
+		"dry_run": true,
+	})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	assert(str(result.get("summary", "")).contains("Install batch WAV copy"))
+	var first: Dictionary = generated[0]
+	var output_path := str(first.get("wav_path", ""))
+	assert(output_path.begins_with(install_root.path_join("override")))
+	assert(output_path.ends_with(".wav"))
+	assert(not output_path.ends_with("_clean.wav"))
+	assert(not FileAccess.file_exists(output_path))
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch WAV copy dry-run passed")
+
+
+func _test_batch_folder_copy_writes_wav() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	_seed_wavs(source_root)
+	var gamefs := _build_gamefs(install_root)
+
+	var result := WavGamefsBatchImporter.batch_folder_copy_to_override(gamefs, source_root, {})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	assert(FileAccess.file_exists(install_root.path_join("override").path_join("line01.wav")))
+	assert(FileAccess.file_exists(install_root.path_join("override").path_join("line02.wav")))
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch WAV copy write passed")
+
+
+func _test_batch_folder_copy_skip_existing() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	_seed_wavs(source_root)
+	_write_file(install_root.path_join("override").path_join("line01.wav"), PackedByteArray([0x00]))
+	var gamefs := _build_gamefs(install_root)
+
+	var result := WavGamefsBatchImporter.batch_folder_copy_to_override(gamefs, source_root, {
+		"skip_existing": true,
+	})
+	var skipped: Array = result.get("skipped", [])
+	assert(skipped.size() == 1)
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 1)
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch WAV copy skip-existing passed")
+
+
 func _test_skip_existing() -> void:
 	var install_root := _make_install_root()
 	var source_root := _make_source_root()
@@ -134,6 +197,7 @@ func _test_wav_editor_batch_buttons() -> bool:
 	holder.add_child(editor)
 	await process_frame
 	assert(_find_button(editor, "Batch Import WAV Folder to Override...") != null)
+	assert(_find_button(editor, "Batch Copy WAV Folder to Override...") != null)
 	assert(_find_button(editor, "Batch Convert Install WAV...") != null)
 	holder.queue_free()
 	await process_frame
