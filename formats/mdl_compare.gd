@@ -7,12 +7,17 @@ const SAMPLE_LIMIT := 5
 
 
 ## Return a human-readable diff summary, or empty to fall back to binary compare.
-static func build_difference_report(base_bytes: PackedByteArray, mod_bytes: PackedByteArray) -> String:
-	if base_bytes == mod_bytes:
+static func build_difference_report(
+		base_bytes: PackedByteArray,
+		mod_bytes: PackedByteArray,
+		base_mdx: PackedByteArray = PackedByteArray(),
+		mod_mdx: PackedByteArray = PackedByteArray()
+) -> String:
+	if base_bytes == mod_bytes and base_mdx == mod_mdx:
 		return ""
 
-	var base := MdlModelMetadataHelper.summarize_bytes(base_bytes)
-	var mod := MdlModelMetadataHelper.summarize_bytes(mod_bytes)
+	var base := MdlModelMetadataHelper.summarize_bytes(base_bytes, base_mdx)
+	var mod := MdlModelMetadataHelper.summarize_bytes(mod_bytes, mod_mdx)
 	if not base.get("ok", false) or not mod.get("ok", false):
 		return ""
 
@@ -52,11 +57,13 @@ static func build_difference_report(base_bytes: PackedByteArray, mod_bytes: Pack
 			"bounds origin: %s -> %s" % [base_bounds.position, mod_bounds.position]
 		)
 
+	change_count += _append_mdx_samples(samples, base_mdx, mod_mdx)
+
 	if base_bytes.size() != mod_bytes.size():
 		change_count += 1
 		_append_sample(
 			samples,
-			"file size: %d -> %d B" % [base_bytes.size(), mod_bytes.size()]
+			"MDL size: %d -> %d B" % [base_bytes.size(), mod_bytes.size()]
 		)
 
 	if change_count == 0:
@@ -76,6 +83,44 @@ static func build_difference_report(base_bytes: PackedByteArray, mod_bytes: Pack
 	if samples.is_empty():
 		return "%s." % ", ".join(parts)
 	return "%s.\nExamples:\n- %s" % [", ".join(parts), "\n- ".join(samples)]
+
+
+static func _append_mdx_samples(
+		samples: Array[String],
+		base_mdx: PackedByteArray,
+		mod_mdx: PackedByteArray
+) -> int:
+	if base_mdx == mod_mdx:
+		return 0
+
+	var change_count := 0
+	var base_present := not base_mdx.is_empty()
+	var mod_present := not mod_mdx.is_empty()
+	if base_present != mod_present:
+		change_count += 1
+		_append_sample(
+			samples,
+			"MDX sidecar: %s -> %s" % [
+				"present" if base_present else "absent",
+				"present" if mod_present else "absent",
+			]
+		)
+	elif base_mdx.size() != mod_mdx.size():
+		change_count += 1
+		_append_sample(
+			samples,
+			"MDX size: %d -> %d B" % [base_mdx.size(), mod_mdx.size()]
+		)
+	else:
+		change_count += 1
+		_append_sample(
+			samples,
+			"MDX payload differs (%d B core, %d B override)" % [
+				base_mdx.size(),
+				mod_mdx.size(),
+			]
+		)
+	return change_count
 
 
 static func _append_sample(samples: Array[String], line: String) -> void:

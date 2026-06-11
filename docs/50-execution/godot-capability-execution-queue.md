@@ -108,12 +108,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q92 | Flat-folder MDL batch export | `MdlBatchExporter` copies MDL/MDX from source folder to output; Model Editor **Batch Copy MDL Folder...**; headless `test_mdl_batch_exporter.gd`. |
 | Q93 | Flat-folder MDL batch import to override | `MdlGamefsBatchImporter` copies MDL/MDX from source folder into install override; Model Editor **Batch Import MDL Folder to Override...**; headless `test_mdl_gamefs_batch_importer.gd`. |
 | Q94 | BWM/WOK semantic compare | `BwmCompare` vertex/face/walkable summaries in GameFS diff; pipeline `wok` arm; headless `test_bwm_compare.gd`. |
+| Q95 | MDL compare MDX sidecar pairing | `MdlCompare` optional MDX args; GameFS loads paired MDX per source; headless `test_mdl_compare.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q94 shipped BWM/WOK semantic compare. | Next: parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q95 shipped MDL compare with MDX sidecar pairing. | Next: parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 

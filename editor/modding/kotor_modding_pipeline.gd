@@ -123,7 +123,14 @@ static func compare_gamefs_resource(gamefs: RefCounted, resref: String, resource
 
 	var override_bytes: PackedByteArray = gamefs.load_resource_entry_bytes(override_entry)
 	var core_bytes: PackedByteArray = gamefs.load_resource_entry_bytes(core_entry)
-	if _packed_bytes_equal(core_bytes, override_bytes):
+	var extension := str(override_entry.get("extension", core_entry.get("extension", ""))).to_lower()
+	if _packed_bytes_equal(core_bytes, override_bytes) and not _mdl_sidecar_differs(
+		extension,
+		gamefs,
+		resref,
+		core_entry,
+		override_entry
+	):
 		return _result(true, "identical", "Override matches core for %s.%s" % [
 			resref,
 			override_entry.get("extension", ""),
@@ -136,9 +143,15 @@ static func compare_gamefs_resource(gamefs: RefCounted, resref: String, resource
 			"override_size": override_bytes.size(),
 			"details": "Binary-identical (%d bytes)." % core_bytes.size(),
 		})
-
-	var extension := str(override_entry.get("extension", core_entry.get("extension", ""))).to_lower()
-	var detail_report := _build_difference_report(extension, core_bytes, override_bytes)
+	var detail_report := _build_difference_report(
+		extension,
+		core_bytes,
+		override_bytes,
+		gamefs,
+		resref,
+		core_entry,
+		override_entry
+	)
 	return _result(true, "different", "Override differs from core for %s.%s" % [resref, extension], {
 		"resref": resref,
 		"extension": extension,
@@ -494,7 +507,15 @@ static func _first_non_override_variant(variants: Array[Dictionary]) -> Dictiona
 	return {}
 
 
-static func _build_difference_report(extension: String, base_bytes: PackedByteArray, mod_bytes: PackedByteArray) -> String:
+static func _build_difference_report(
+		extension: String,
+		base_bytes: PackedByteArray,
+		mod_bytes: PackedByteArray,
+		gamefs: RefCounted = null,
+		resref: String = "",
+		base_entry: Dictionary = {},
+		mod_entry: Dictionary = {}
+) -> String:
 	match extension:
 		"2da":
 			return _build_2da_difference_report(base_bytes, mod_bytes)
@@ -521,7 +542,9 @@ static func _build_difference_report(extension: String, base_bytes: PackedByteAr
 				return wav_report
 			return _build_binary_difference_report(base_bytes, mod_bytes)
 		"mdl":
-			var mdl_report := MdlCompare.build_difference_report(base_bytes, mod_bytes)
+			var base_mdx := _load_paired_mdx_bytes(gamefs, resref, base_entry)
+			var mod_mdx := _load_paired_mdx_bytes(gamefs, resref, mod_entry)
+			var mdl_report := MdlCompare.build_difference_report(base_bytes, mod_bytes, base_mdx, mod_mdx)
 			if not mdl_report.is_empty():
 				return mdl_report
 			return _build_binary_difference_report(base_bytes, mod_bytes)
@@ -536,6 +559,34 @@ static func _build_difference_report(extension: String, base_bytes: PackedByteAr
 				if not gff_report.is_empty():
 					return gff_report
 			return _build_binary_difference_report(base_bytes, mod_bytes)
+
+
+static func _mdl_sidecar_differs(
+		extension: String,
+		gamefs: RefCounted,
+		resref: String,
+		base_entry: Dictionary,
+		mod_entry: Dictionary
+) -> bool:
+	if extension != "mdl":
+		return false
+	var base_mdx := _load_paired_mdx_bytes(gamefs, resref, base_entry)
+	var mod_mdx := _load_paired_mdx_bytes(gamefs, resref, mod_entry)
+	return not _packed_bytes_equal(base_mdx, mod_mdx)
+
+
+static func _load_paired_mdx_bytes(gamefs: RefCounted, resref: String, entry: Dictionary) -> PackedByteArray:
+	if gamefs == null or entry.is_empty() or resref.is_empty():
+		return PackedByteArray()
+	if not gamefs.has_method("resolve_resource_from_source") or not gamefs.has_method("load_resource_entry_bytes"):
+		return PackedByteArray()
+	var source := str(entry.get("source", "")).strip_edges()
+	if source.is_empty():
+		return PackedByteArray()
+	var mdx_entry: Dictionary = gamefs.resolve_resource_from_source(resref, "mdx", source)
+	if mdx_entry.is_empty():
+		return PackedByteArray()
+	return gamefs.load_resource_entry_bytes(mdx_entry)
 
 
 static func _build_binary_difference_report(base_bytes: PackedByteArray, mod_bytes: PackedByteArray) -> String:

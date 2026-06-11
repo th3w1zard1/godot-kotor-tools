@@ -2,8 +2,12 @@
 extends SceneTree
 
 const MDLParser := preload("../../formats/mdl_parser.gd")
+const ERFWriter := preload("../../formats/erf_writer.gd")
 const MdlCompare := preload("../../formats/mdl_compare.gd")
 const KotorModdingPipeline := preload("../../editor/modding/kotor_modding_pipeline.gd")
+const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
+
+var _install_counter := 0
 
 
 func _initialize() -> void:
@@ -12,9 +16,13 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	_test_vertex_count_diff()
+	_test_mdx_size_diff()
+	_test_mdx_presence_diff()
+	_test_identical_mdl_and_mdx_no_report()
 	_test_identical_no_report()
 	_test_invalid_bytes_fallback()
 	_test_pipeline_wiring()
+	_test_gamefs_mdx_pairing()
 	print("✓ MDL compare tests passed")
 	quit()
 
@@ -38,6 +46,48 @@ func _test_vertex_count_diff() -> void:
 	assert(report.find("MDL differs") >= 0)
 	assert(report.find("vertices: 3 -> 4") >= 0)
 	print("✓ MDL vertex count diff passed")
+
+
+func _test_mdx_size_diff() -> void:
+	var mdl := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2]
+	)
+	var report := MdlCompare.build_difference_report(
+		mdl,
+		mdl,
+		PackedByteArray([0x01, 0x02]),
+		PackedByteArray([0x01, 0x02, 0x03])
+	)
+	assert(not report.is_empty())
+	assert(report.find("MDX size: 2 -> 3 B") >= 0)
+	print("✓ MDL MDX size diff passed")
+
+
+func _test_mdx_presence_diff() -> void:
+	var mdl := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2]
+	)
+	var report := MdlCompare.build_difference_report(
+		mdl,
+		mdl,
+		PackedByteArray(),
+		PackedByteArray([0x01])
+	)
+	assert(not report.is_empty())
+	assert(report.find("MDX sidecar: absent -> present") >= 0)
+	print("✓ MDL MDX presence diff passed")
+
+
+func _test_identical_mdl_and_mdx_no_report() -> void:
+	var mdl := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0)],
+		[0, 1, 2]
+	)
+	var mdx := PackedByteArray([0x01, 0x02, 0x03])
+	assert(MdlCompare.build_difference_report(mdl, mdl, mdx, mdx).is_empty())
+	print("✓ MDL identical MDL+MDX no report passed")
 
 
 func _test_identical_no_report() -> void:
@@ -76,6 +126,84 @@ func _test_pipeline_wiring() -> void:
 	assert(report.find("MDL differs") >= 0)
 	assert(report.find("vertices:") >= 0)
 	print("✓ MDL pipeline wiring passed")
+
+
+func _test_gamefs_mdx_pairing() -> void:
+	var install_root := _make_install_root()
+	var mdl := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2]
+	)
+	var base_mdx := PackedByteArray([0x01, 0x02])
+	var mod_mdx := PackedByteArray([0x01, 0x02, 0x03])
+
+	var modules_dir := install_root.path_join("modules")
+	DirAccess.make_dir_recursive_absolute(modules_dir)
+	var module_bytes := ERFWriter.build("MOD ", [
+		{"resref": "room_a", "extension": "mdl", "bytes": mdl},
+		{"resref": "room_a", "extension": "mdx", "bytes": base_mdx},
+	])
+	_write_file(modules_dir.path_join("roomcore.mod"), module_bytes)
+
+	var override_dir := install_root.path_join("override")
+	_write_file(override_dir.path_join("room_a.mdl"), mdl)
+	_write_file(override_dir.path_join("room_a.mdx"), mod_mdx)
+
+	var editor_state := KotorEditorState.new()
+	editor_state.game_path = install_root
+	editor_state.refresh_gamefs()
+	var result := KotorModdingPipeline.compare_gamefs_resource(editor_state.gamefs, "room_a", "mdl")
+	assert(result.get("ok", false))
+	assert(str(result.get("status", "")) == "different")
+	var details := str(result.get("details", ""))
+	assert(details.find("MDX size: 2 -> 3 B") >= 0)
+	_cleanup(install_root)
+	print("✓ MDL GameFS MDX pairing passed")
+
+
+func _make_install_root() -> String:
+	_install_counter += 1
+	var install_root := ProjectSettings.globalize_path(
+		"user://mdl_compare_install_%d_%d" % [_install_counter, Time.get_ticks_usec()]
+	)
+	DirAccess.make_dir_recursive_absolute(install_root.path_join("override"))
+	return install_root
+
+
+func _write_file(path: String, bytes: PackedByteArray) -> void:
+	var parent := path.get_base_dir()
+	if not parent.is_empty():
+		DirAccess.make_dir_recursive_absolute(parent)
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	assert(file != null, "Failed to open %s for write" % path)
+	file.store_buffer(bytes)
+	file.close()
+
+
+func _cleanup(path: String) -> void:
+	_remove_dir_recursive(path)
+
+
+func _remove_dir_recursive(path: String) -> void:
+	if not DirAccess.dir_exists_absolute(path):
+		return
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	while true:
+		var name := dir.get_next()
+		if name.is_empty():
+			break
+		if name == "." or name == "..":
+			continue
+		var child := path.path_join(name)
+		if dir.current_is_dir():
+			_remove_dir_recursive(child)
+		else:
+			DirAccess.remove_absolute(child)
+	dir.list_dir_end()
+	DirAccess.remove_absolute(path)
 
 
 static func _build_minimal_mdl(vertices: Array, face_indices: Array) -> PackedByteArray:
