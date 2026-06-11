@@ -168,6 +168,11 @@ func _build_ui() -> void:
 	reencode_dxt5_btn.pressed.connect(_reencode_loaded_as_dxt5)
 	_toolbar.add_child(reencode_dxt5_btn)
 
+	var reencode_dxt3_btn := Button.new()
+	reencode_dxt3_btn.text = "Re-encode DXT3..."
+	reencode_dxt3_btn.pressed.connect(_reencode_loaded_as_dxt3)
+	_toolbar.add_child(reencode_dxt3_btn)
+
 	var batch_convert_btn := Button.new()
 	batch_convert_btn.text = "Batch Convert TGA/PNG→TPC..."
 	batch_convert_btn.pressed.connect(_batch_convert_images_to_tpc)
@@ -395,6 +400,10 @@ func reencode_loaded_as_dxt5() -> bool:
 	return _reencode_loaded_image(TPCReader.ENC_DXT5)
 
 
+func reencode_loaded_as_dxt3() -> bool:
+	return _reencode_loaded_image(TPCReader.ENC_DXT3)
+
+
 func get_txi_text() -> String:
 	if _txi_edit == null:
 		return ""
@@ -448,6 +457,10 @@ func _reencode_loaded_as_dxt5() -> void:
 	reencode_loaded_as_dxt5()
 
 
+func _reencode_loaded_as_dxt3() -> void:
+	reencode_loaded_as_dxt3()
+
+
 func _reencode_loaded_image(encoding: int) -> bool:
 	if _bytes.is_empty() or not _metadata.get("ok", false):
 		_status_text = "Load a valid TPC before re-encoding."
@@ -466,6 +479,8 @@ func _reencode_loaded_image(encoding: int) -> bool:
 	match encoding:
 		TPCReader.ENC_DXT1:
 			new_bytes = TPCWriter.serialize_dxt1(image, alpha_test)
+		TPCReader.ENC_DXT3:
+			new_bytes = TPCWriter.serialize_dxt3(image, alpha_test)
 		TPCReader.ENC_DXT5:
 			new_bytes = TPCWriter.serialize_dxt5(image, alpha_test)
 		_:

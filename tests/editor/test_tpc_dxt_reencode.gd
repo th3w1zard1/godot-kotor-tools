@@ -17,8 +17,10 @@ func _run_tests() -> void:
 	_test_root = ProjectSettings.globalize_path("user://tpc_dxt_import_test_%d" % Time.get_ticks_usec())
 	DirAccess.make_dir_recursive_absolute(_test_root)
 	await _test_reencode_dxt1()
+	await _test_reencode_dxt3()
 	await _test_reencode_dxt5()
 	await _test_reencode_dxt1_preserves_txi()
+	await _test_reencode_dxt3_preserves_txi()
 	await _test_reencode_dxt5_preserves_txi()
 	await _test_import_image_as_dxt1()
 	await _test_import_image_as_dxt5()
@@ -37,6 +39,17 @@ func _test_reencode_dxt1() -> void:
 	editor.get_parent().queue_free()
 	await process_frame
 	print("✓ TPC editor DXT1 re-encode passed")
+
+
+func _test_reencode_dxt3() -> void:
+	var editor := await _make_editor_with_rgba_tpc()
+	var ok := editor.reencode_loaded_as_dxt3()
+	assert(ok)
+	assert(editor.is_document_dirty())
+	assert(int(editor.get("_metadata").get("encoding", 0)) == TPCReader.ENC_DXT3)
+	editor.get_parent().queue_free()
+	await process_frame
+	print("✓ TPC editor DXT3 re-encode passed")
 
 
 func _test_reencode_dxt5() -> void:
@@ -59,6 +72,17 @@ func _test_reencode_dxt1_preserves_txi() -> void:
 	editor.get_parent().queue_free()
 	await process_frame
 	print("✓ TPC editor DXT1 re-encode preserves TXI passed")
+
+
+func _test_reencode_dxt3_preserves_txi() -> void:
+	var editor := await _make_editor_with_rgba_tpc_and_txi("alphamask\n")
+	var ok := editor.reencode_loaded_as_dxt3()
+	assert(ok)
+	assert(int(editor.get("_metadata").get("txi_length", 0)) > 0)
+	assert(editor.get_txi_text().contains("alphamask"))
+	editor.get_parent().queue_free()
+	await process_frame
+	print("✓ TPC editor DXT3 re-encode preserves TXI passed")
 
 
 func _test_reencode_dxt5_preserves_txi() -> void:
@@ -115,6 +139,7 @@ func _test_reencode_toolbar_buttons() -> void:
 	holder.add_child(editor)
 	await process_frame
 	assert(_find_button(editor, "Re-encode DXT1...") != null)
+	assert(_find_button(editor, "Re-encode DXT3...") != null)
 	assert(_find_button(editor, "Re-encode DXT5...") != null)
 	assert(_find_button(editor, "Import TGA/PNG as DXT1...") != null)
 	assert(_find_button(editor, "Import TGA/PNG as DXT5...") != null)

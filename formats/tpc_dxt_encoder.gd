@@ -1,15 +1,20 @@
-## CPU DXT1/DXT5 block encoder for KotOR TPC write-back.
+## CPU DXT1/DXT3/DXT5 block encoder for KotOR TPC write-back.
 class_name TpcDxtEncoder
 
 const TPCReader := preload("tpc_reader.gd")
 
 const HEADER_SIZE := TPCReader.HEADER_SIZE
 const ENC_DXT1 := TPCReader.ENC_DXT1
+const ENC_DXT3 := TPCReader.ENC_DXT3
 const ENC_DXT5 := TPCReader.ENC_DXT5
 
 
 static func encode_dxt1_image(image: Image, alpha_test: float = 0.0) -> PackedByteArray:
 	return _encode_image(image, ENC_DXT1, alpha_test)
+
+
+static func encode_dxt3_image(image: Image, alpha_test: float = 0.0) -> PackedByteArray:
+	return _encode_image(image, ENC_DXT3, alpha_test)
 
 
 static func encode_dxt5_image(image: Image, alpha_test: float = 0.0) -> PackedByteArray:
@@ -31,7 +36,8 @@ static func _encode_image(image: Image, encoding: int, alpha_test: float) -> Pac
 
 	var block_w := maxi(1, (width + 3) / 4)
 	var block_h := maxi(1, (height + 3) / 4)
-	var data_size := block_w * block_h * (16 if encoding == ENC_DXT5 else 8)
+	var bytes_per_block := 8 if encoding == ENC_DXT1 else 16
+	var data_size := block_w * block_h * bytes_per_block
 	var out := PackedByteArray()
 	out.resize(HEADER_SIZE + data_size)
 	out.fill(0)
@@ -46,11 +52,14 @@ static func _encode_image(image: Image, encoding: int, alpha_test: float) -> Pac
 	for by in block_h:
 		for bx in block_w:
 			var block_pixels := _sample_block(rgba_image, bx, by, width, height)
-			var block_bytes := (
-				_encode_dxt5_block(block_pixels)
-				if encoding == ENC_DXT5
-				else _encode_dxt1_block(block_pixels)
-			)
+			var block_bytes: PackedByteArray
+			match encoding:
+				ENC_DXT5:
+					block_bytes = _encode_dxt5_block(block_pixels)
+				ENC_DXT3:
+					block_bytes = _encode_dxt3_block(block_pixels)
+				_:
+					block_bytes = _encode_dxt1_block(block_pixels)
 			for index in block_bytes.size():
 				out[dst + index] = block_bytes[index]
 			dst += block_bytes.size()
@@ -97,6 +106,33 @@ static func _encode_dxt1_block(pixels: Array[Color]) -> PackedByteArray:
 	_write_u16(block, 2, c1)
 	_write_u32(block, 4, bits)
 	return block
+
+
+static func _encode_dxt3_block(pixels: Array[Color]) -> PackedByteArray:
+	var alpha_block := _encode_dxt3_alpha_block(pixels)
+	var color_block := _encode_dxt1_block(_force_opaque(pixels))
+	var block := PackedByteArray()
+	block.resize(16)
+	for index in 8:
+		block[index] = alpha_block[index]
+	for index in 8:
+		block[8 + index] = color_block[index]
+	return block
+
+
+static func _encode_dxt3_alpha_block(pixels: Array[Color]) -> PackedByteArray:
+	var packed := PackedByteArray()
+	packed.resize(8)
+	packed.fill(0)
+	for index in 16:
+		var alpha := int(clampi(roundi(pixels[index].a * 255.0), 0, 255))
+		var nibble := clampi(int(roundi(float(alpha) / 17.0)), 0, 15)
+		var byte_index := index / 2
+		if index % 2 == 0:
+			packed[byte_index] = nibble
+		else:
+			packed[byte_index] |= (nibble << 4)
+	return packed
 
 
 static func _encode_dxt5_block(pixels: Array[Color]) -> PackedByteArray:

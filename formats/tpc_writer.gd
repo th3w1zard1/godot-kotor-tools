@@ -10,6 +10,7 @@ const TpcDxtEncoder := preload("tpc_dxt_encoder.gd")
 const HEADER_SIZE := TPCReader.HEADER_SIZE
 const ENC_RGBA := TPCReader.ENC_RGBA
 const ENC_DXT1 := TPCReader.ENC_DXT1
+const ENC_DXT3 := TPCReader.ENC_DXT3
 const ENC_DXT5 := TPCReader.ENC_DXT5
 
 
@@ -64,6 +65,14 @@ static func serialize_dxt1(image: Image, alpha_test: float = 0.0) -> PackedByteA
 		push_error("TPCWriter: null image")
 		return PackedByteArray()
 	return TpcDxtEncoder.encode_dxt1_image(image, alpha_test)
+
+
+## Encode mip 0 as DXT3-compressed TPC bytes.
+static func serialize_dxt3(image: Image, alpha_test: float = 0.0) -> PackedByteArray:
+	if image == null:
+		push_error("TPCWriter: null image")
+		return PackedByteArray()
+	return TpcDxtEncoder.encode_dxt3_image(image, alpha_test)
 
 
 ## Encode mip 0 as DXT5-compressed TPC bytes.

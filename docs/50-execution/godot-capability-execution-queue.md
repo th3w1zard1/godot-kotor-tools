@@ -125,12 +125,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q109 | Flat-folder WAV batch copy to override | `WavGamefsBatchImporter.batch_folder_copy_to_override` raw byte copy via `WavBatchExporter`; WAV editor **Batch Copy WAV Folder to Override...**; headless `test_wav_gamefs_batch_importer.gd`. |
 | Q110 | TPC editor TXI editing UI | TXI `TextEdit` + **Apply TXI** in TPC workspace editor via `TPCWriter.append_txi_bytes`; headless `test_tpc_txi_editor.gd`. |
 | Q111 | Preserve TXI on TPC DXT re-encode | `_reencode_loaded_image` re-appends TXI tail after DXT1/DXT5 serialize; headless `test_tpc_dxt_reencode.gd`. |
+| Q112 | Native TPC DXT3 encode | `TpcDxtEncoder.encode_dxt3_image` + `TPCWriter.serialize_dxt3`; TPC editor **Re-encode DXT3...**; headless `test_tpc_dxt_encoder.gd`, `test_tpc_dxt_reencode.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q111 shipped TXI preservation on DXT re-encode. | Next: parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q112 shipped native DXT3 encode + editor re-encode. | Next: DXT3 batch/import toolbar parity (Q88/Q89/Q90 pattern) or module/area wave. |
 
 ## Next Slices (Deferred)
 

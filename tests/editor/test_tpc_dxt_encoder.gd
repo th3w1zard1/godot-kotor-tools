@@ -11,6 +11,7 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	_test_dxt1_round_trip()
+	_test_dxt3_round_trip()
 	_test_dxt5_round_trip()
 	_test_dxt1_solid_block()
 	_test_invalid_inputs()
@@ -36,6 +37,28 @@ func _test_dxt1_round_trip() -> void:
 	assert(_color_close(decoded.get_pixel(0, 0), image.get_pixel(0, 0), 0.35))
 	assert(_color_close(decoded.get_pixel(7, 7), image.get_pixel(7, 7), 0.35))
 	print("✓ TPC DXT1 round-trip passed")
+
+
+func _test_dxt3_round_trip() -> void:
+	var image := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	for y in 4:
+		for x in 4:
+			image.set_pixel(x, y, Color(0.2, 0.5, 0.9, float(x) / 3.0))
+
+	var bytes := TPCWriter.serialize_dxt3(image)
+	assert(not bytes.is_empty())
+
+	var metadata := TPCReader.read_metadata(bytes)
+	assert(metadata.get("ok", false))
+	assert(metadata.get("encoding", 0) == TPCReader.ENC_DXT3)
+
+	var decoded := TPCReader.read_image(bytes)
+	assert(decoded != null)
+	assert(decoded.get_width() == 4)
+	assert(decoded.get_height() == 4)
+	assert(_color_close(decoded.get_pixel(0, 0), image.get_pixel(0, 0), 0.45))
+	assert(_color_close(decoded.get_pixel(3, 0), image.get_pixel(3, 0), 0.45))
+	print("✓ TPC DXT3 round-trip passed")
 
 
 func _test_dxt5_round_trip() -> void:
@@ -72,6 +95,7 @@ func _test_dxt1_solid_block() -> void:
 
 func _test_invalid_inputs() -> void:
 	assert(TPCWriter.serialize_dxt1(null).is_empty())
+	assert(TPCWriter.serialize_dxt3(null).is_empty())
 	assert(TPCWriter.serialize_dxt5(null).is_empty())
 	var tiny := Image.create(0, 4, false, Image.FORMAT_RGBA8)
 	assert(TPCWriter.serialize_dxt1(tiny).is_empty())
