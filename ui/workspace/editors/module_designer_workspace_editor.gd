@@ -805,6 +805,9 @@ func _on_map_path_connection_retarget_requested(connection_index: int, target_in
 	var connection_record := _module_path_connection_by_index(connection_index)
 	if connection_record.is_empty():
 		return
+	var source_index := int(connection_record.get("source_index", -1))
+	if source_index == target_index:
+		return
 	var old_target := int(connection_record.get("target_index", -1))
 	if old_target == target_index:
 		return
