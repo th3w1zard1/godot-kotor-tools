@@ -89,6 +89,12 @@ func open_resource(resource: GITResource, source_path: String = "", file_name: S
 	_file_name = file_name.get_file() if not file_name.is_empty() else "module.git"
 	_dirty = false
 	_status_text = ""
+	if _map_view != null:
+		_map_view.set_selection("", -1)
+		_map_view.set_path_point_selection(-1)
+	if _viewport_3d != null:
+		_viewport_3d.set_selection("", -1)
+		_viewport_3d.set_path_point_selection(-1)
 	_refresh_module_bundle()
 	_register_controller_document()
 	_connect_document_signal()
@@ -883,9 +889,13 @@ func _clear_document_state(message: String) -> void:
 		_instance_tree.clear()
 	if _map_view != null:
 		_map_view.set_instances([], Rect2())
+		_map_view.set_selection("", -1)
 		_map_view.set_path_point_selection(-1)
 	if _viewport_3d != null:
 		_viewport_3d.set_instances([], {})
+		_viewport_3d.set_path_points([])
+		_viewport_3d.set_path_edges([])
+		_viewport_3d.set_selection("", -1)
 		_viewport_3d.set_path_point_selection(-1)
 		_viewport_3d.set_walkmesh({})
 		_viewport_3d.set_room_meshes([])
