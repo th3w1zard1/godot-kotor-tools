@@ -46,6 +46,51 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q28 | LIP lip-sync tooling | Native LIP V1.0 parser/writer + `LIPResource`; LIP Sync workspace editor (duration, keyframe list, save/install); modding pipeline `lip` serialize; workspace/dock routing for `.lip`. |
 | Q29 | LIP audio + waveform | Shared `formats/wav_metadata.gd`; `LipWaveformView` PCM peaks + keyframe markers; LIP editor Load WAV / Play / Stop / scrub / viseme preview; optional LIP duration sync from WAV; headless `test_wav_metadata.gd`. |
 | Q30 | TPC native write-back | `TPCWriter` passthrough + RGBA encode; TPC editor Import TGA/PNG; pipeline `tpc` serialize validation; headless `test_tpc_writer.gd`. |
+| Q31 | Batch LIP generator | `LipBatchGenerator` from 16-bit PCM WAV folder; neutral viseme keyframes at start/end; LIP editor **Batch Generate LIP...**; headless `test_lip_batch_generator.gd`. |
+| Q32 | Semantic GFF compare reports | `GFFCompare` field-level diff for GFF-family install compare; DLG list count summaries; headless `test_gff_compare.gd`. |
+| Q33 | DLG jump-to-target navigation | `get_link_target_metadata()` resolver; Jump to Target on link detail; outgoing link summaries and tree activation jump to target node; headless `test_dlg_workspace_editor.gd`. |
+| Q35 | SSF semantic compare reports | `SSFCompare` slot-level StrRef diff for install compare; pipeline `ssf` arm; headless `test_ssf_compare.gd`. |
+| Q36 | LIP semantic compare reports | `LIPCompare` duration/keyframe diff for install compare; pipeline `lip` arm; headless `test_lip_compare.gd`. |
+| Q37 | TPC semantic compare reports | `TPCCompare` header/payload diff for install compare; pipeline `tpc` arm; headless `test_tpc_compare.gd`. |
+| Q38 | WAV semantic compare reports | `WavCompare` format/duration/payload diff for install compare; pipeline `wav` arm; headless `test_wav_compare.gd`. |
+| Q39 | Indoor layout validation | `KotorIndoorLayoutValidator` module/room/kit/hook checks; merged into mod export preflight; headless `test_indoor_layout_validator.gd`. |
+| Q40 | Batch override compare | `compare_all_overrides` install scan with semantic diff aggregation; dock Compare All Overrides; headless `test_override_batch_compare.gd`. |
+| Q41 | Compare report export | Save single/batch compare output to `.txt` via dock Export Compare Report; headless `test_compare_report_export.gd`. |
+| Q42 | Native indoor build manifest | `KotorIndoorBuildManifest` core module + room asset preview; Indoor Builder Build Preview; headless `test_indoor_build_manifest.gd`. |
+| Q43 | Native indoor LYT builder | `KotorIndoorLyTBuilder` roommodel `.lyt` generation; manifest + Export LYT Preview; headless `test_indoor_lyt_builder.gd`. |
+| Q44 | Native indoor IFO builder | `KotorIndoorIfoBuilder` module `.ifo` GFF generation; manifest + Export IFO Preview; headless `test_indoor_ifo_builder.gd`. |
+| Q45 | Native indoor VIS builder | `VISParser` + `KotorIndoorVisBuilder` hook-based `.vis` generation; manifest + Export VIS Preview; headless `test_indoor_vis_builder.gd`. |
+| Q46 | Native indoor ARE builder | `KotorIndoorAreBuilder` module `.are` GFF generation; manifest + Export ARE Preview; headless `test_indoor_are_builder.gd`. |
+| Q47 | Native indoor GIT builder | `KotorIndoorGitBuilder` hook-connection door `.git` generation; manifest + Export GIT Preview; headless `test_indoor_git_builder.gd`. |
+| Q48 | Native indoor MOD builder | `KotorIndoorModBuilder` ERF `.mod` assembly from native writers + kit assets; manifest + Export Native MOD Preview; headless `test_indoor_mod_builder.gd`. |
+| Q49 | KotorDiff CLI bridge | `KotorDiffToolBridge` standalone kotordiff / PyKotor `diff` invocation; GameFS **Run KotorDiff CLI…**; headless `test_kotor_diff_tool_bridge.gd`. |
+| Q50 | Embedded component asset generation | `KotorIndoorEmbeddedAssetGenerator` base64 BWM/MDL/MDX → MOD room assets; manifest flags; headless `test_indoor_embedded_asset_generator.gd`. |
+| Q51 | HoloPatcher CLI bridge | `HoloPatcherToolBridge` validate/install TSL patches; GameFS **Validate TSL Patch…** / **Install TSL Patch…**; headless `test_holo_patcher_tool_bridge.gd`. |
+| Q52 | GIT 3D rotate gizmo | Module Designer viewport bearing ring + Shift+right-drag rotate; shared `KotorWorldCoordinates` bearing helpers; headless `test_git_viewport_bearing.gd`. |
+| Q53 | LYT depth overlay + writer | `LYTWriter` round-trip; Module Designer tracks/obstacles/doorhooks 3D markers; layout/walkmesh summary; headless `test_lyt_writer.gd`. |
+| Q54 | BWM writer + walkmesh export | `BWMWriter` round-trip; Module Designer **Export Walkmesh Preview…**; headless `test_bwm_writer.gd`. |
+| Q55 | Native indoor MOD export default | `KotorIndoorNativeExporter`; **Export .mod** uses native builders; PyKotor CLI fallback toolbar action; headless `test_indoor_native_exporter.gd`. |
+| Q56 | Module Designer walkmesh install | **Install Walkmesh to Override** via `BWMWriter` + mutation preflight; headless `test_module_designer_walkmesh_install.gd`. |
+| Q57 | Indoor MOD install to modules | `KotorIndoorModuleInstaller`; **Install MOD to Modules** in Indoor Builder; headless `test_indoor_module_installer.gd`. |
+| Q58 | Module Designer LYT install | **Install LYT to Override** via `LYTWriter` + mutation preflight; headless `test_module_designer_lyt_install.gd`. |
+| Q59 | Module Designer VIS install | **Install VIS to Override** via `VISWriter` + mutation preflight; headless `test_vis_writer.gd`, `test_module_designer_vis_install.gd`. |
+| Q60 | Module Designer PTH install | **Install PTH to Override** via typed `PTHResource` + mutation preflight; headless `test_module_designer_pth_install.gd`. |
+| Q61 | Module Designer LYT preview export | **Export LYT Preview…** writes the loaded area layout to filesystem `.lyt`; headless `test_module_designer_lyt_export.gd`. |
+| Q62 | Module Designer VIS preview export | **Export VIS Preview…** writes the loaded area visibility graph to filesystem `.vis`; headless `test_module_designer_vis_export.gd`. |
+| Q63 | Module Designer PTH preview export | **Export PTH Preview…** writes the loaded area path graph to filesystem `.pth`; headless `test_module_designer_pth_export.gd`. |
+| Q64 | Module Designer PTH point overlay | Loaded `.pth` points render in the 2D map and 3D viewport with overlay-aware bounds/camera; headless `test_module_designer_pth_overlay.gd`. |
+| Q65 | Module Designer PTH connection overlay | Loaded `.pth` edges render in the 2D map and 3D viewport, with typed connection extraction and summary depth; headless `test_module_designer_pth_connection_overlay.gd`. |
+| Q66 | Module Designer PTH point inspection | Loaded `.pth` points become tree/map/3D selectable with detail-panel connection context; headless `test_module_designer_pth_point_inspection.gd`. |
+| Q67 | Module Designer PTH connection inspection | Loaded `.pth` edges become tree/map/3D selectable with source/target detail context and viewport edge highlighting; headless `test_module_designer_pth_connection_inspection.gd`. |
+| Q68 | Module Designer PTH point drag-move | Loaded `.pth` points can be repositioned from the 2D map with undo-safe typed mutation and install-ready persistence; headless `test_module_designer_pth_point_drag.gd`. |
+| Q69 | Module Designer PTH connection retarget | Loaded `.pth` connection destinations can be retargeted from the 2D map with undo-safe typed mutation and install-ready persistence; headless `test_module_designer_pth_connection_retarget.gd`. |
+| Q70 | Module Designer PTH point add | Loaded `.pth` graphs can grow via toolbar-armed map placement with undo-safe typed mutation and install-ready persistence; headless `test_module_designer_pth_point_add.gd`. |
+| Q71 | Module Designer PTH point remove | Loaded `.pth` graphs can shrink via topology-safe point removal with snapshot undo and install-ready persistence; headless `test_module_designer_pth_point_remove.gd`. |
+| Q72 | Module Designer PTH connection add | Loaded `.pth` graphs can grow new edges via toolbar-armed source-to-target placement with snapshot undo and install-ready persistence; headless `test_module_designer_pth_connection_add.gd`. |
+| Q73 | Module Designer PTH connection remove | Loaded `.pth` graphs can drop individual edges via toolbar action on selected connection with snapshot undo and install-ready persistence; headless `test_module_designer_pth_connection_remove.gd`. |
+| Q74 | Module Designer bundle resources utility panel | Module Designer lists indexed GIT/ARE/IFO/LYT/VIS/PTH/WOK bundle files and opens selected siblings in workspace editors; headless `test_module_designer_bundle_utility_panel.gd`. |
+| Q75 | Module Designer room models utility panel | Module Designer lists unique LYT room models with MDL/MDX/WOK presence, detail context, and MDL open routing; headless `test_module_designer_room_models_utility_panel.gd`. |
+| Q76 | Install ResRef references finder | Workspace resource browser scans override GFF/NSS resources for selected resref usages with formatted hit reports; headless `test_resref_reference_scanner.gd`. |
 | Q77 | Batch TGA/PNG to TPC converter | `TpcBatchConverter` scans flat image folders and writes RGBA `.tpc` files; TPC editor **Batch Convert TGA/PNG→TPC...**; headless `test_tpc_batch_converter.gd`. |
 
 ## Active Slice

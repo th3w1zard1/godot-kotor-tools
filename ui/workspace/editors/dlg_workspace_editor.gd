@@ -159,7 +159,10 @@ func save_document_to_path(path: String) -> Dictionary:
 		return preview
 	
 	if preview.get("action", "") == "noop":
+		_dlg_dirty = false
 		_dlg_status_text = preview.get("message", "File is already up to date")
+		_emit_dirty_state(_dlg_dirty)
+		_update_controller_dirty_state()
 		_refresh_dlg_status()
 		return preview
 	
@@ -213,7 +216,10 @@ func install_document_to_override() -> Dictionary:
 		return preview
 	
 	if preview.get("action", "") == "noop":
+		_dlg_dirty = false
 		_dlg_status_text = preview.get("message", "File is already up to date")
+		_emit_dirty_state(_dlg_dirty)
+		_update_controller_dirty_state()
 		_refresh_dlg_status()
 		return preview
 	
@@ -358,6 +364,7 @@ func _build_ui() -> void:
 	_dlg_tree.set_column_title(1, "Preview")
 	_dlg_tree.column_titles_visible = true
 	_dlg_tree.item_selected.connect(_on_dlg_item_selected)
+	_dlg_tree.item_activated.connect(_on_dlg_item_activated)
 	_dlg_tree.item_mouse_selected.connect(_on_dlg_item_mouse_selected)
 	split.add_child(_dlg_tree)
 
@@ -503,6 +510,37 @@ func _on_dlg_item_selected() -> void:
 	_refresh_dlg_detail()
 
 
+func _on_dlg_item_activated() -> void:
+	if _dlg_tree == null or _dlg_document == null:
+		return
+	var item := _dlg_tree.get_selected()
+	if item == null:
+		return
+	var metadata = item.get_metadata(0)
+	if typeof(metadata) != TYPE_DICTIONARY:
+		return
+	if str(metadata.get("kind", "")) != "link":
+		return
+	_jump_to_link_target(
+		str(metadata.get("owner", "entry")),
+		int(metadata.get("index", -1)),
+		int(metadata.get("link_index", -1))
+	)
+
+
+func _jump_to_link_target(owner_kind: String, owner_index: int, link_index: int) -> void:
+	if _dlg_document == null:
+		return
+	var target := _dlg_document.get_link_target_metadata(owner_kind, owner_index, link_index)
+	if target.is_empty():
+		_dlg_status_text = "Link target is missing or out of range."
+		_refresh_dlg_status()
+		return
+	_select_dlg_metadata(target)
+	_dlg_status_text = ""
+	_refresh_dlg_status()
+
+
 func _on_dlg_item_mouse_selected(item: TreeItem, column: int, at_position: Vector2) -> void:
 	# Right-click (button 2) shows context menu for DLG array items
 	var button_index = _dlg_tree.get_button_index_at_position(at_position)
@@ -623,6 +661,12 @@ func _refresh_dlg_detail() -> void:
 			var link_index := int(_dlg_selection.get("link_index", -1))
 			var link := _dlg_document.get_link(owner, owner_index, link_index)
 			_add_dlg_section_title(_dlg_target_label(owner, owner_index, link_index))
+			var jump_btn := Button.new()
+			jump_btn.text = "Jump to Target"
+			jump_btn.pressed.connect(func() -> void:
+				_jump_to_link_target(owner, owner_index, link_index)
+			)
+			_dlg_details.add_child(jump_btn)
 			_build_dlg_struct_editor(link, ["Index", "Active", "IsChild", "LinkComment", "Comment"])
 
 
@@ -641,12 +685,7 @@ func _add_dlg_link_summary(kind: String, index: int) -> void:
 			_dlg_document.build_link_preview(kind, index, link_index),
 		]
 		button.pressed.connect(func() -> void:
-			_select_dlg_metadata({
-				"kind": "link",
-				"owner": kind,
-				"index": index,
-				"link_index": link_index,
-			})
+			_jump_to_link_target(kind, index, link_index)
 		)
 		_dlg_details.add_child(button)
 

@@ -2,6 +2,7 @@
 class_name KotorIndoorModExporter
 
 const KotorIndoorDocument := preload("../documents/kotor_indoor_document.gd")
+const KotorIndoorLayoutValidator := preload("./kotor_indoor_layout_validator.gd")
 
 const SUBCOMMAND := "indoor-build"
 const DEFAULT_CLI_CANDIDATES := ["pykotorcli", "pykotor"]
@@ -15,8 +16,15 @@ static func validate_preflight(config: Dictionary) -> Dictionary:
 	var document: KotorIndoorDocument = config.get("document")
 	if document == null:
 		errors.append("No indoor map is loaded.")
-	elif document.get_room_count() <= 0:
-		errors.append("Indoor map has no rooms; add at least one kit room before export.")
+	else:
+		var kit_library: RefCounted = config.get("kit_library")
+		if kit_library == null:
+			kit_library = document.get_kit_library()
+		var layout := KotorIndoorLayoutValidator.validate(document, kit_library)
+		for error_text in layout.get("errors", []):
+			errors.append(str(error_text))
+		for warning_text in layout.get("warnings", []):
+			warnings.append(str(warning_text))
 
 	var input_path := str(config.get("input_path", "")).strip_edges()
 	if input_path.is_empty() and document != null and document.get_room_count() > 0:

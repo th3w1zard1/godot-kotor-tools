@@ -6,6 +6,14 @@ const KotorIndoorDocument := preload("../../../resources/documents/kotor_indoor_
 const KotorIndoorMapIO := preload("../../../resources/indoor/kotor_indoor_map_io.gd")
 const KotorIndoorKitLibrary := preload("../../../resources/indoor/kotor_indoor_kit_library.gd")
 const KotorIndoorModExporter := preload("../../../resources/indoor/kotor_indoor_mod_exporter.gd")
+const KotorIndoorNativeExporter := preload("../../../resources/indoor/kotor_indoor_native_exporter.gd")
+const KotorIndoorModuleInstaller := preload("../../../resources/indoor/kotor_indoor_module_installer.gd")
+const KotorIndoorBuildManifest := preload("../../../resources/indoor/kotor_indoor_build_manifest.gd")
+const KotorIndoorLyTBuilder := preload("../../../resources/indoor/kotor_indoor_lyt_builder.gd")
+const KotorIndoorIfoBuilder := preload("../../../resources/indoor/kotor_indoor_ifo_builder.gd")
+const KotorIndoorVisBuilder := preload("../../../resources/indoor/kotor_indoor_vis_builder.gd")
+const KotorIndoorAreBuilder := preload("../../../resources/indoor/kotor_indoor_are_builder.gd")
+const KotorIndoorGitBuilder := preload("../../../resources/indoor/kotor_indoor_git_builder.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const IndoorBuilderMapView := preload("../panels/indoor_builder_map_view.gd")
 
@@ -139,6 +147,46 @@ func _build_ui() -> void:
 	export_mod_btn.text = "Export .mod"
 	export_mod_btn.pressed.connect(_export_mod_dialog)
 	_toolbar.add_child(export_mod_btn)
+
+	var export_pykotor_mod_btn := Button.new()
+	export_pykotor_mod_btn.text = "Export .mod (PyKotor)…"
+	export_pykotor_mod_btn.pressed.connect(_export_pykotor_mod_dialog)
+	_toolbar.add_child(export_pykotor_mod_btn)
+
+	var install_mod_btn := Button.new()
+	install_mod_btn.text = "Install MOD to Modules"
+	install_mod_btn.pressed.connect(_install_mod_to_modules)
+	_toolbar.add_child(install_mod_btn)
+
+	var build_preview_btn := Button.new()
+	build_preview_btn.text = "Build Preview"
+	build_preview_btn.pressed.connect(_show_build_preview)
+	_toolbar.add_child(build_preview_btn)
+
+	var export_lyt_btn := Button.new()
+	export_lyt_btn.text = "Export LYT Preview"
+	export_lyt_btn.pressed.connect(_export_lyt_preview_dialog)
+	_toolbar.add_child(export_lyt_btn)
+
+	var export_ifo_btn := Button.new()
+	export_ifo_btn.text = "Export IFO Preview"
+	export_ifo_btn.pressed.connect(_export_ifo_preview_dialog)
+	_toolbar.add_child(export_ifo_btn)
+
+	var export_vis_btn := Button.new()
+	export_vis_btn.text = "Export VIS Preview"
+	export_vis_btn.pressed.connect(_export_vis_preview_dialog)
+	_toolbar.add_child(export_vis_btn)
+
+	var export_are_btn := Button.new()
+	export_are_btn.text = "Export ARE Preview"
+	export_are_btn.pressed.connect(_export_are_preview_dialog)
+	_toolbar.add_child(export_are_btn)
+
+	var export_git_btn := Button.new()
+	export_git_btn.text = "Export GIT Preview"
+	export_git_btn.pressed.connect(_export_git_preview_dialog)
+	_toolbar.add_child(export_git_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -747,6 +795,238 @@ func _apply_pykotor_cli_path(new_path: String) -> void:
 		_pykotor_cli_edit.text = new_path
 
 
+func _show_build_preview() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before previewing a build."
+		_refresh_status()
+		return
+	if _document.get_kit_library() != _kit_library:
+		_document.set_kit_library(_kit_library)
+	var manifest := KotorIndoorBuildManifest.build(_document, _kit_library)
+	if _detail_label != null:
+		_detail_label.text = KotorIndoorBuildManifest.format_report(manifest)
+	if not manifest.get("ok", false):
+		var errors: Array = manifest.get("errors", [])
+		if errors.is_empty():
+			_status_text = "Build preview failed validation."
+		else:
+			_status_text = "Build preview failed: %s" % str(errors[0])
+		_refresh_status()
+		return
+	_status_text = "Build preview ready for module '%s'." % str(manifest.get("module_id", ""))
+	_refresh_status()
+
+
+func _export_lyt_preview_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting LYT."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var lyt := KotorIndoorLyTBuilder.build_from_document(_document)
+	if not lyt.get("ok", false):
+		var errors: Array = lyt.get("errors", [])
+		_status_text = "LYT export failed: %s" % (str(errors[0]) if errors.size() > 0 else "unknown error")
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export LYT Preview"
+	dialog.current_file = "%s.lyt" % _document.get_module_id()
+	dialog.add_filter("*.lyt", "KotOR Layout")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_lyt_preview_to_path(path, lyt)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_lyt_preview_to_path(path: String, lyt: Dictionary) -> void:
+	var target_path := _ensure_extension(path, "lyt")
+	var bytes: PackedByteArray = lyt.get("bytes", PackedByteArray())
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write LYT preview."
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "LYT preview saved to %s" % target_path.get_file()
+	_refresh_status()
+
+
+func _export_ifo_preview_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting IFO."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var ifo := KotorIndoorIfoBuilder.build_from_document(_document)
+	if not ifo.get("ok", false):
+		var errors: Array = ifo.get("errors", [])
+		_status_text = "IFO export failed: %s" % (str(errors[0]) if errors.size() > 0 else "unknown error")
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export IFO Preview"
+	dialog.current_file = "%s.ifo" % str(ifo.get("module_id", _document.get_module_id()))
+	dialog.add_filter("*.ifo", "KotOR Module Info")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_ifo_preview_to_path(path, ifo)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_ifo_preview_to_path(path: String, ifo: Dictionary) -> void:
+	var target_path := _ensure_extension(path, "ifo")
+	var bytes: PackedByteArray = ifo.get("bytes", PackedByteArray())
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write IFO preview."
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "IFO preview saved to %s" % target_path.get_file()
+	_refresh_status()
+
+
+func _export_vis_preview_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting VIS."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var vis := KotorIndoorVisBuilder.build_from_document(_document)
+	if not vis.get("ok", false):
+		var errors: Array = vis.get("errors", [])
+		_status_text = "VIS export failed: %s" % (str(errors[0]) if errors.size() > 0 else "unknown error")
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export VIS Preview"
+	dialog.current_file = "%s.vis" % _document.get_module_id()
+	dialog.add_filter("*.vis", "KotOR Visibility")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_vis_preview_to_path(path, vis)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_vis_preview_to_path(path: String, vis: Dictionary) -> void:
+	var target_path := _ensure_extension(path, "vis")
+	var bytes: PackedByteArray = vis.get("bytes", PackedByteArray())
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write VIS preview."
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "VIS preview saved to %s" % target_path.get_file()
+	_refresh_status()
+
+
+func _export_are_preview_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting ARE."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var are := KotorIndoorAreBuilder.build_from_document(_document)
+	if not are.get("ok", false):
+		var errors: Array = are.get("errors", [])
+		_status_text = "ARE export failed: %s" % (str(errors[0]) if errors.size() > 0 else "unknown error")
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export ARE Preview"
+	dialog.current_file = "%s.are" % str(are.get("tag", _document.get_module_id()))
+	dialog.add_filter("*.are", "KotOR Area Properties")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_are_preview_to_path(path, are)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_are_preview_to_path(path: String, are: Dictionary) -> void:
+	var target_path := _ensure_extension(path, "are")
+	var bytes: PackedByteArray = are.get("bytes", PackedByteArray())
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write ARE preview."
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "ARE preview saved to %s" % target_path.get_file()
+	_refresh_status()
+
+
+func _export_git_preview_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting GIT."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var git := KotorIndoorGitBuilder.build_from_document(_document)
+	if not git.get("ok", false):
+		var errors: Array = git.get("errors", [])
+		_status_text = "GIT export failed: %s" % (str(errors[0]) if errors.size() > 0 else "unknown error")
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export GIT Preview"
+	dialog.current_file = "%s.git" % _document.get_module_id()
+	dialog.add_filter("*.git", "KotOR Area Layout")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_git_preview_to_path(path, git)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_git_preview_to_path(path: String, git: Dictionary) -> void:
+	var target_path := _ensure_extension(path, "git")
+	var bytes: PackedByteArray = git.get("bytes", PackedByteArray())
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write GIT preview."
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "GIT preview saved to %s" % target_path.get_file()
+	_refresh_status()
+
+
 func _export_mod_dialog() -> void:
 	if _document == null:
 		_status_text = "Load an indoor map before exporting."
@@ -757,7 +1037,7 @@ func _export_mod_dialog() -> void:
 	var dialog := EditorFileDialog.new()
 	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
 	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
-	dialog.title = "Export Indoor Map to .mod"
+	dialog.title = "Export Indoor Map to .mod (Native)"
 	dialog.current_file = "%s.mod" % _document.get_module_id()
 	dialog.add_filter("*.mod", "KotOR Module")
 	dialog.file_selected.connect(func(path: String) -> void:
@@ -769,7 +1049,51 @@ func _export_mod_dialog() -> void:
 	dialog.popup_centered_ratio(0.7)
 
 
+func _export_pykotor_mod_dialog() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before exporting."
+		_refresh_status()
+		return
+	if not Engine.is_editor_hint():
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export Indoor Map to .mod (PyKotor CLI)"
+	dialog.current_file = "%s.mod" % _document.get_module_id()
+	dialog.add_filter("*.mod", "KotOR Module")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_export_pykotor_mod_to_path(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
 func _export_mod_to_path(path: String) -> void:
+	if _document == null:
+		return
+	var kits_path := _kits_path_edit.text.strip_edges() if _kits_path_edit != null else ""
+	if kits_path.is_empty() and _editor_state != null:
+		kits_path = _editor_state.indoor_kits_path
+
+	var config := {
+		"document": _document,
+		"kit_library": _kit_library,
+		"kits_path": kits_path,
+		"output_path": path,
+	}
+	var result := KotorIndoorNativeExporter.export_indoor_to_mod(config)
+	if not result.get("ok", false):
+		_status_text = str(result.get("message", "Export failed."))
+		_refresh_status()
+		return
+	_status_text = str(result.get("message", "Export complete."))
+	_refresh_status()
+
+
+func _export_pykotor_mod_to_path(path: String) -> void:
 	if _document == null:
 		return
 	var game_path := _editor_state.game_path if _editor_state != null else ""
@@ -794,4 +1118,32 @@ func _export_mod_to_path(path: String) -> void:
 		_refresh_status()
 		return
 	_status_text = str(result.get("message", "Export complete."))
+	_refresh_status()
+
+
+func _install_mod_to_modules() -> void:
+	if _document == null:
+		_status_text = "Load an indoor map before installing."
+		_refresh_status()
+		return
+	var game_path := _editor_state.game_path if _editor_state != null else ""
+	var kits_path := _kits_path_edit.text.strip_edges() if _kits_path_edit != null else ""
+	if kits_path.is_empty() and _editor_state != null:
+		kits_path = _editor_state.indoor_kits_path
+
+	var config := {
+		"document": _document,
+		"kit_library": _kit_library,
+		"kits_path": kits_path,
+		"game_path": game_path,
+		"output_path": "%s.mod" % _document.get_module_id(),
+	}
+	var result := KotorIndoorModuleInstaller.install_indoor_mod_to_modules(config)
+	if not result.get("ok", false):
+		_status_text = str(result.get("message", "Install failed."))
+		_refresh_status()
+		return
+	_status_text = str(result.get("message", "Install complete."))
+	if _editor_state != null:
+		_editor_state.refresh_gamefs()
 	_refresh_status()

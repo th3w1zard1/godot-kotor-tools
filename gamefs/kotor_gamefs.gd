@@ -329,6 +329,26 @@ func ensure_override_path() -> String:
 	return override_path
 
 
+func ensure_modules_path() -> String:
+	if not modules_path.is_empty():
+		if DirAccess.dir_exists_absolute(modules_path):
+			return modules_path
+		var existing_err := DirAccess.make_dir_recursive_absolute(modules_path)
+		return modules_path if existing_err == OK or DirAccess.dir_exists_absolute(modules_path) else ""
+	if game_path.is_empty() or not DirAccess.dir_exists_absolute(game_path):
+		return ""
+	for candidate: String in [game_path.path_join(MODULES_DIR_NAME), game_path.path_join("Modules")]:
+		if DirAccess.dir_exists_absolute(candidate):
+			modules_path = candidate
+			return modules_path
+	var created := game_path.path_join(MODULES_DIR_NAME)
+	var err := DirAccess.make_dir_recursive_absolute(created)
+	if err != OK and not DirAccess.dir_exists_absolute(created):
+		return ""
+	modules_path = created
+	return modules_path
+
+
 func resource_extension(resource_type: int) -> String:
 	return str(ERFParser.RES_TYPES.get(resource_type, "bin"))
 

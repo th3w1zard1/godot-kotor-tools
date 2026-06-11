@@ -25,6 +25,8 @@ const TLKResource := preload("../resources/tlk_resource.gd")
 const KotorDLGDocument := preload("../resources/documents/kotor_dlg_document.gd")
 const KotorEditorState := preload("../editor/core/kotor_editor_state.gd")
 const KotorScriptToolBridge := preload("../resources/scripts/kotor_script_tool_bridge.gd")
+const KotorDiffToolBridge := preload("../resources/diff/kotor_diff_tool_bridge.gd")
+const HoloPatcherToolBridge := preload("../resources/patch/holo_patcher_tool_bridge.gd")
 const KotorModdingPipeline := preload("../editor/modding/kotor_modding_pipeline.gd")
 const KotorMutationService := preload("../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("./workspace/dialogs/kotor_preflight_dialog.gd")
@@ -65,6 +67,10 @@ var _workspace_search_field: LineEdit
 var _workspace_tree: Tree
 var _workspace_detail: TextEdit
 var _activity_log: TextEdit
+var _last_compare_report := ""
+var _kotordiff_path1 := ""
+var _kotordiff_path2 := ""
+var _holopatcher_tslpatchdata := ""
 
 # GameFS tab
 var _gamefs_status_label: Label
@@ -275,6 +281,16 @@ func _build_workspace_sidebar(parent: Control) -> void:
 	compare_btn.text = "Compare"
 	compare_btn.pressed.connect(_compare_selected_workspace_entry)
 	toolbar.add_child(compare_btn)
+
+	var compare_all_btn := Button.new()
+	compare_all_btn.text = "Compare All"
+	compare_all_btn.pressed.connect(_compare_all_overrides)
+	toolbar.add_child(compare_all_btn)
+
+	var export_compare_btn := Button.new()
+	export_compare_btn.text = "Export Report…"
+	export_compare_btn.pressed.connect(_export_compare_report_dialog)
+	toolbar.add_child(export_compare_btn)
 
 	var install_btn := Button.new()
 	install_btn.text = "Install"
@@ -495,6 +511,35 @@ func _build_gamefs_tab() -> void:
 	compare_btn.text = "Compare Override"
 	compare_btn.pressed.connect(_compare_selected_gamefs_entry)
 	toolbar.add_child(compare_btn)
+
+	var compare_all_btn := Button.new()
+	compare_all_btn.text = "Compare All Overrides"
+	compare_all_btn.pressed.connect(_compare_all_overrides)
+	toolbar.add_child(compare_all_btn)
+
+	var export_compare_btn := Button.new()
+	export_compare_btn.text = "Export Compare Report…"
+	export_compare_btn.pressed.connect(_export_compare_report_dialog)
+	toolbar.add_child(export_compare_btn)
+
+	var kotordiff_btn := Button.new()
+	kotordiff_btn.text = "Run KotorDiff CLI…"
+	kotordiff_btn.pressed.connect(_run_kotordiff_cli_dialog)
+	toolbar.add_child(kotordiff_btn)
+
+	var validate_patch_btn := Button.new()
+	validate_patch_btn.text = "Validate TSL Patch…"
+	validate_patch_btn.pressed.connect(
+		func() -> void: _run_holopatcher_cli_dialog(HoloPatcherToolBridge.MODE_VALIDATE)
+	)
+	toolbar.add_child(validate_patch_btn)
+
+	var install_patch_btn := Button.new()
+	install_patch_btn.text = "Install TSL Patch…"
+	install_patch_btn.pressed.connect(
+		func() -> void: _run_holopatcher_cli_dialog(HoloPatcherToolBridge.MODE_INSTALL)
+	)
+	toolbar.add_child(install_patch_btn)
 
 	_gamefs_status_label = Label.new()
 	_gamefs_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1186,7 +1231,133 @@ func _compare_gamefs_entry(entry: Dictionary) -> void:
 		str(entry.get("resref", "")),
 		int(entry.get("resource_type", -1))
 	)
-	_show_gamefs_report(_format_compare_result(result))
+	var report := _format_compare_result(result)
+	_last_compare_report = report
+	_show_gamefs_report(report)
+
+
+func _compare_all_overrides() -> void:
+	if _editor_state == null or _editor_state.gamefs == null:
+		_show_gamefs_report("Configure a game install path first.")
+		return
+	var result: Dictionary = _modding_pipeline.compare_all_overrides(_editor_state.gamefs)
+	var report := _format_batch_compare_result(result)
+	_last_compare_report = report
+	_show_gamefs_report(report)
+	_append_activity(report)
+
+
+func _export_compare_report_dialog() -> void:
+	if _last_compare_report.strip_edges().is_empty():
+		_show_gamefs_report("Run Compare or Compare All Overrides first.")
+		return
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_SAVE_FILE,
+		PackedStringArray(["*.txt ; Text Report"]),
+		"Export Compare Report",
+		_editor_state.game_path if _has_valid_game_path() else "",
+		"override-compare-report.txt"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		var target_path := _ensure_extension(path, "txt")
+		var result: Dictionary = _modding_pipeline.export_text_report_to_path(
+			target_path,
+			_last_compare_report
+		)
+		_show_gamefs_report(str(result.get("message", "Export failed.")))
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _run_kotordiff_cli_dialog() -> void:
+	if not _has_valid_game_path():
+		_show_gamefs_report("Configure a game install path first.")
+		return
+	_kotordiff_path1 = _editor_state.game_path
+	_kotordiff_path2 = ""
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_DIR,
+		PackedStringArray(),
+		"KotorDiff path2 (install, directory, or parent folder)",
+		_kotordiff_path1
+	)
+	dialog.dir_selected.connect(func(path: String) -> void:
+		_kotordiff_path2 = path
+		dialog.queue_free()
+		_prompt_kotordiff_output_log()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _prompt_kotordiff_output_log() -> void:
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_SAVE_FILE,
+		PackedStringArray(["*.log ; Log files"]),
+		"KotorDiff output log",
+		_kotordiff_path1 if not _kotordiff_path1.is_empty() else "",
+		"kotordiff.log"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		_execute_kotordiff_cli(_ensure_extension(path, "log"))
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _execute_kotordiff_cli(output_log: String) -> void:
+	var result := KotorDiffToolBridge.run_tool({
+		"path1": _kotordiff_path1,
+		"path2": _kotordiff_path2,
+		"output_log": output_log,
+		"game_path": _kotordiff_path1,
+		"pykotor_cli_path": _editor_state.pykotor_cli_path if _editor_state != null else "",
+	})
+	var report := str(result.get("message", "KotorDiff failed."))
+	if not str(result.get("stdout", "")).strip_edges().is_empty():
+		report += "\n\n" + str(result.get("stdout", "")).strip_edges()
+	_show_gamefs_report(report)
+	_append_activity(report)
+
+
+func _run_holopatcher_cli_dialog(mode: String) -> void:
+	if not _has_valid_game_path():
+		_show_gamefs_report("Configure a game install path first.")
+		return
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_DIR,
+		PackedStringArray(),
+		"HoloPatcher tslpatchdata folder",
+		_editor_state.game_path
+	)
+	dialog.dir_selected.connect(func(path: String) -> void:
+		_holopatcher_tslpatchdata = path
+		dialog.queue_free()
+		_execute_holopatcher_cli(mode)
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _execute_holopatcher_cli(mode: String) -> void:
+	var result := HoloPatcherToolBridge.run_tool({
+		"game_dir": _editor_state.game_path,
+		"tslpatchdata": _holopatcher_tslpatchdata,
+		"mode": mode,
+		"pykotor_cli_path": _editor_state.pykotor_cli_path if _editor_state != null else "",
+	})
+	var report := str(result.get("message", "HoloPatcher failed."))
+	if not str(result.get("stdout", "")).strip_edges().is_empty():
+		report += "\n\n" + str(result.get("stdout", "")).strip_edges()
+	_show_gamefs_report(report)
+	_append_activity(report)
 
 
 func _open_gamefs_entry(entry: Dictionary) -> void:
@@ -3557,6 +3728,14 @@ func _format_compare_result(result: Dictionary) -> String:
 		lines.append("")
 		lines.append(String(result.get("details", "")))
 	return "\n".join(lines)
+
+
+func _format_batch_compare_result(result: Dictionary) -> String:
+	if result.is_empty():
+		return "No batch comparison result."
+	if result.has("details"):
+		return String(result.get("details", ""))
+	return _format_compare_result(result)
 
 
 func _append_activity(text: String) -> void:

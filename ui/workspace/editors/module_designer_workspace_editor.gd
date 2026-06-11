@@ -2,6 +2,8 @@
 extends "./kotor_workspace_editor.gd"
 class_name KotorModuleDesignerWorkspaceEditor
 
+signal bundle_resource_open_requested(entry: Dictionary)
+
 const GFFParser := preload("../../../formats/gff_parser.gd")
 const GFFResourceFactory := preload("../../../resources/gff_resource_factory.gd")
 const GITResource := preload("../../../resources/typed/git_resource.gd")
@@ -9,22 +11,37 @@ const KotorGITDocument := preload("../../../resources/documents/kotor_git_docume
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorModuleContext := preload("../../../editor/module/kotor_module_context.gd")
+const BWMWriter := preload("../../../formats/bwm_writer.gd")
+const GFFWriter := preload("../../../formats/gff_writer.gd")
+const LYTWriter := preload("../../../formats/lyt_writer.gd")
+const VISWriter := preload("../../../formats/vis_writer.gd")
+const PTHResource := preload("../../../resources/typed/pth_resource.gd")
+const KotorPTHDocument := preload("../../../resources/documents/kotor_pth_document.gd")
 const KotorTemplateModelResolver := preload("../../../editor/module/kotor_template_model_resolver.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const ModuleDesignerMapView := preload("../panels/module_designer_map_view.gd")
 const ModuleDesignerViewport3D := preload("../panels/module_designer_viewport_3d.gd")
 
 const MODULE_DESIGNER_EXTENSIONS := ["git"]
+const TREE_KIND_INSTANCE := "instance"
+const TREE_KIND_PATH_POINT := "path_point"
+const TREE_KIND_PATH_CONNECTION := "path_connection"
 
 var _toolbar: HBoxContainer
 var _path_label: Label
 var _bundle_label: Label
 var _summary_label: Label
 var _detail_label: Label
+var _bundle_tree: Tree
+var _room_models_header: Label
+var _room_models_tree: Tree
 var _instance_tree: Tree
 var _map_view: ModuleDesignerMapView
 var _viewport_3d: ModuleDesignerViewport3D
 var _parsed_layout: Dictionary = {}
+var _parsed_visibility: Dictionary = {}
+var _path_resource: PTHResource
+var _path_document: KotorPTHDocument
 var _parsed_walkmesh: Dictionary = {}
 var _parsed_room_meshes: Array = []
 var _mutation_service: RefCounted
@@ -33,6 +50,8 @@ var _document: KotorGITDocument
 var _source_path := ""
 var _file_name := "module.git"
 var _dirty := false
+var _git_dirty := false
+var _pth_dirty := false
 var _status_text := ""
 var _document_key := ""
 var _module_bundle: Dictionary = {}
@@ -78,8 +97,13 @@ func open_resource(resource: GITResource, source_path: String = "", file_name: S
 	_disconnect_document_signal()
 	_source_path = source_path if source_path.is_absolute_path() else ""
 	_file_name = file_name.get_file() if not file_name.is_empty() else "module.git"
-	_dirty = false
+	_git_dirty = false
+	_pth_dirty = false
+	_refresh_dirty_state()
 	_status_text = ""
+	_reset_overlay_selection()
+	if _detail_label != null:
+		_detail_label.text = ""
 	_refresh_module_bundle()
 	_register_controller_document()
 	_connect_document_signal()
@@ -174,6 +198,178 @@ func install_document_to_override() -> Dictionary:
 	return {}
 
 
+func install_walkmesh_to_override() -> Dictionary:
+	if _parsed_walkmesh.is_empty():
+		var message := "No area walkmesh loaded for this module."
+		_status_text = message
+		_refresh_status()
+		return {"ok": false, "message": message}
+	var bytes := serialize_loaded_walkmesh_bytes()
+	if bytes.is_empty():
+		var message := "Failed to serialize walkmesh for install."
+		_status_text = message
+		_refresh_status()
+		return {"ok": false, "message": message}
+	var file_name := walkmesh_file_name()
+	var preview: Dictionary = _mutation_service.preview_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		bytes
+	)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Walkmesh install failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "Walkmesh is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		return _apply_walkmesh_install_now(bytes, file_name)
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "install_walkmesh"
+	_preflight_pending_path = file_name
+	_show_preflight_dialog(preview)
+	return {}
+
+
+func serialize_loaded_walkmesh_bytes() -> PackedByteArray:
+	if _parsed_walkmesh.is_empty():
+		return PackedByteArray()
+	return BWMWriter.write_bytes(_parsed_walkmesh)
+
+
+func walkmesh_file_name() -> String:
+	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
+	return "%s.wok" % module_resref
+
+
+func install_layout_to_override() -> Dictionary:
+	if _parsed_layout.is_empty():
+		var message := "No area layout loaded for this module."
+		_status_text = message
+		_refresh_status()
+		return {"ok": false, "message": message}
+	var bytes := serialize_loaded_layout_bytes()
+	if bytes.is_empty():
+		var message := "Failed to serialize layout for install."
+		_status_text = message
+		_refresh_status()
+		return {"ok": false, "message": message}
+	var file_name := layout_file_name()
+	var preview: Dictionary = _mutation_service.preview_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		bytes
+	)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Layout install failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "Layout is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		return _apply_layout_install_now(bytes, file_name)
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "install_layout"
+	_preflight_pending_path = file_name
+	_show_preflight_dialog(preview)
+	return {}
+
+
+func install_visibility_to_override() -> Dictionary:
+	if _parsed_visibility.is_empty():
+		var message := "No area visibility loaded for this module."
+		_status_text = message
+		_refresh_status()
+		return {"ok": false, "message": message}
+	var bytes := serialize_loaded_visibility_bytes()
+	if bytes.is_empty():
+		var message := "Failed to serialize visibility for install."
+		_status_text = message
+		_refresh_status()
+		return {"ok": false, "message": message}
+	var file_name := visibility_file_name()
+	var preview: Dictionary = _mutation_service.preview_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		bytes
+	)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Visibility install failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "Visibility is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		return _apply_visibility_install_now(bytes, file_name)
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "install_visibility"
+	_preflight_pending_path = file_name
+	_show_preflight_dialog(preview)
+	return {}
+
+
+func install_pth_to_override() -> Dictionary:
+	if _path_resource == null:
+		var message := "No area path graph loaded for this module."
+		_status_text = message
+		_refresh_status()
+		return {"ok": false, "message": message}
+	var file_name := pth_file_name()
+	var preview: Dictionary = _mutation_service.preview_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		_path_resource
+	)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "PTH install failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "PTH is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		return _apply_pth_install_now(file_name)
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "install_pth"
+	_preflight_pending_path = file_name
+	_show_preflight_dialog(preview)
+	return {}
+
+
+func serialize_loaded_layout_bytes() -> PackedByteArray:
+	if _parsed_layout.is_empty():
+		return PackedByteArray()
+	return LYTWriter.write_bytes(_parsed_layout)
+
+
+func serialize_loaded_visibility_bytes() -> PackedByteArray:
+	if _parsed_visibility.is_empty():
+		return PackedByteArray()
+	return VISWriter.write_bytes(_parsed_visibility)
+
+
+func layout_file_name() -> String:
+	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
+	return "%s.lyt" % module_resref
+
+
+func visibility_file_name() -> String:
+	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
+	return "%s.vis" % module_resref
+
+
+func pth_file_name() -> String:
+	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
+	return "%s.pth" % module_resref
+
+
 func _build_ui() -> void:
 	if _toolbar != null:
 		return
@@ -189,6 +385,66 @@ func _build_ui() -> void:
 	save_btn.text = "Save"
 	save_btn.pressed.connect(_save_git)
 	_toolbar.add_child(save_btn)
+
+	var export_walkmesh_btn := Button.new()
+	export_walkmesh_btn.text = "Export Walkmesh Preview…"
+	export_walkmesh_btn.pressed.connect(_export_walkmesh_preview_dialog)
+	_toolbar.add_child(export_walkmesh_btn)
+
+	var export_layout_btn := Button.new()
+	export_layout_btn.text = "Export LYT Preview…"
+	export_layout_btn.pressed.connect(_export_layout_preview_dialog)
+	_toolbar.add_child(export_layout_btn)
+
+	var export_visibility_btn := Button.new()
+	export_visibility_btn.text = "Export VIS Preview…"
+	export_visibility_btn.pressed.connect(_export_visibility_preview_dialog)
+	_toolbar.add_child(export_visibility_btn)
+
+	var export_pth_btn := Button.new()
+	export_pth_btn.text = "Export PTH Preview…"
+	export_pth_btn.pressed.connect(_export_pth_preview_dialog)
+	_toolbar.add_child(export_pth_btn)
+
+	var install_walkmesh_btn := Button.new()
+	install_walkmesh_btn.text = "Install Walkmesh to Override"
+	install_walkmesh_btn.pressed.connect(_install_walkmesh_to_override)
+	_toolbar.add_child(install_walkmesh_btn)
+
+	var install_layout_btn := Button.new()
+	install_layout_btn.text = "Install LYT to Override"
+	install_layout_btn.pressed.connect(_install_layout_to_override)
+	_toolbar.add_child(install_layout_btn)
+
+	var install_visibility_btn := Button.new()
+	install_visibility_btn.text = "Install VIS to Override"
+	install_visibility_btn.pressed.connect(_install_visibility_to_override)
+	_toolbar.add_child(install_visibility_btn)
+
+	var install_pth_btn := Button.new()
+	install_pth_btn.text = "Install PTH to Override"
+	install_pth_btn.pressed.connect(_install_pth_to_override)
+	_toolbar.add_child(install_pth_btn)
+
+	var add_pth_point_btn := Button.new()
+	add_pth_point_btn.text = "Add Path Point"
+	add_pth_point_btn.pressed.connect(_arm_add_path_point)
+	_toolbar.add_child(add_pth_point_btn)
+
+	var remove_pth_point_btn := Button.new()
+	remove_pth_point_btn.text = "Remove Path Point"
+	remove_pth_point_btn.pressed.connect(_remove_selected_path_point)
+	_toolbar.add_child(remove_pth_point_btn)
+
+	var add_pth_connection_btn := Button.new()
+	add_pth_connection_btn.text = "Add Path Connection"
+	add_pth_connection_btn.pressed.connect(_arm_add_path_connection)
+	_toolbar.add_child(add_pth_connection_btn)
+
+	var remove_pth_connection_btn := Button.new()
+	remove_pth_connection_btn.text = "Remove Path Connection"
+	remove_pth_connection_btn.pressed.connect(_remove_selected_path_connection)
+	_toolbar.add_child(remove_pth_connection_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -212,6 +468,32 @@ func _build_ui() -> void:
 	left_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	split.add_child(left_panel)
 
+	var bundle_header := Label.new()
+	bundle_header.text = "Module Resources"
+	left_panel.add_child(bundle_header)
+
+	_bundle_tree = Tree.new()
+	_bundle_tree.custom_minimum_size = Vector2(0, 120)
+	_bundle_tree.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_bundle_tree.hide_root = true
+	_bundle_tree.item_activated.connect(_on_bundle_tree_item_activated)
+	_bundle_tree.item_selected.connect(_on_bundle_tree_item_selected)
+	left_panel.add_child(_bundle_tree)
+
+	_room_models_header = Label.new()
+	_room_models_header.text = "Room Models"
+	_room_models_header.visible = false
+	left_panel.add_child(_room_models_header)
+
+	_room_models_tree = Tree.new()
+	_room_models_tree.custom_minimum_size = Vector2(0, 100)
+	_room_models_tree.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_room_models_tree.hide_root = true
+	_room_models_tree.visible = false
+	_room_models_tree.item_selected.connect(_on_room_models_tree_item_selected)
+	_room_models_tree.item_activated.connect(_on_room_models_tree_item_activated)
+	left_panel.add_child(_room_models_tree)
+
 	_instance_tree = Tree.new()
 	_instance_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_instance_tree.item_selected.connect(_on_instance_tree_selected)
@@ -225,7 +507,13 @@ func _build_ui() -> void:
 	_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_map_view.instance_selected.connect(_on_map_instance_selected)
+	_map_view.path_point_selected.connect(_on_map_path_point_selected)
+	_map_view.path_connection_selected.connect(_on_map_path_connection_selected)
+	_map_view.path_connection_retarget_requested.connect(_on_map_path_connection_retarget_requested)
+	_map_view.path_connection_add_requested.connect(_on_map_path_connection_add_requested)
+	_map_view.path_point_add_requested.connect(_on_map_path_point_add_requested)
 	_map_view.instance_drag_finished.connect(_on_map_instance_drag_finished)
+	_map_view.path_point_drag_finished.connect(_on_map_path_point_drag_finished)
 	_map_view.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
 
 	var right_split := VSplitContainer.new()
@@ -235,6 +523,9 @@ func _build_ui() -> void:
 
 	_viewport_3d = ModuleDesignerViewport3D.new()
 	_viewport_3d.instance_selected.connect(_on_viewport_instance_selected)
+	_viewport_3d.path_point_selected.connect(_on_viewport_path_point_selected)
+	_viewport_3d.path_connection_selected.connect(_on_viewport_path_connection_selected)
+	_viewport_3d.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
 	right_split.add_child(_viewport_3d)
 
 	split.add_child(right_split)
@@ -245,6 +536,8 @@ func _refresh_view() -> void:
 		return
 	_refresh_path_label()
 	_refresh_bundle_label()
+	_refresh_bundle_tree()
+	_refresh_room_models_tree()
 	_refresh_summary()
 	_refresh_instance_tree()
 	_refresh_map()
@@ -254,7 +547,10 @@ func _refresh_view() -> void:
 func _refresh_path_label() -> void:
 	if _path_label == null:
 		return
-	var parts: Array[String] = [_current_file_name()]
+	var label := _current_file_name()
+	if _dirty:
+		label += " *"
+	var parts: Array[String] = [label]
 	if not _source_path.is_empty():
 		parts.append(_source_path)
 	_path_label.text = " · ".join(parts)
@@ -270,10 +566,161 @@ func _refresh_bundle_label() -> void:
 	]
 
 
+func _refresh_bundle_tree() -> void:
+	if _bundle_tree == null:
+		return
+	_bundle_tree.clear()
+	var root := _bundle_tree.create_item()
+	for record in KotorModuleContext.get_bundle_resource_entries(_module_bundle):
+		var item := _bundle_tree.create_item(root)
+		item.set_text(
+			0,
+			"%s (%s)" % [str(record.get("label", "")), str(record.get("description", ""))]
+		)
+		item.set_metadata(0, record)
+
+
+func _on_bundle_tree_item_selected() -> void:
+	if _bundle_tree == null:
+		return
+	var selected := _bundle_tree.get_selected()
+	if selected == null:
+		return
+	var record: Variant = selected.get_metadata(0)
+	if typeof(record) != TYPE_DICTIONARY:
+		return
+	_show_bundle_resource_detail(record)
+
+
+func _on_bundle_tree_item_activated() -> void:
+	if _bundle_tree == null:
+		return
+	var selected := _bundle_tree.get_selected()
+	if selected == null:
+		return
+	var record: Variant = selected.get_metadata(0)
+	if typeof(record) != TYPE_DICTIONARY:
+		return
+	var entry: Dictionary = record.get("entry", {})
+	if entry.is_empty():
+		_status_text = "Selected module resource is not available in the install index."
+		_refresh_status()
+		return
+	bundle_resource_open_requested.emit(entry)
+
+
+func _refresh_room_models_tree() -> void:
+	if _room_models_tree == null or _room_models_header == null:
+		return
+	_room_models_tree.clear()
+	var gamefs = _editor_state.gamefs if _editor_state != null else null
+	var records := KotorModuleContext.get_room_model_entries(_parsed_layout, gamefs)
+	var has_records := not records.is_empty()
+	_room_models_header.visible = has_records
+	_room_models_tree.visible = has_records
+	if not has_records:
+		return
+	var root := _room_models_tree.create_item()
+	for record in records:
+		var item := _room_models_tree.create_item(root)
+		item.set_text(
+			0,
+			"%s (%s)" % [
+				str(record.get("model", "")),
+				KotorModuleContext.format_room_model_presence(record),
+			]
+		)
+		item.set_metadata(0, record)
+
+
+func _on_room_models_tree_item_selected() -> void:
+	if _room_models_tree == null:
+		return
+	var selected := _room_models_tree.get_selected()
+	if selected == null:
+		return
+	var record: Variant = selected.get_metadata(0)
+	if typeof(record) != TYPE_DICTIONARY:
+		return
+	_show_room_model_detail(record)
+
+
+func _on_room_models_tree_item_activated() -> void:
+	if _room_models_tree == null:
+		return
+	var selected := _room_models_tree.get_selected()
+	if selected == null:
+		return
+	var record: Variant = selected.get_metadata(0)
+	if typeof(record) != TYPE_DICTIONARY:
+		return
+	var entry: Dictionary = record.get("open_entry", {})
+	if entry.is_empty():
+		_status_text = "Selected room model has no indexed MDL to open."
+		_refresh_status()
+		return
+	bundle_resource_open_requested.emit(entry)
+
+
+func _show_bundle_resource_detail(record: Dictionary) -> void:
+	if _detail_label == null:
+		return
+	var label := str(record.get("label", ""))
+	var description := str(record.get("description", ""))
+	var extension := str(record.get("extension", ""))
+	var lines: Array[String] = [
+		"Module Resource: %s" % label,
+		"Status: %s" % description,
+	]
+	if extension == "lyt" and not _parsed_layout.is_empty():
+		lines.append(KotorModuleContext.format_layout_summary(_parsed_layout))
+	elif extension == "vis" and not _parsed_visibility.is_empty():
+		lines.append(KotorModuleContext.format_visibility_summary(_parsed_visibility))
+	elif extension == "pth" and _path_resource != null:
+		lines.append(KotorModuleContext.format_path_summary(_path_resource))
+	elif extension == "wok" and not _parsed_walkmesh.is_empty():
+		lines.append(
+			"Walkmesh: %d face(s), %d vertex/vertices"
+			% [
+				int(_parsed_walkmesh.get("face_count", 0)),
+				int(_parsed_walkmesh.get("vertex_count", 0)),
+			]
+		)
+	_detail_label.text = "\n".join(lines)
+
+
+func _show_room_model_detail(record: Dictionary) -> void:
+	if _detail_label == null:
+		return
+	var position: Vector3 = record.get("position", Vector3.ZERO)
+	_detail_label.text = (
+		"Room Model: %s\nPosition: %.2f, %.2f, %.2f\nAssets: %s"
+		% [
+			str(record.get("model", "")),
+			position.x,
+			position.y,
+			position.z,
+			KotorModuleContext.format_room_model_presence(record),
+		]
+	)
+
+
 func _refresh_summary() -> void:
 	if _summary_label == null or _document == null:
 		return
-	_summary_label.text = _document.build_summary_text()
+	var lines: Array[String] = [_document.build_summary_text()]
+	if not _parsed_layout.is_empty():
+		lines.append(KotorModuleContext.format_layout_summary(_parsed_layout))
+	if not _parsed_visibility.is_empty():
+		lines.append(KotorModuleContext.format_visibility_summary(_parsed_visibility))
+	if _path_resource != null:
+		lines.append(KotorModuleContext.format_path_summary(_path_resource))
+	if not _parsed_walkmesh.is_empty():
+		lines.append(
+			"Walkmesh: %d face(s), %d vertex/vertices"
+			% [int(_parsed_walkmesh.get("face_count", 0)), int(_parsed_walkmesh.get("vertex_count", 0))]
+		)
+	_summary_label.text = "\n".join(lines)
 
 
 func _refresh_instance_tree() -> void:
@@ -301,14 +748,42 @@ func _refresh_instance_tree() -> void:
 			if label.is_empty():
 				label = "%s #%d" % [category, int(record.get("index", 0))]
 			item.set_text(0, label)
-			item.set_metadata(0, record)
+			item.set_metadata(0, {
+				"kind": TREE_KIND_INSTANCE,
+				"category": str(record.get("category", "")),
+				"index": int(record.get("index", -1)),
+			})
+	var path_points := _module_path_points()
+	if not path_points.is_empty():
+		var path_item := _instance_tree.create_item(root)
+		path_item.set_text(0, "Path Points (%d)" % path_points.size())
+		for point_record in path_points:
+			var item := _instance_tree.create_item(path_item)
+			item.set_text(0, "Point %d" % int(point_record.get("id", int(point_record.get("index", 0)))))
+			item.set_metadata(0, {
+				"kind": TREE_KIND_PATH_POINT,
+				"index": int(point_record.get("index", -1)),
+			})
+	var path_connections := _module_path_edges()
+	if not path_connections.is_empty():
+		var connection_item := _instance_tree.create_item(root)
+		connection_item.set_text(0, "Path Connections (%d)" % path_connections.size())
+		for connection_record in path_connections:
+			var item := _instance_tree.create_item(connection_item)
+			item.set_text(0, _module_path_connection_label(connection_record))
+			item.set_metadata(0, {
+				"kind": TREE_KIND_PATH_CONNECTION,
+				"index": int(connection_record.get("index", -1)),
+			})
 
 
 func _refresh_map() -> void:
 	if _map_view == null or _document == null:
 		return
 	var records := _document.get_instance_records()
-	_map_view.set_instances(records, _document.get_layout_bounds())
+	var path_points := _module_path_points()
+	var path_edges := _module_path_edges()
+	_map_view.set_instances(records, _module_overlay_bounds(_document.get_layout_bounds(), path_points), path_points, path_edges)
 	_refresh_viewport_3d()
 
 
@@ -316,7 +791,11 @@ func _refresh_viewport_3d() -> void:
 	if _viewport_3d == null or _document == null:
 		return
 	var records := _document.get_instance_records()
+	var path_points := _module_path_points()
+	var path_edges := _module_path_edges()
 	_viewport_3d.set_instances(records, _parsed_layout)
+	_viewport_3d.set_path_points(path_points)
+	_viewport_3d.set_path_edges(path_edges)
 	_viewport_3d.set_walkmesh(_parsed_walkmesh)
 	_viewport_3d.set_room_meshes(_parsed_room_meshes)
 	_viewport_3d.set_instance_meshes(_load_instance_meshes(_resolve_gamefs(), records))
@@ -324,8 +803,10 @@ func _refresh_viewport_3d() -> void:
 
 func _refresh_status() -> void:
 	var parts: Array[String] = []
-	if _dirty:
-		parts.append("Unsaved changes")
+	if _git_dirty:
+		parts.append("Unsaved GIT changes")
+	if _pth_dirty:
+		parts.append("Unsaved PTH changes")
 	if not _status_text.is_empty():
 		parts.append(_status_text)
 	var text := "Ready" if parts.is_empty() else " · ".join(parts)
@@ -337,6 +818,8 @@ func _refresh_module_bundle() -> void:
 	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
 	_module_bundle = KotorModuleContext.find_module_bundle(gamefs, module_resref)
 	_parsed_layout = KotorModuleContext.load_parsed_layout(gamefs, _module_bundle)
+	_parsed_visibility = KotorModuleContext.load_parsed_visibility(gamefs, _module_bundle)
+	_set_path_resource(KotorModuleContext.load_path_resource(gamefs, _module_bundle))
 	_parsed_walkmesh = KotorModuleContext.load_parsed_walkmesh(gamefs, _module_bundle)
 	_parsed_room_meshes = _load_room_meshes(gamefs)
 
@@ -404,25 +887,190 @@ func _load_instance_meshes(gamefs: RefCounted, records: Array) -> Array:
 	return entries
 
 
+func _module_path_points() -> Array[Dictionary]:
+	if _path_resource == null:
+		return []
+	return _path_resource.get_point_records()
+
+
+func _module_path_edges() -> Array[Dictionary]:
+	if _path_resource == null:
+		return []
+	return _path_resource.get_connection_records()
+
+
+func _module_path_point_by_index(index: int) -> Dictionary:
+	for point_record in _module_path_points():
+		if int(point_record.get("index", -1)) == index:
+			return point_record
+	return {}
+
+
+func _module_path_outgoing_edges(index: int) -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
+	for edge_record in _module_path_edges():
+		if int(edge_record.get("source_index", -1)) == index:
+			records.append(edge_record)
+	return records
+
+
+func _module_path_connection_by_index(index: int) -> Dictionary:
+	for edge_record in _module_path_edges():
+		if int(edge_record.get("index", -1)) == index:
+			return edge_record
+	return {}
+
+
+func _module_path_connection_label(record: Dictionary) -> String:
+	return "Connection %d: %d -> %d" % [
+		int(record.get("index", 0)),
+		int(record.get("source_id", int(record.get("source_index", 0)))),
+		int(record.get("target_id", int(record.get("target_index", 0)))),
+	]
+
+
+func _module_overlay_bounds(base_bounds: Rect2, path_points: Array[Dictionary]) -> Rect2:
+	if path_points.is_empty():
+		return base_bounds
+	var has_bounds := base_bounds.size.x > 0.0 and base_bounds.size.y > 0.0
+	var min_point := base_bounds.position if has_bounds else Vector2.ZERO
+	var max_point := base_bounds.end if has_bounds else Vector2.ZERO
+	for raw_point in path_points:
+		var point := Vector2(float(raw_point.get("x", 0.0)), float(raw_point.get("y", 0.0)))
+		if not has_bounds:
+			min_point = point
+			max_point = point
+			has_bounds = true
+			continue
+		min_point = min_point.min(point)
+		max_point = max_point.max(point)
+	if not has_bounds:
+		return base_bounds
+	var size := max_point - min_point
+	if is_zero_approx(size.x):
+		size.x = 1.0
+	if is_zero_approx(size.y):
+		size.y = 1.0
+	return Rect2(min_point, size).grow(1.0)
+
+
 func _on_instance_tree_selected() -> void:
 	var selected := _instance_tree.get_selected()
 	if selected == null:
 		return
-	var record = selected.get_metadata(0)
-	if typeof(record) != TYPE_DICTIONARY:
+	var metadata = selected.get_metadata(0)
+	if typeof(metadata) != TYPE_DICTIONARY:
 		if _detail_label != null:
 			_detail_label.text = ""
 		if _map_view != null:
 			_map_view.set_selection("", -1)
+			_map_view.set_path_point_selection(-1)
+			_map_view.set_path_connection_selection(-1)
 		if _viewport_3d != null:
 			_viewport_3d.set_selection("", -1)
+			_viewport_3d.set_path_point_selection(-1)
+			_viewport_3d.set_path_connection_selection(-1)
 		return
-	_show_instance_detail(record)
-	_select_instance(str(record.get("category", "")), int(record.get("index", -1)))
+	var kind := str(metadata.get("kind", ""))
+	if kind == TREE_KIND_INSTANCE:
+		_select_instance(str(metadata.get("category", "")), int(metadata.get("index", -1)))
+		return
+	if kind == TREE_KIND_PATH_POINT:
+		_select_path_point(int(metadata.get("index", -1)))
+		return
+	if kind == TREE_KIND_PATH_CONNECTION:
+		_select_path_connection(int(metadata.get("index", -1)))
+		return
 
 
 func _on_map_instance_selected(category: String, index: int) -> void:
 	_select_instance(category, index)
+
+
+func _on_map_path_point_selected(index: int) -> void:
+	_select_path_point(index)
+
+
+func _on_map_path_connection_selected(index: int) -> void:
+	_select_path_connection(index)
+
+
+func _on_map_path_connection_retarget_requested(connection_index: int, target_index: int) -> void:
+	var connection_record := _module_path_connection_by_index(connection_index)
+	if connection_record.is_empty():
+		return
+	var source_index := int(connection_record.get("source_index", -1))
+	if source_index == target_index:
+		return
+	var old_target := int(connection_record.get("target_index", -1))
+	if old_target == target_index:
+		return
+	_apply_path_connection_retarget_with_undo(connection_index, old_target, target_index)
+
+
+func _arm_add_path_point() -> void:
+	if _map_view == null or _path_document == null:
+		return
+	_map_view.set_add_path_connection_armed(false)
+	_map_view.set_add_path_point_armed(true)
+	_status_text = "Click the map to place a new path point."
+	_refresh_status()
+
+
+func _remove_selected_path_point() -> void:
+	if _map_view == null or _path_document == null:
+		return
+	var index := _map_view._selected_path_point_index
+	if index < 0:
+		_status_text = "Select a path point to remove."
+		_refresh_status()
+		return
+	_status_text = ""
+	_refresh_status()
+	_apply_path_point_remove_with_undo(index)
+
+
+func _arm_add_path_connection() -> void:
+	if _map_view == null or _path_document == null:
+		return
+	var source_index := _map_view._selected_path_point_index
+	if source_index < 0:
+		_status_text = "Select a source path point before adding a connection."
+		_refresh_status()
+		return
+	_map_view.set_add_path_point_armed(false)
+	_map_view.set_add_path_connection_armed(true)
+	_status_text = "Click a target path point to connect from the selected source."
+	_refresh_status()
+
+
+func _remove_selected_path_connection() -> void:
+	if _map_view == null or _path_document == null:
+		return
+	var connection_index := _map_view._selected_path_connection_index
+	if connection_index < 0:
+		_status_text = "Select a path connection to remove."
+		_refresh_status()
+		return
+	_status_text = ""
+	_refresh_status()
+	_apply_path_connection_remove_with_undo(connection_index)
+
+
+func _on_map_path_connection_add_requested(source_index: int, target_index: int) -> void:
+	if _map_view != null:
+		_map_view.set_add_path_connection_armed(false)
+	_status_text = ""
+	_refresh_status()
+	_apply_path_connection_add_with_undo(source_index, target_index)
+
+
+func _on_map_path_point_add_requested(x: float, y: float) -> void:
+	if _map_view != null:
+		_map_view.set_add_path_point_armed(false)
+	_status_text = ""
+	_refresh_status()
+	_apply_path_point_add_with_undo(x, y)
 
 
 func _on_map_instance_drag_finished(
@@ -434,6 +1082,16 @@ func _on_map_instance_drag_finished(
 	new_y: float
 ) -> void:
 	_apply_instance_position_with_undo(category, index, old_x, old_y, new_x, new_y)
+
+
+func _on_map_path_point_drag_finished(
+	index: int,
+	old_x: float,
+	old_y: float,
+	new_x: float,
+	new_y: float
+) -> void:
+	_apply_path_point_position_with_undo(index, old_x, old_y, new_x, new_y)
 
 
 func _on_map_instance_rotate_finished(
@@ -449,6 +1107,14 @@ func _on_viewport_instance_selected(category: String, index: int) -> void:
 	_select_instance(category, index)
 
 
+func _on_viewport_path_point_selected(index: int) -> void:
+	_select_path_point(index)
+
+
+func _on_viewport_path_connection_selected(index: int) -> void:
+	_select_path_connection(index)
+
+
 func _select_instance(category: String, index: int) -> void:
 	var record := _document.find_instance_record(category, index)
 	if record.is_empty():
@@ -456,9 +1122,45 @@ func _select_instance(category: String, index: int) -> void:
 	_show_instance_detail(record)
 	if _map_view != null:
 		_map_view.set_selection(category, index)
+		_map_view.set_path_point_selection(-1)
+		_map_view.set_path_connection_selection(-1)
 	if _viewport_3d != null:
 		_viewport_3d.set_selection(category, index)
-	_select_tree_record(record)
+		_viewport_3d.set_path_point_selection(-1)
+		_viewport_3d.set_path_connection_selection(-1)
+	_select_tree_item(TREE_KIND_INSTANCE, category, index)
+
+
+func _select_path_point(index: int) -> void:
+	var point_record := _module_path_point_by_index(index)
+	if point_record.is_empty():
+		return
+	_show_path_point_detail(point_record)
+	if _map_view != null:
+		_map_view.set_selection("", -1)
+		_map_view.set_path_point_selection(index)
+		_map_view.set_path_connection_selection(-1)
+	if _viewport_3d != null:
+		_viewport_3d.set_selection("", -1)
+		_viewport_3d.set_path_point_selection(index)
+		_viewport_3d.set_path_connection_selection(-1)
+	_select_tree_item(TREE_KIND_PATH_POINT, "", index)
+
+
+func _select_path_connection(index: int) -> void:
+	var connection_record := _module_path_connection_by_index(index)
+	if connection_record.is_empty():
+		return
+	_show_path_connection_detail(connection_record)
+	if _map_view != null:
+		_map_view.set_selection("", -1)
+		_map_view.set_path_point_selection(-1)
+		_map_view.set_path_connection_selection(index)
+	if _viewport_3d != null:
+		_viewport_3d.set_selection("", -1)
+		_viewport_3d.set_path_point_selection(-1)
+		_viewport_3d.set_path_connection_selection(index)
+	_select_tree_item(TREE_KIND_PATH_CONNECTION, "", index)
 
 
 func _show_instance_detail(record: Dictionary) -> void:
@@ -479,7 +1181,49 @@ func _show_instance_detail(record: Dictionary) -> void:
 	)
 
 
-func _select_tree_record(record: Dictionary) -> void:
+func _show_path_point_detail(record: Dictionary) -> void:
+	if _detail_label == null:
+		return
+	var point_index := int(record.get("index", -1))
+	var outgoing := _module_path_outgoing_edges(point_index)
+	var target_ids: Array[String] = []
+	for edge_record in outgoing:
+		target_ids.append(str(int(edge_record.get("target_id", int(edge_record.get("target_index", -1))))))
+	var targets_text := "none" if target_ids.is_empty() else ", ".join(target_ids)
+	_detail_label.text = (
+		"Path Point #%d\nPoint ID: %d\nPosition: %.2f, %.2f, %.2f\nOutgoing connections: %d\nTargets: %s"
+		% [
+			point_index,
+			int(record.get("id", point_index)),
+			float(record.get("x", 0.0)),
+			float(record.get("y", 0.0)),
+			float(record.get("z", 0.0)),
+			outgoing.size(),
+			targets_text,
+		]
+	)
+
+
+func _show_path_connection_detail(record: Dictionary) -> void:
+	if _detail_label == null:
+		return
+	_detail_label.text = (
+		"Path Connection #%d\nSource: Point %d at %.2f, %.2f, %.2f\nTarget: Point %d at %.2f, %.2f, %.2f"
+		% [
+			int(record.get("index", 0)),
+			int(record.get("source_id", int(record.get("source_index", 0)))),
+			float(record.get("source_x", 0.0)),
+			float(record.get("source_y", 0.0)),
+			float(record.get("source_z", 0.0)),
+			int(record.get("target_id", int(record.get("target_index", 0)))),
+			float(record.get("target_x", 0.0)),
+			float(record.get("target_y", 0.0)),
+			float(record.get("target_z", 0.0)),
+		]
+	)
+
+
+func _select_tree_item(kind: String, category: String, index: int) -> void:
 	if _instance_tree == null:
 		return
 	var root := _instance_tree.get_root()
@@ -490,24 +1234,45 @@ func _select_tree_record(record: Dictionary) -> void:
 			var metadata = item.get_metadata(0)
 			if typeof(metadata) != TYPE_DICTIONARY:
 				continue
-			if (
-				str(metadata.get("category", "")) == str(record.get("category", ""))
-				and int(metadata.get("index", -1)) == int(record.get("index", -1))
-			):
-				item.select(0)
-				return
+			if str(metadata.get("kind", "")) != kind:
+				continue
+			if kind == TREE_KIND_INSTANCE and str(metadata.get("category", "")) != category:
+				continue
+			if int(metadata.get("index", -1)) != index:
+				continue
+			item.select(0)
+			return
+
+
+func _reset_overlay_selection() -> void:
+	if _map_view != null:
+		_map_view.set_add_path_point_armed(false)
+		_map_view.set_add_path_connection_armed(false)
+		_map_view.set_selection("", -1)
+		_map_view.set_path_point_selection(-1)
+		_map_view.set_path_connection_selection(-1)
+	if _viewport_3d != null:
+		_viewport_3d.set_selection("", -1)
+		_viewport_3d.set_path_point_selection(-1)
+		_viewport_3d.set_path_connection_selection(-1)
 
 
 func _clear_document_state(message: String) -> void:
 	_disconnect_document_signal()
+	_disconnect_path_document_signal()
 	_resource = null
 	_document = null
 	_source_path = ""
 	_file_name = "module.git"
-	_dirty = false
+	_git_dirty = false
+	_pth_dirty = false
+	_refresh_dirty_state()
 	_status_text = message
 	_module_bundle = {}
 	_parsed_layout = {}
+	_parsed_visibility = {}
+	_path_resource = null
+	_path_document = null
 	_parsed_walkmesh = {}
 	_parsed_room_meshes = []
 	if _instance_tree != null:
@@ -516,14 +1281,19 @@ func _clear_document_state(message: String) -> void:
 		_map_view.set_instances([], Rect2())
 	if _viewport_3d != null:
 		_viewport_3d.set_instances([], {})
+		_viewport_3d.set_path_points([])
+		_viewport_3d.set_path_edges([])
 		_viewport_3d.set_walkmesh({})
 		_viewport_3d.set_room_meshes([])
+	_reset_overlay_selection()
 	if _detail_label != null:
 		_detail_label.text = ""
 	if _summary_label != null:
 		_summary_label.text = ""
 	if _bundle_label != null:
 		_bundle_label.text = ""
+	_refresh_bundle_tree()
+	_refresh_room_models_tree()
 	_refresh_path_label()
 	_refresh_status()
 
@@ -534,6 +1304,225 @@ func _save_git() -> void:
 		_refresh_status()
 		return
 	save_document_to_path(_source_path)
+
+
+func _export_walkmesh_preview_dialog() -> void:
+	if _parsed_walkmesh.is_empty():
+		_status_text = "No area walkmesh loaded for this module."
+		_refresh_status()
+		return
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export Walkmesh Preview"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	var module_resref := KotorModuleContext.module_resref_from_file_name(_file_name)
+	dialog.current_file = "%s.wok" % module_resref
+	dialog.add_filter("*.wok ; Walkmesh")
+	dialog.file_selected.connect(func(path: String) -> void:
+		_write_walkmesh_preview(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_layout_preview_dialog() -> void:
+	if _parsed_layout.is_empty():
+		_status_text = "No area layout loaded for this module."
+		_refresh_status()
+		return
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export LYT Preview"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	dialog.current_file = layout_file_name()
+	dialog.add_filter("*.lyt ; KotOR Layout")
+	dialog.file_selected.connect(func(path: String) -> void:
+		export_layout_preview_to_path(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_visibility_preview_dialog() -> void:
+	if _parsed_visibility.is_empty():
+		_status_text = "No area visibility loaded for this module."
+		_refresh_status()
+		return
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export VIS Preview"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	dialog.current_file = visibility_file_name()
+	dialog.add_filter("*.vis ; KotOR Visibility")
+	dialog.file_selected.connect(func(path: String) -> void:
+		export_visibility_preview_to_path(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _export_pth_preview_dialog() -> void:
+	if _path_resource == null:
+		_status_text = "No area path graph loaded for this module."
+		_refresh_status()
+		return
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export PTH Preview"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	dialog.current_file = pth_file_name()
+	dialog.add_filter("*.pth ; KotOR Path Graph")
+	dialog.file_selected.connect(func(path: String) -> void:
+		export_pth_preview_to_path(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
+
+
+func _write_walkmesh_preview(path: String) -> void:
+	var target_path := path
+	if target_path.get_extension().to_lower() != "wok":
+		target_path = "%s.wok" % target_path.get_basename()
+	var bytes := serialize_loaded_walkmesh_bytes()
+	if bytes.is_empty():
+		_status_text = "Failed to serialize walkmesh preview."
+		_refresh_status()
+		return
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write walkmesh preview: %s" % target_path
+		_refresh_status()
+		return
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "Walkmesh preview written to %s" % target_path.get_file()
+	_refresh_status()
+
+
+func export_layout_preview_to_path(path: String) -> Dictionary:
+	if _parsed_layout.is_empty():
+		var missing_message := "No area layout loaded for this module."
+		_status_text = missing_message
+		_refresh_status()
+		return {"ok": false, "message": missing_message}
+	var target_path := _ensure_extension(path, "lyt")
+	var bytes := serialize_loaded_layout_bytes()
+	if bytes.is_empty():
+		var serialize_message := "Failed to serialize layout preview."
+		_status_text = serialize_message
+		_refresh_status()
+		return {"ok": false, "message": serialize_message}
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		var write_message := "Failed to write layout preview: %s" % target_path
+		_status_text = write_message
+		_refresh_status()
+		return {"ok": false, "message": write_message, "path": target_path}
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "LYT preview written to %s" % target_path.get_file()
+	_refresh_status()
+	return {"ok": true, "path": target_path}
+
+
+func export_visibility_preview_to_path(path: String) -> Dictionary:
+	if _parsed_visibility.is_empty():
+		var missing_message := "No area visibility loaded for this module."
+		_status_text = missing_message
+		_refresh_status()
+		return {"ok": false, "message": missing_message}
+	var target_path := _ensure_extension(path, "vis")
+	var bytes := serialize_loaded_visibility_bytes()
+	if bytes.is_empty():
+		var serialize_message := "Failed to serialize visibility preview."
+		_status_text = serialize_message
+		_refresh_status()
+		return {"ok": false, "message": serialize_message}
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		var write_message := "Failed to write visibility preview: %s" % target_path
+		_status_text = write_message
+		_refresh_status()
+		return {"ok": false, "message": write_message, "path": target_path}
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "VIS preview written to %s" % target_path.get_file()
+	_refresh_status()
+	return {"ok": true, "path": target_path}
+
+
+func export_pth_preview_to_path(path: String) -> Dictionary:
+	if _path_resource == null:
+		var missing_message := "No area path graph loaded for this module."
+		_status_text = missing_message
+		_refresh_status()
+		return {"ok": false, "message": missing_message}
+	var target_path := _ensure_extension(path, "pth")
+	var bytes := GFFWriter.serialize(_path_resource)
+	if bytes.is_empty():
+		var serialize_message := "Failed to serialize path preview."
+		_status_text = serialize_message
+		_refresh_status()
+		return {"ok": false, "message": serialize_message}
+	var file := FileAccess.open(target_path, FileAccess.WRITE)
+	if file == null:
+		var write_message := "Failed to write path preview: %s" % target_path
+		_status_text = write_message
+		_refresh_status()
+		return {"ok": false, "message": write_message, "path": target_path}
+	file.store_buffer(bytes)
+	file.close()
+	_status_text = "PTH preview written to %s" % target_path.get_file()
+	_refresh_status()
+	return {"ok": true, "path": target_path}
+
+
+func _install_walkmesh_to_override() -> void:
+	install_walkmesh_to_override()
+
+
+func _install_layout_to_override() -> void:
+	install_layout_to_override()
+
+
+func _install_visibility_to_override() -> void:
+	install_visibility_to_override()
+
+
+func _install_pth_to_override() -> void:
+	install_pth_to_override()
 
 
 func _install_git_to_override() -> void:
@@ -547,7 +1536,8 @@ func _apply_export_now(target_path: String) -> Dictionary:
 	if result.get("applied", false):
 		_source_path = target_path
 		_file_name = target_path.get_file()
-		_dirty = false
+		_git_dirty = false
+		_refresh_dirty_state()
 		_register_controller_document()
 		_remove_previous_controller_document(previous_key)
 	_update_controller_dirty_state()
@@ -564,10 +1554,78 @@ func _apply_install_now() -> Dictionary:
 	)
 	_status_text = _mutation_message(result)
 	if result.get("applied", false):
-		_dirty = false
+		_git_dirty = false
 		_refresh_gamefs()
 		_refresh_module_bundle()
 		_refresh_bundle_label()
+		_refresh_dirty_state()
+	_update_controller_dirty_state()
+	_refresh_status()
+	return result
+
+
+func _apply_walkmesh_install_now(bytes: PackedByteArray, file_name: String) -> Dictionary:
+	var result: Dictionary = _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		bytes,
+		true
+	)
+	_status_text = _mutation_message(result)
+	if result.get("applied", false):
+		_refresh_gamefs()
+		_refresh_module_bundle()
+		_refresh_bundle_label()
+	_refresh_status()
+	return result
+
+
+func _apply_layout_install_now(bytes: PackedByteArray, file_name: String) -> Dictionary:
+	var result: Dictionary = _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		bytes,
+		true
+	)
+	_status_text = _mutation_message(result)
+	if result.get("applied", false):
+		_refresh_gamefs()
+		_refresh_module_bundle()
+		_refresh_bundle_label()
+	_refresh_status()
+	return result
+
+
+func _apply_visibility_install_now(bytes: PackedByteArray, file_name: String) -> Dictionary:
+	var result: Dictionary = _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		bytes,
+		true
+	)
+	_status_text = _mutation_message(result)
+	if result.get("applied", false):
+		_refresh_gamefs()
+		_refresh_module_bundle()
+		_refresh_bundle_label()
+	_refresh_status()
+	return result
+
+
+func _apply_pth_install_now(file_name: String) -> Dictionary:
+	var result: Dictionary = _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		_path_resource,
+		true
+	)
+	_status_text = _mutation_message(result)
+	if result.get("applied", false):
+		_pth_dirty = false
+		_refresh_gamefs()
+		_refresh_module_bundle()
+		_refresh_bundle_label()
+		_refresh_dirty_state()
 	_update_controller_dirty_state()
 	_refresh_status()
 	return result
@@ -587,6 +1645,17 @@ func _on_preflight_proceed() -> void:
 		_apply_export_now(_preflight_pending_path)
 	elif _preflight_pending_kind == "install":
 		_apply_install_now()
+	elif _preflight_pending_kind == "install_walkmesh":
+		var bytes := serialize_loaded_walkmesh_bytes()
+		_apply_walkmesh_install_now(bytes, _preflight_pending_path)
+	elif _preflight_pending_kind == "install_layout":
+		var layout_bytes := serialize_loaded_layout_bytes()
+		_apply_layout_install_now(layout_bytes, _preflight_pending_path)
+	elif _preflight_pending_kind == "install_visibility":
+		var visibility_bytes := serialize_loaded_visibility_bytes()
+		_apply_visibility_install_now(visibility_bytes, _preflight_pending_path)
+	elif _preflight_pending_kind == "install_pth":
+		_apply_pth_install_now(_preflight_pending_path)
 	_preflight_pending_kind = ""
 	_preflight_pending_path = ""
 	_preflight_pending_preview = {}
@@ -662,6 +1731,158 @@ func _exec_instance_position(category: String, index: int, x: float, y: float) -
 	_select_instance(category, index)
 
 
+func _apply_path_point_position_with_undo(
+	index: int,
+	old_x: float,
+	old_y: float,
+	new_x: float,
+	new_y: float
+) -> void:
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Move PTH point", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_point_position", index, new_x, new_y)
+		ur.add_undo_method(self, "_exec_path_point_position", index, old_x, old_y)
+		ur.commit_action()
+	else:
+		_exec_path_point_position(index, new_x, new_y)
+
+
+func _exec_path_point_position(index: int, x: float, y: float) -> void:
+	if _path_document == null:
+		return
+	if not _path_document.set_point_position(index, x, y):
+		return
+	_select_path_point(index)
+
+
+func _apply_path_connection_retarget_with_undo(
+	connection_index: int,
+	old_target: int,
+	new_target: int
+) -> void:
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Retarget PTH connection", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_connection_retarget", connection_index, new_target)
+		ur.add_undo_method(self, "_exec_path_connection_retarget", connection_index, old_target)
+		ur.commit_action()
+	else:
+		_exec_path_connection_retarget(connection_index, new_target)
+
+
+func _exec_path_connection_retarget(connection_index: int, target_index: int) -> void:
+	if _path_document == null:
+		return
+	if not _path_document.set_connection_destination(connection_index, target_index):
+		return
+	_select_path_connection(connection_index)
+
+
+func _apply_path_connection_add_with_undo(source_index: int, target_index: int) -> void:
+	if _path_document == null:
+		return
+	var snapshot := _path_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Add PTH connection", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_connection_add", source_index, target_index)
+		ur.add_undo_method(self, "_exec_path_point_restore_snapshot", snapshot)
+		ur.commit_action()
+	else:
+		_exec_path_connection_add(source_index, target_index)
+
+
+func _exec_path_connection_add(source_index: int, target_index: int) -> void:
+	if _path_document == null:
+		return
+	var connection_index := _path_document.add_connection(source_index, target_index)
+	if connection_index < 0:
+		return
+	_select_path_connection(connection_index)
+
+
+func _apply_path_connection_remove_with_undo(connection_index: int) -> void:
+	if _path_document == null:
+		return
+	var snapshot := _path_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Remove PTH connection", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_connection_remove", connection_index)
+		ur.add_undo_method(self, "_exec_path_point_restore_snapshot", snapshot)
+		ur.commit_action()
+	else:
+		_exec_path_connection_remove(connection_index)
+
+
+func _exec_path_connection_remove(connection_index: int) -> void:
+	if _path_document == null:
+		return
+	if not _path_document.remove_connection(connection_index):
+		return
+	if _detail_label != null:
+		_detail_label.text = ""
+	_reset_overlay_selection()
+
+
+func _apply_path_point_add_with_undo(x: float, y: float) -> void:
+	if _path_document == null:
+		return
+	var index := _path_document.get_point_count()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Add PTH point", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_point_add", x, y)
+		ur.add_undo_method(self, "_exec_path_point_remove", index)
+		ur.commit_action()
+	else:
+		_exec_path_point_add(x, y)
+
+
+func _apply_path_point_remove_with_undo(index: int) -> void:
+	if _path_document == null:
+		return
+	var snapshot := _path_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Remove PTH point", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_path_point_remove", index)
+		ur.add_undo_method(self, "_exec_path_point_restore_snapshot", snapshot)
+		ur.commit_action()
+	else:
+		_exec_path_point_remove(index)
+
+
+func _exec_path_point_add(x: float, y: float) -> void:
+	if _path_document == null:
+		return
+	var index := _path_document.add_point(x, y)
+	if index < 0:
+		return
+	_select_path_point(index)
+
+
+func _exec_path_point_remove(index: int) -> void:
+	if _path_document == null:
+		return
+	if not _path_document.remove_point(index):
+		return
+	if _detail_label != null:
+		_detail_label.text = ""
+	_reset_overlay_selection()
+
+
+func _exec_path_point_restore_snapshot(snapshot: Dictionary) -> void:
+	if _path_document == null:
+		return
+	if not _path_document.restore_topology_snapshot(snapshot):
+		return
+	if _detail_label != null:
+		_detail_label.text = ""
+	_reset_overlay_selection()
+
+
 func _apply_instance_bearing_with_undo(
 	category: String,
 	index: int,
@@ -702,8 +1923,32 @@ func _disconnect_document_signal() -> void:
 		_document.changed.disconnect(changed)
 
 
+func _connect_path_document_signal() -> void:
+	if _path_document == null:
+		return
+	var changed := Callable(self, "_on_path_document_changed")
+	if not _path_document.changed.is_connected(changed):
+		_path_document.changed.connect(changed)
+
+
+func _disconnect_path_document_signal() -> void:
+	if _path_document == null:
+		return
+	var changed := Callable(self, "_on_path_document_changed")
+	if _path_document.changed.is_connected(changed):
+		_path_document.changed.disconnect(changed)
+
+
 func _on_document_changed() -> void:
-	_dirty = true
+	_git_dirty = true
+	_refresh_dirty_state()
+	_update_controller_dirty_state()
+	_refresh_view()
+
+
+func _on_path_document_changed() -> void:
+	_pth_dirty = true
+	_refresh_dirty_state()
 	_update_controller_dirty_state()
 	_refresh_view()
 
@@ -762,3 +2007,16 @@ func is_dirty() -> bool:
 
 func get_status_text() -> String:
 	return _status_text
+
+
+func _set_path_resource(resource: PTHResource) -> void:
+	_disconnect_path_document_signal()
+	_path_resource = resource
+	_path_document = _path_resource.create_document() as KotorPTHDocument if _path_resource != null else null
+	_connect_path_document_signal()
+
+
+func _refresh_dirty_state() -> void:
+	_dirty = _git_dirty or _pth_dirty
+	_refresh_path_label()
+	_emit_dirty_state(_dirty)

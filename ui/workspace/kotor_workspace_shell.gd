@@ -169,6 +169,7 @@ func _ensure_shell() -> void:
 	_module_designer.setup(_resolve_editor_state(), _controller)
 	_module_designer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_module_designer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_module_designer.bundle_resource_open_requested.connect(_open_workspace_entry)
 	_tabs.add_child(_module_designer)
 
 	_indoor_builder = KotorIndoorBuilderWorkspaceEditor.new()

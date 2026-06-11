@@ -18,6 +18,11 @@ const SSFResource := preload("../../resources/ssf_resource.gd")
 const LIPWriter := preload("../../formats/lip_writer.gd")
 const LIPResource := preload("../../resources/lip_resource.gd")
 const TPCWriter := preload("../../formats/tpc_writer.gd")
+const GFFCompare := preload("../../formats/gff_compare.gd")
+const SSFCompare := preload("../../formats/ssf_compare.gd")
+const LIPCompare := preload("../../formats/lip_compare.gd")
+const TPCCompare := preload("../../formats/tpc_compare.gd")
+const WavCompare := preload("../../formats/wav_compare.gd")
 
 const SOURCE_OVERRIDE := "override"
 const DETAIL_SAMPLE_LIMIT := 5
@@ -42,6 +47,19 @@ static func export_payload_to_path(target_path: String, payload: Variant, fallba
 	if not serialized.get("ok", false):
 		return serialized
 	return _write_serialized_payload(target_path, serialized, false)
+
+
+static func write_payload_to_path_with_backup(
+	target_path: String,
+	payload: Variant,
+	fallback_name: String = ""
+) -> Dictionary:
+	if target_path.is_empty():
+		return _result(false, "invalid", "Choose a destination file path")
+	var serialized := _serialize_payload(target_path if not target_path.is_empty() else fallback_name, payload)
+	if not serialized.get("ok", false):
+		return serialized
+	return _write_serialized_payload(target_path, serialized, true)
 
 
 static func serialize_payload(file_name: String, payload: Variant) -> Dictionary:
@@ -130,6 +148,145 @@ static func compare_gamefs_resource(gamefs: RefCounted, resref: String, resource
 	})
 
 
+static func compare_all_overrides(gamefs: RefCounted) -> Dictionary:
+	if gamefs == null:
+		return _result(false, "invalid", "Game install is not available")
+	if not gamefs.has_method("list_core_resources"):
+		return _result(false, "invalid", "Game install index is unavailable")
+
+	var override_entries: Array = gamefs.list_core_resources("", null, SOURCE_OVERRIDE, 0)
+	if override_entries.is_empty():
+		var empty_counts := {
+			"total": 0,
+			"identical": 0,
+			"different": 0,
+			"override_only": 0,
+		}
+		return _result(true, "empty", "No override resources found.", {
+			"counts": empty_counts,
+			"entries": [],
+			"details": "No override resources found.",
+		})
+
+	var counts := {
+		"total": override_entries.size(),
+		"identical": 0,
+		"different": 0,
+		"override_only": 0,
+	}
+	var entry_results: Array = []
+	for entry: Dictionary in override_entries:
+		var resref := str(entry.get("resref", ""))
+		var resource_type := int(entry.get("resource_type", -1))
+		var extension := str(entry.get("extension", ""))
+		var compare := compare_gamefs_resource(gamefs, resref, resource_type)
+		var status := str(compare.get("status", "unknown"))
+		match status:
+			"identical":
+				counts["identical"] = int(counts.get("identical", 0)) + 1
+			"different":
+				counts["different"] = int(counts.get("different", 0)) + 1
+			"override_only":
+				counts["override_only"] = int(counts.get("override_only", 0)) + 1
+		entry_results.append({
+			"label": "%s.%s" % [resref, extension],
+			"status": status,
+			"message": str(compare.get("message", "")),
+			"details": str(compare.get("details", "")),
+			"core_entry": compare.get("core_entry", {}),
+			"override_entry": compare.get("override_entry", {}),
+		})
+
+	var report := build_override_compare_report(counts, entry_results)
+	var summary := (
+		"Override scan: %d total, %d different, %d identical, %d override-only."
+		% [
+			int(counts.get("total", 0)),
+			int(counts.get("different", 0)),
+			int(counts.get("identical", 0)),
+			int(counts.get("override_only", 0)),
+		]
+	)
+	return _result(true, "scanned", summary, {
+		"counts": counts,
+		"entries": entry_results,
+		"details": report,
+	})
+
+
+static func build_override_compare_report(counts: Dictionary, entry_results: Array) -> String:
+	var lines: Array[String] = []
+	lines.append("Override compare scan (%d resources)" % int(counts.get("total", 0)))
+	lines.append(
+		"  Identical: %d | Different: %d | Override-only: %d"
+		% [
+			int(counts.get("identical", 0)),
+			int(counts.get("different", 0)),
+			int(counts.get("override_only", 0)),
+		]
+	)
+	lines.append("")
+
+	for raw_entry in entry_results:
+		if typeof(raw_entry) != TYPE_DICTIONARY:
+			continue
+		var item: Dictionary = raw_entry
+		var status := str(item.get("status", ""))
+		if status == "identical":
+			continue
+		lines.append("[%s] %s" % [status.to_upper(), str(item.get("label", ""))])
+		var message := str(item.get("message", "")).strip_edges()
+		if not message.is_empty():
+			lines.append(message)
+		var details := str(item.get("details", "")).strip_edges()
+		if status == "different" and not details.is_empty():
+			lines.append(details)
+		lines.append("")
+
+	return "\n".join(lines).strip_edges()
+
+
+static func format_compare_result_text(result: Dictionary) -> String:
+	if result.is_empty():
+		return ""
+	var lines: Array[String] = []
+	var message := str(result.get("message", "")).strip_edges()
+	if not message.is_empty():
+		lines.append(message)
+	if result.has("core_entry"):
+		var core_entry: Dictionary = result.get("core_entry", {})
+		lines.append("Core: %s" % str(core_entry.get("location", "")))
+	if result.has("override_entry"):
+		var override_entry: Dictionary = result.get("override_entry", {})
+		lines.append("Override: %s" % str(override_entry.get("location", "")))
+	var details := str(result.get("details", "")).strip_edges()
+	if not details.is_empty():
+		if not lines.is_empty():
+			lines.append("")
+		lines.append(details)
+	return "\n".join(lines).strip_edges()
+
+
+static func export_text_report_to_path(target_path: String, text: String) -> Dictionary:
+	var path := target_path.strip_edges()
+	if path.is_empty():
+		return _result(false, "invalid", "Choose a report file path.")
+	var body := text.strip_edges()
+	if body.is_empty():
+		return _result(false, "invalid", "No compare report text to write.")
+	var bytes := body.to_utf8_buffer()
+	if write_bytes(path, bytes) != OK:
+		return _result(false, "write_failed", "Could not write compare report: %s" % path)
+	return _result(true, "exported", "Compare report saved to %s" % path, {
+		"path": path,
+		"size": bytes.size(),
+	})
+
+
+static func export_compare_result_to_path(target_path: String, result: Dictionary) -> Dictionary:
+	return export_text_report_to_path(target_path, format_compare_result_text(result))
+
+
 static func _entry_file_name(entry: Dictionary) -> String:
 	return "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
 
@@ -211,7 +368,7 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"size": tpc_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
-		"are", "dlg", "gff", "git", "ifo", "jrl", "utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw":
+		"are", "dlg", "gff", "git", "ifo", "jrl", "pth", "utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw":
 			if payload is GFFResource:
 				var gff_bytes := GFFWriter.serialize(payload as GFFResource)
 				if gff_bytes.is_empty():
@@ -341,7 +498,31 @@ static func _build_difference_report(extension: String, base_bytes: PackedByteAr
 			return _build_2da_difference_report(base_bytes, mod_bytes)
 		"tlk":
 			return _build_tlk_difference_report(base_bytes, mod_bytes)
+		"ssf":
+			var ssf_report := SSFCompare.build_difference_report(base_bytes, mod_bytes)
+			if not ssf_report.is_empty():
+				return ssf_report
+			return _build_binary_difference_report(base_bytes, mod_bytes)
+		"lip":
+			var lip_report := LIPCompare.build_difference_report(base_bytes, mod_bytes)
+			if not lip_report.is_empty():
+				return lip_report
+			return _build_binary_difference_report(base_bytes, mod_bytes)
+		"tpc":
+			var tpc_report := TPCCompare.build_difference_report(base_bytes, mod_bytes)
+			if not tpc_report.is_empty():
+				return tpc_report
+			return _build_binary_difference_report(base_bytes, mod_bytes)
+		"wav":
+			var wav_report := WavCompare.build_difference_report(base_bytes, mod_bytes)
+			if not wav_report.is_empty():
+				return wav_report
+			return _build_binary_difference_report(base_bytes, mod_bytes)
 		_:
+			if GFFCompare.is_gff_extension(extension):
+				var gff_report := GFFCompare.build_difference_report(base_bytes, mod_bytes)
+				if not gff_report.is_empty():
+					return gff_report
 			return _build_binary_difference_report(base_bytes, mod_bytes)
 
 

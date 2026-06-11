@@ -132,8 +132,12 @@ func _test_pth_factory_mapping() -> void:
 		"root": {
 			"Tag": "module_paths",
 			"Path_Points": [
-				{"ID": 1},
-				{"ID": 2},
+				{"ID": 1, "X": 4.0, "Y": 5.0, "Conections": 1, "First_Conection": 0},
+				{"ID": 2, "X": 8.0, "Y": 9.0, "Conections": 1, "First_Conection": 1},
+			],
+			"Path_Conections": [
+				{"Destination": 1},
+				{"Destination": 0},
 			],
 		},
 	}
@@ -143,9 +147,19 @@ func _test_pth_factory_mapping() -> void:
 	assert(resource.get_tag() == "module_paths")
 	assert(resource.get_point_field_name() == "Path_Points")
 	assert(resource.get_point_count() == 2)
+	var records: Array[Dictionary] = resource.get_point_records()
+	assert(records.size() == 2)
+	assert(int(records[0].get("id", 0)) == 1)
+	assert(int(records[1].get("id", 0)) == 2)
+	assert(resource.get_connection_field_name() == "Path_Conections")
+	assert(resource.get_connection_count() == 2)
+	var connection_records: Array[Dictionary] = resource.get_connection_records()
+	assert(connection_records.size() == 2)
+	assert(int(connection_records[0].get("source_index", -1)) == 0)
+	assert(int(connection_records[0].get("target_index", -1)) == 1)
 	var document = resource.create_document()
 	assert(document.get_display_name() == "module_paths")
-	assert(document.get_summary_lines().size() >= 3)
+	assert(document.get_summary_lines().size() >= 5)
 
 
 func _test_fac_factory_mapping() -> void:

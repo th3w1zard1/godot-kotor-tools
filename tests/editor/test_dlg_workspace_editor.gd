@@ -17,6 +17,7 @@ var _saved_path := ""
 func _initialize() -> void:
 	_install_root = ProjectSettings.globalize_path("user://dlg_workspace_editor_test_install")
 	_saved_path = _install_root.path_join("test_dialogue.dlg")
+	_remove_path_recursive(_install_root)
 	DirAccess.make_dir_recursive_absolute(_install_root)
 	_editor_state = KotorEditorState.new()
 	_editor_state.game_path = _install_root
@@ -49,6 +50,9 @@ func _assert_editor_behavior() -> void:
 	assert(install_result.get("ok", false))
 	assert(FileAccess.file_exists(_install_root.path_join("override").path_join("test_dialogue.dlg")))
 
+	_test_link_target_metadata()
+	_test_jump_to_link_target()
+
 	_test_string_edit_undo_redo()
 	_test_bool_edit_undo_redo()
 	_test_bool_edit_non_bool_original_value()
@@ -71,6 +75,8 @@ func _assert_editor_behavior() -> void:
 	_test_array_undo_redo_round_trip()
 	_test_array_validation_required_field()
 	_test_array_validation_optional_field()
+	_cleanup()
+	quit()
 
 
 func _test_string_edit_undo_redo() -> void:
@@ -567,6 +573,39 @@ func _test_array_validation_optional_field() -> void:
 	assert(not warning_active.is_empty(), "Empty active should generate warning")
 
 
+func _test_link_target_metadata() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+
+	var target := doc.get_link_target_metadata("entry", 0, 0)
+	assert(target.get("kind", "") == "reply", "Entry link should resolve to reply kind")
+	assert(int(target.get("index", -1)) == 0, "Entry link should resolve to reply 0")
+
+	assert(doc.get_link_target_metadata("entry", 0, 99).is_empty(), "Out-of-range link index should return empty")
+	assert(doc.get_link_target_metadata("entry", 99, 0).is_empty(), "Out-of-range owner index should return empty")
+
+	var entry_list = doc.get_struct_list("EntryList")
+	var entry: Dictionary = entry_list[0]
+	var replies: Array = entry.get("RepliesList", [])
+	replies[0]["Index"] = 99
+	entry["RepliesList"] = replies
+	entry_list[0] = entry
+	assert(doc.get_link_target_metadata("entry", 0, 0).is_empty(), "Out-of-range target index should return empty")
+
+
+func _test_jump_to_link_target() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+
+	_editor._jump_to_link_target("entry", 0, 0)
+	assert(str(_editor._dlg_selection.get("kind", "")) == "reply", "Jump should select reply node")
+	assert(int(_editor._dlg_selection.get("index", -1)) == 0, "Jump should select reply 0")
+
+	_editor._jump_to_link_target("entry", 0, 99)
+	assert(str(_editor._dlg_selection.get("kind", "")) == "reply", "Invalid jump should leave selection unchanged")
+
+
 func _cleanup() -> void:
 	if _editor != null:
 		_editor.open_resource(null)
@@ -575,13 +614,24 @@ func _cleanup() -> void:
 		_editor = null
 	_resource = null
 	_editor_state = null
-	var override_path := _install_root.path_join("override").path_join("test_dialogue.dlg")
-	if FileAccess.file_exists(override_path):
-		DirAccess.remove_absolute(override_path)
-	var override_dir := _install_root.path_join("override")
-	if DirAccess.dir_exists_absolute(override_dir):
-		DirAccess.remove_absolute(override_dir)
-	if FileAccess.file_exists(_saved_path):
-		DirAccess.remove_absolute(_saved_path)
-	if DirAccess.dir_exists_absolute(_install_root):
-		DirAccess.remove_absolute(_install_root)
+	_remove_path_recursive(_install_root)
+
+
+static func _remove_path_recursive(path: String) -> void:
+	if path.is_empty() or not DirAccess.dir_exists_absolute(path):
+		return
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry_name := dir.get_next()
+	while entry_name != "":
+		if entry_name != "." and entry_name != "..":
+			var entry_path := path.path_join(entry_name)
+			if dir.current_is_dir():
+				_remove_path_recursive(entry_path)
+			else:
+				DirAccess.remove_absolute(entry_path)
+		entry_name = dir.get_next()
+	dir.list_dir_end()
+	DirAccess.remove_absolute(path)

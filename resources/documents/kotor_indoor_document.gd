@@ -54,6 +54,21 @@ func set_kit_library(library: RefCounted) -> void:
 	_kit_library = library
 
 
+func get_kit_library() -> RefCounted:
+	return _kit_library
+
+
+func has_embedded_component(component_id: String) -> bool:
+	return _embedded_by_id.has(component_id.strip_edges())
+
+
+func get_embedded_component(component_id: String) -> Dictionary:
+	var normalized := component_id.strip_edges()
+	if normalized.is_empty() or not _embedded_by_id.has(normalized):
+		return {}
+	return (_embedded_by_id[normalized] as Dictionary).duplicate(true)
+
+
 func get_summary_lines() -> Array[String]:
 	var lines: Array[String] = []
 	lines.append("Module ID: %s" % get_module_id())
@@ -219,6 +234,23 @@ func rebuild_room_connections() -> void:
 
 func get_hook_connection_counts() -> Dictionary:
 	return KotorIndoorHookConnections.count_connected_hooks(_room_connections)
+
+
+func get_visible_room_indices(index: int) -> Array[int]:
+	var visible := {index: true}
+	for target in _connections_for_room(index):
+		var other_index := int(target)
+		if other_index >= 0:
+			visible[other_index] = true
+	for other_index in _room_connections.size():
+		for target in _connections_for_room(other_index):
+			if int(target) == index:
+				visible[other_index] = true
+	var indices: Array[int] = []
+	for room_index in visible.keys():
+		indices.append(int(room_index))
+	indices.sort()
+	return indices
 
 
 func get_room_hook_summaries(index: int) -> Array[String]:
@@ -417,6 +449,7 @@ func _build_hook_markers(room_index: int, room: Dictionary) -> Array:
 			"hook_index": hook_index,
 			"x": world.x,
 			"y": world.y,
+			"z": world.z,
 			"connected_room": connected,
 		})
 	return markers
