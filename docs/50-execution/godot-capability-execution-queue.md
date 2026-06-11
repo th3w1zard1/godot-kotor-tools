@@ -140,14 +140,15 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q124 | Module Designer GIT instance CRUD *(PR #119)* | **Add Instance…** / **Remove Instance** toolbar actions with category+template dialog, map placement, undo-safe typed mutation, install-ready persistence; headless `test_module_designer_git_instance_crud.gd`. |
 | Q125 | UTP typed parity expansion *(PR #119)* | Trap scalar and script hook typed helpers on UTP blueprints with aligned summary output; headless `test_gff_resource_factory.gd` UTP mapping coverage. |
 | Q126 | Module Designer BWM walkmesh painter foundations *(PR #119)* | **Paint Walkmesh** toolbar arm, 3D face pick, walkable/unwalkable material toggle with undo, dirty baseline tracking, and install-ready persistence; headless `test_module_designer_bwm_paint.gd`. |
+| Q127 | ERF archive workspace UX *(PR #119)* | **Archive Browser** workspace tab with member table, nested member open routing, and extract-to-override with preflight; headless `test_erf_workspace_editor.gd`. |
 
-> **Branch note:** Q124–Q126 are implemented on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)) and move to unconditional shipped status when merged to `main`. `main` @ Q123 remains the merge base until that PR lands.
+> **Branch note:** Q124–Q127 are implemented on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)) and move to unconditional shipped status when merged to `main`. `main` @ Q123 remains the merge base until that PR lands.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q127 | ERF archive workspace UX | Dedicated ERF/MOD/RIM browse workspace — member table, nested resource open, extract-to-override with preflight. | Q126 BWM paint foundations shipped with headless paint + walkmesh install tests green. | Per `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` U6. |
+| Q128 | DLG graph editor depth (planning) | Audit Holocron DLG graph operations and produce child implementation plan. | Q127 ERF workspace UX shipped with headless archive tests green. | Planning-heavy unit U7 — no graph canvas in this wave. |
 
 ## Next Slices (Deferred)
 
