@@ -1166,6 +1166,7 @@ func _clear_document_state(message: String) -> void:
 		_summary_label.text = ""
 	if _bundle_label != null:
 		_bundle_label.text = ""
+	_refresh_bundle_tree()
 	_refresh_path_label()
 	_refresh_status()
 
