@@ -1649,12 +1649,7 @@ func _exec_path_connection_remove(connection_index: int) -> void:
 		return
 	if _detail_label != null:
 		_detail_label.text = ""
-	if _map_view != null:
-		_map_view.set_path_point_selection(-1)
-		_map_view.set_path_connection_selection(-1)
-	if _viewport_3d != null:
-		_viewport_3d.set_path_point_selection(-1)
-		_viewport_3d.set_path_connection_selection(-1)
+	_reset_overlay_selection()
 
 
 func _apply_path_point_add_with_undo(x: float, y: float) -> void:
