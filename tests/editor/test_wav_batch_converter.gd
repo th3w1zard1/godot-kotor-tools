@@ -15,6 +15,7 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	_test_batch_directory_dry_run()
+	_test_batch_directory_to_output_dry_run()
 	_test_skip_existing()
 	_test_skip_clean_sources()
 	var button_ok := await _test_wav_editor_batch_convert_button()
@@ -43,6 +44,29 @@ func _test_batch_directory_dry_run() -> void:
 	var first: Dictionary = generated[0]
 	assert(str(first.get("output_path", "")).ends_with("_clean.wav"))
 	print("✓ WAV batch directory dry-run passed")
+
+
+func _test_batch_directory_to_output_dry_run() -> void:
+	var source_dir := _test_root.path_join("source")
+	var output_dir := _test_root.path_join("output")
+	DirAccess.make_dir_recursive_absolute(source_dir)
+	DirAccess.make_dir_recursive_absolute(output_dir)
+	_write_file(source_dir.path_join("line01.wav"), _build_pcm_wav(8000, 1, 400))
+
+	var batch := WavBatchConverter.batch_directory_to_output(source_dir, output_dir, {
+		"dry_run": true,
+		"pykotor_cli_path": "/bin/true",
+		"sound_type": "SFX",
+	})
+	assert(batch.get("ok", false))
+	var generated: Array = batch.get("generated", [])
+	assert(generated.size() == 1)
+	var first: Dictionary = generated[0]
+	var output_path := str(first.get("output_path", ""))
+	assert(output_path.begins_with(output_dir))
+	assert(output_path.ends_with("line01_clean.wav"))
+	assert(not FileAccess.file_exists(output_path))
+	print("✓ WAV batch directory-to-output dry-run passed")
 
 
 func _test_skip_existing() -> void:

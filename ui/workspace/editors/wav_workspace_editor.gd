@@ -4,6 +4,7 @@ class_name KotorWAVWorkspaceEditor
 
 const WavMetadata := preload("../../../formats/wav_metadata.gd")
 const WavBatchConverter := preload("../../../formats/wav_batch_converter.gd")
+const WavGamefsBatchImporter := preload("../../../formats/wav_gamefs_batch_importer.gd")
 const KotorMediaToolBridge := preload("../../../resources/scripts/kotor_media_tool_bridge.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
@@ -146,6 +147,11 @@ func _build_ui() -> void:
 	batch_convert_btn.pressed.connect(_batch_convert_wav_folder)
 	_toolbar.add_child(batch_convert_btn)
 
+	var batch_import_btn := Button.new()
+	batch_import_btn.text = "Batch Import WAV Folder to Override..."
+	batch_import_btn.pressed.connect(_batch_import_wav_folder_to_override)
+	_toolbar.add_child(batch_import_btn)
+
 	var save_btn := Button.new()
 	save_btn.text = "Save WAV"
 	save_btn.pressed.connect(_save_wav)
@@ -243,7 +249,43 @@ func _run_batch_convert_wav_folder(dir_path: String) -> void:
 		"pykotor_cli_path": _editor_state.get("pykotor_cli_path") if _editor_state != null else "",
 		"sound_type": sound_type,
 	})
-	_status_text = str(result.get("summary", "Batch WAV convert finished."))
+	_apply_batch_wav_status(result, "Batch WAV convert finished.")
+
+
+func _batch_import_wav_folder_to_override() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch import."
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select WAV source folder for override import"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(source_dir: String) -> void:
+		_run_batch_import_wav_folder_to_override(gamefs, source_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_import_wav_folder_to_override(gamefs: RefCounted, source_dir: String) -> void:
+	var sound_type := "VO" if _sound_type_option.get_selected_id() == 1 else "SFX"
+	var result := WavGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir, {
+		"pykotor_cli_path": _editor_state.get("pykotor_cli_path") if _editor_state != null else "",
+		"sound_type": sound_type,
+	})
+	_apply_batch_wav_status(result, "Install batch WAV import finished.")
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_gamefs()
+
+
+func _apply_batch_wav_status(result: Dictionary, default_summary: String) -> void:
+	_status_text = str(result.get("summary", default_summary))
 	var failed: Array = result.get("failed", [])
 	if not failed.is_empty():
 		var first: Dictionary = failed[0]
