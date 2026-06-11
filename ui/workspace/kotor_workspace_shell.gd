@@ -13,6 +13,7 @@ const KotorScriptWorkspaceEditor := preload("./editors/script_workspace_editor.g
 const KotorSSFWorkspaceEditor := preload("./editors/ssf_workspace_editor.gd")
 const KotorTPCWorkspaceEditor := preload("./editors/tpc_workspace_editor.gd")
 const KotorWAVWorkspaceEditor := preload("./editors/wav_workspace_editor.gd")
+const KotorMDLWorkspaceEditor := preload("./editors/mdl_workspace_editor.gd")
 const KotorLIPWorkspaceEditor := preload("./editors/lip_workspace_editor.gd")
 const KotorGFFWorkspaceEditor := preload("./editors/gff_workspace_editor.gd")
 const KotorModuleDesignerWorkspaceEditor := preload("./editors/module_designer_workspace_editor.gd")
@@ -34,6 +35,7 @@ var _script_editor: Control
 var _ssf_editor: Control
 var _tpc_editor: Control
 var _wav_editor: Control
+var _mdl_editor: Control
 var _lip_editor: Control
 var _gff_editor: Control
 var _module_designer: Control
@@ -150,6 +152,13 @@ func _ensure_shell() -> void:
 	_wav_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs.add_child(_wav_editor)
 
+	_mdl_editor = KotorMDLWorkspaceEditor.new()
+	_mdl_editor.name = "Model Editor"
+	_mdl_editor.setup(_resolve_editor_state(), _controller)
+	_mdl_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_mdl_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_mdl_editor)
+
 	_lip_editor = KotorLIPWorkspaceEditor.new()
 	_lip_editor.name = "LIP Sync Editor"
 	_lip_editor.setup(_resolve_editor_state(), _controller)
@@ -235,6 +244,10 @@ func get_wav_workspace_editor() -> Control:
 	return _wav_editor
 
 
+func get_mdl_workspace_editor() -> Control:
+	return _mdl_editor
+
+
 func get_lip_workspace_editor() -> Control:
 	return _lip_editor
 
@@ -299,6 +312,10 @@ func _restore_workspace_session() -> void:
 				_wav_editor.call("open_wav_file", source_path)
 				if str(document_entry.get("key", "")) == active_key:
 					_tabs.current_tab = _wav_editor.get_index()
+			"mdl":
+				_mdl_editor.call("open_mdl_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _mdl_editor.get_index()
 			"lip":
 				_lip_editor.call("open_lip_file", source_path)
 				if str(document_entry.get("key", "")) == active_key:
@@ -380,6 +397,18 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 		var wav_file_name := "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
 		_wav_editor.call("open_wav_bytes", wav_bytes, source_path, wav_file_name)
 		_tabs.current_tab = _wav_editor.get_index()
+		return
+	if extension == "mdl":
+		var mdl_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		var mdl_file_name := "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+		var mdx_bytes := PackedByteArray()
+		var gamefs: RefCounted = _target_context.get_gamefs() if _target_context.has_method("get_gamefs") else null
+		if gamefs != null and gamefs.has_method("resolve_resource"):
+			var mdx_entry: Dictionary = gamefs.resolve_resource(str(entry.get("resref", "")), "mdx")
+			if not mdx_entry.is_empty() and gamefs.has_method("load_resource_entry_bytes"):
+				mdx_bytes = gamefs.load_resource_entry_bytes(mdx_entry)
+		_mdl_editor.call("open_mdl_bytes", mdl_bytes, source_path, mdl_file_name, mdx_bytes)
+		_tabs.current_tab = _mdl_editor.get_index()
 		return
 	if extension == "lip":
 		var lip_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)

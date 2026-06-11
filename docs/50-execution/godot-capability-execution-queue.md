@@ -97,12 +97,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q81 | Install-scoped TPC batch export | `TpcGamefsBatchExporter` scans GameFS `.tpc` index and batch-exports TGA via PyKotor `texture-convert`; TPC editor **Batch Export Install TGA...** action; headless `test_tpc_gamefs_batch_exporter.gd`. |
 | Q82 | Install-scoped GameFS batch TGA/PNG→TPC import | `TpcGamefsBatchImporter` scans override indexed `.tga` and flat `.png`, writes RGBA `.tpc` to override; TPC editor **Batch Import Install TGA/PNG→TPC...**; headless `test_tpc_gamefs_batch_importer.gd`. |
 | Q83 | Install-scoped GameFS MDL batch export | `MdlGamefsBatchExporter` scans indexed `.mdl`, copies MDL/MDX to folder with `MdlModelMetadataHelper` summaries; resource browser **Batch Export Install MDL...**; headless `test_mdl_gamefs_batch_exporter.gd`. |
+| Q84 | MDL workspace editor (read-only inspector) | `KotorMDLWorkspaceEditor` shows trimesh metadata, MDX sidecar context, export/install actions; workspace routing for `.mdl`; headless `test_mdl_workspace_editor.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q83 shipped install-scoped GameFS MDL batch export (model helper slice). | Next: DXT encode, MDL workspace, or parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q84 shipped read-only MDL workspace editor. | Next: DXT encode, MDL 3D preview, or parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 

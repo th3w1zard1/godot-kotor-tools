@@ -185,7 +185,14 @@ func _refresh_selection() -> void:
 		_detail.text = ""
 		return
 	var variants: Array[Dictionary] = _target_context.call("list_variants", entry)
-	_detail.text = KotorResourceLocator.build_entry_details(entry, variants)
+	var details := KotorResourceLocator.build_entry_details(entry, variants)
+	if _target_context.has_method("get_gamefs"):
+		details = KotorResourceLocator.append_mdl_metadata_details(
+			details,
+			entry,
+			_target_context.get_gamefs()
+		)
+	_detail.text = details
 
 
 func get_selected_entry() -> Dictionary:
