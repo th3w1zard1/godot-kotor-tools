@@ -1125,7 +1125,7 @@ func _export_mod_to_path(path: String) -> void:
 func _export_pykotor_mod_to_path(path: String) -> void:
 	if _document == null:
 		return
-	var game_path := _editor_state.game_path if _editor_state != null else ""
+	var game_path: String = _editor_state.game_path if _editor_state != null else ""
 	var kits_path := _kits_path_edit.text.strip_edges() if _kits_path_edit != null else ""
 	if kits_path.is_empty() and _editor_state != null:
 		kits_path = _editor_state.indoor_kits_path
@@ -1155,7 +1155,7 @@ func _install_mod_to_modules() -> void:
 		_status_text = "Load an indoor map before installing."
 		_refresh_status()
 		return
-	var game_path := _editor_state.game_path if _editor_state != null else ""
+	var game_path: String = _editor_state.game_path if _editor_state != null else ""
 	var kits_path := _kits_path_edit.text.strip_edges() if _kits_path_edit != null else ""
 	if kits_path.is_empty() and _editor_state != null:
 		kits_path = _editor_state.indoor_kits_path
