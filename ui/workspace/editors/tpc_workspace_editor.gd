@@ -17,6 +17,7 @@ var _toolbar: HBoxContainer
 var _path_label: Label
 var _preview: TextureRect
 var _meta_label: RichTextLabel
+var _txi_edit: TextEdit
 var _preflight_dialog: KotorPreflightDialog
 
 var _mutation_service: RefCounted
@@ -242,6 +243,11 @@ func _build_ui() -> void:
 	install_btn.pressed.connect(_install_tpc_to_override)
 	_toolbar.add_child(install_btn)
 
+	var apply_txi_btn := Button.new()
+	apply_txi_btn.text = "Apply TXI"
+	apply_txi_btn.pressed.connect(_apply_txi_from_editor)
+	_toolbar.add_child(apply_txi_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -258,12 +264,23 @@ func _build_ui() -> void:
 	_meta_label.scroll_active = false
 	add_child(_meta_label)
 
+	var txi_label := Label.new()
+	txi_label.text = "TXI metadata"
+	add_child(txi_label)
+
+	_txi_edit = TextEdit.new()
+	_txi_edit.custom_minimum_size = Vector2(0, 120)
+	_txi_edit.placeholder_text = "envmap, bumpmap, proceduretype, etc."
+	_txi_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	add_child(_txi_edit)
+
 	_refresh_status()
 
 
 func _refresh_view() -> void:
 	_refresh_preview()
 	_refresh_metadata()
+	_refresh_txi_editor()
 	_refresh_status()
 
 
@@ -376,6 +393,51 @@ func reencode_loaded_as_dxt1() -> bool:
 
 func reencode_loaded_as_dxt5() -> bool:
 	return _reencode_loaded_image(TPCReader.ENC_DXT5)
+
+
+func get_txi_text() -> String:
+	if _txi_edit == null:
+		return ""
+	return _txi_edit.text
+
+
+func apply_txi_text(text: String) -> bool:
+	if _bytes.is_empty() or not _metadata.get("ok", false):
+		_status_text = "Load a valid TPC before applying TXI."
+		_refresh_status()
+		return false
+
+	var txi_bytes := text.to_utf8_buffer()
+	var new_bytes := TPCWriter.append_txi_bytes(_bytes, txi_bytes)
+	if new_bytes.is_empty():
+		_status_text = "Failed to apply TXI metadata."
+		_refresh_status()
+		return false
+
+	_bytes = new_bytes
+	_metadata = TPCReader.read_metadata(_bytes)
+	_dirty = true
+	_status_text = "TXI metadata applied (%d bytes)." % int(_metadata.get("txi_length", 0))
+	_register_controller_document()
+	_refresh_view()
+	return true
+
+
+func _apply_txi_from_editor() -> void:
+	apply_txi_text(get_txi_text())
+
+
+func _refresh_txi_editor() -> void:
+	if _txi_edit == null:
+		return
+	if _bytes.is_empty() or not _metadata.get("ok", false):
+		_txi_edit.text = ""
+		return
+	var txi_bytes := TPCWriter.read_txi_bytes(_bytes)
+	if txi_bytes.is_empty():
+		_txi_edit.text = ""
+		return
+	_txi_edit.text = txi_bytes.get_string_from_utf8()
 
 
 func _reencode_loaded_as_dxt1() -> void:
