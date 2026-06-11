@@ -125,7 +125,8 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 58. **Q84 (shipped 2026-06-10):** MDL workspace editor — read-only trimesh inspector with export/install and resource-browser routing; see `docs/plans/2026-06-10-016-feat-q84-mdl-workspace-editor-plan.md`.
 59. **Q85 (shipped 2026-06-10):** MDL workspace 3D preview — `MdlPreviewViewport` flat-shaded trimesh with orbit camera in Model Editor; see `docs/plans/2026-06-10-017-feat-q85-mdl-workspace-3d-preview-plan.md`.
 60. **Q86 (shipped 2026-06-10):** Native TPC DXT encode — `TpcDxtEncoder` with `TPCWriter.serialize_dxt1/dxt5`; see `docs/plans/2026-06-10-018-feat-q86-tpc-dxt-encode-plan.md`.
-61. Module/area designer parity wave (further model tooling).
+61. **Q87 (shipped 2026-06-10):** TPC editor DXT re-encode — workspace toolbar compresses loaded textures to DXT1/DXT5; see `docs/plans/2026-06-10-019-feat-q87-tpc-editor-dxt-reencode-plan.md`.
+62. Module/area designer parity wave (further model tooling).
 
 ## Evidence Notes
 
