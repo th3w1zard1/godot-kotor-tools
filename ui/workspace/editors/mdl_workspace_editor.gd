@@ -5,6 +5,7 @@ class_name KotorMDLWorkspaceEditor
 const MdlBatchExporter := preload("../../../formats/mdl_batch_exporter.gd")
 const MdlGamefsBatchExporter := preload("../../../formats/mdl_gamefs_batch_exporter.gd")
 const MdlGamefsBatchImporter := preload("../../../formats/mdl_gamefs_batch_importer.gd")
+const KotorModdingPipeline := preload("../../../editor/modding/kotor_modding_pipeline.gd")
 const MdlModelMetadataHelper := preload("../../../editor/tools/mdl_model_metadata_helper.gd")
 const MdlPreviewViewport := preload("../panels/mdl_preview_viewport.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
@@ -190,6 +191,11 @@ func _build_ui() -> void:
 	batch_copy_install_btn.text = "Batch Copy Install MDL to Override..."
 	batch_copy_install_btn.pressed.connect(_batch_copy_install_mdl_to_override)
 	_toolbar.add_child(batch_copy_install_btn)
+
+	var compare_mdl_btn := Button.new()
+	compare_mdl_btn.text = "Compare MDL with Override..."
+	compare_mdl_btn.pressed.connect(_compare_mdl_with_override)
+	_toolbar.add_child(compare_mdl_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -440,6 +446,25 @@ func _run_batch_copy_install_mdl_to_override(gamefs: RefCounted) -> void:
 	_refresh_status()
 	if not (result.get("generated", []) as Array).is_empty():
 		_refresh_gamefs()
+
+
+func _compare_mdl_with_override() -> void:
+	if _mdl_bytes.is_empty():
+		_status_text = "Open an MDL before comparing with override."
+		_refresh_status()
+		return
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before compare."
+		_refresh_status()
+		return
+	var resref := _file_name.get_basename()
+	var resource_type := -1
+	if gamefs.has_method("resource_type_for_extension"):
+		resource_type = int(gamefs.call("resource_type_for_extension", "mdl"))
+	var result := KotorModdingPipeline.compare_gamefs_resource(gamefs, resref, resource_type)
+	_status_text = KotorModdingPipeline.format_compare_result_text(result)
+	_refresh_status()
 
 
 func _show_preflight_dialog(preview: Dictionary) -> void:

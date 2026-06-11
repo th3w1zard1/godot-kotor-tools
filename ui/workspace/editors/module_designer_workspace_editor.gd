@@ -15,6 +15,7 @@ const BWMWriter := preload("../../../formats/bwm_writer.gd")
 const BwmBatchExporter := preload("../../../formats/bwm_batch_exporter.gd")
 const BwmGamefsBatchExporter := preload("../../../formats/bwm_gamefs_batch_exporter.gd")
 const BwmGamefsBatchImporter := preload("../../../formats/bwm_gamefs_batch_importer.gd")
+const KotorModdingPipeline := preload("../../../editor/modding/kotor_modding_pipeline.gd")
 const GFFWriter := preload("../../../formats/gff_writer.gd")
 const LYTWriter := preload("../../../formats/lyt_writer.gd")
 const VISWriter := preload("../../../formats/vis_writer.gd")
@@ -433,6 +434,11 @@ func _build_ui() -> void:
 	install_walkmesh_btn.text = "Install Walkmesh to Override"
 	install_walkmesh_btn.pressed.connect(_install_walkmesh_to_override)
 	_toolbar.add_child(install_walkmesh_btn)
+
+	var compare_walkmesh_btn := Button.new()
+	compare_walkmesh_btn.text = "Compare Walkmesh with Override..."
+	compare_walkmesh_btn.pressed.connect(_compare_walkmesh_with_override)
+	_toolbar.add_child(compare_walkmesh_btn)
 
 	var install_layout_btn := Button.new()
 	install_layout_btn.text = "Install LYT to Override"
@@ -1460,6 +1466,26 @@ func _run_batch_copy_install_wok_to_override(gamefs: RefCounted) -> void:
 	_refresh_status()
 	if not (result.get("generated", []) as Array).is_empty():
 		_refresh_gamefs()
+
+
+func _compare_walkmesh_with_override() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before compare."
+		_refresh_status()
+		return
+	var wok_entry: Dictionary = _module_bundle.get("wok", {})
+	if wok_entry.is_empty():
+		_status_text = "No indexed walkmesh found for this module."
+		_refresh_status()
+		return
+	var result := KotorModdingPipeline.compare_gamefs_resource(
+		gamefs,
+		str(wok_entry.get("resref", "")),
+		int(wok_entry.get("resource_type", -1))
+	)
+	_status_text = KotorModdingPipeline.format_compare_result_text(result)
+	_refresh_status()
 
 
 func _export_walkmesh_preview_dialog() -> void:

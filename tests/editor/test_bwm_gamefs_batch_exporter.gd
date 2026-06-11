@@ -33,6 +33,10 @@ func _run_tests() -> void:
 	if not module_button_ok:
 		push_error("Module Designer batch WOK export install button test failed")
 		quit(1)
+	var compare_button_ok := await _test_module_designer_compare_walkmesh_button()
+	if not compare_button_ok:
+		push_error("Module Designer compare walkmesh button test failed")
+		quit(1)
 	print("✓ BWM GameFS batch exporter tests passed")
 	quit()
 
@@ -151,6 +155,21 @@ func _test_module_designer_batch_export_install_button() -> bool:
 	holder.queue_free()
 	await process_frame
 	print("✓ Module Designer batch WOK export install button passed")
+	return true
+
+
+func _test_module_designer_compare_walkmesh_button() -> bool:
+	var editor := KotorModuleDesignerWorkspaceEditor.new()
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(editor)
+	await process_frame
+
+	var button := _find_button(editor, "Compare Walkmesh with Override...")
+	assert(button != null)
+	holder.queue_free()
+	await process_frame
+	print("✓ Module Designer compare walkmesh button passed")
 	return true
 
 
