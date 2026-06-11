@@ -11,6 +11,7 @@ const KotorGITDocument := preload("../../../resources/documents/kotor_git_docume
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorModuleContext := preload("../../../editor/module/kotor_module_context.gd")
+const BWMParser := preload("../../../formats/bwm_parser.gd")
 const BWMWriter := preload("../../../formats/bwm_writer.gd")
 const BwmBatchExporter := preload("../../../formats/bwm_batch_exporter.gd")
 const BwmGamefsBatchExporter := preload("../../../formats/bwm_gamefs_batch_exporter.gd")
@@ -56,6 +57,8 @@ var _file_name := "module.git"
 var _dirty := false
 var _git_dirty := false
 var _pth_dirty := false
+var _walkmesh_dirty := false
+var _walkmesh_source_bytes := PackedByteArray()
 var _status_text := ""
 var _last_compare_result: Dictionary = {}
 var _document_key := ""
@@ -106,6 +109,7 @@ func open_resource(resource: GITResource, source_path: String = "", file_name: S
 	_file_name = file_name.get_file() if not file_name.is_empty() else "module.git"
 	_git_dirty = false
 	_pth_dirty = false
+	_walkmesh_dirty = false
 	_refresh_dirty_state()
 	_status_text = ""
 	_reset_overlay_selection()
@@ -438,6 +442,11 @@ func _build_ui() -> void:
 	install_walkmesh_btn.pressed.connect(_install_walkmesh_to_override)
 	_toolbar.add_child(install_walkmesh_btn)
 
+	var paint_walkmesh_btn := Button.new()
+	paint_walkmesh_btn.text = "Paint Walkmesh"
+	paint_walkmesh_btn.pressed.connect(_arm_paint_walkmesh)
+	_toolbar.add_child(paint_walkmesh_btn)
+
 	var compare_walkmesh_btn := Button.new()
 	compare_walkmesh_btn.text = "Compare Walkmesh with Override..."
 	compare_walkmesh_btn.pressed.connect(_compare_walkmesh_with_override)
@@ -574,6 +583,7 @@ func _build_ui() -> void:
 	_viewport_3d.path_point_selected.connect(_on_viewport_path_point_selected)
 	_viewport_3d.path_connection_selected.connect(_on_viewport_path_connection_selected)
 	_viewport_3d.instance_rotate_finished.connect(_on_map_instance_rotate_finished)
+	_viewport_3d.walkmesh_face_paint_requested.connect(_on_viewport_walkmesh_face_paint_requested)
 	right_split.add_child(_viewport_3d)
 
 	split.add_child(right_split)
@@ -855,6 +865,8 @@ func _refresh_status() -> void:
 		parts.append("Unsaved GIT changes")
 	if _pth_dirty:
 		parts.append("Unsaved PTH changes")
+	if _walkmesh_dirty:
+		parts.append("Unsaved walkmesh changes")
 	if not _status_text.is_empty():
 		parts.append(_status_text)
 	var text := "Ready" if parts.is_empty() else " · ".join(parts)
@@ -868,7 +880,9 @@ func _refresh_module_bundle() -> void:
 	_parsed_layout = KotorModuleContext.load_parsed_layout(gamefs, _module_bundle)
 	_parsed_visibility = KotorModuleContext.load_parsed_visibility(gamefs, _module_bundle)
 	_set_path_resource(KotorModuleContext.load_path_resource(gamefs, _module_bundle))
-	_parsed_walkmesh = KotorModuleContext.load_parsed_walkmesh(gamefs, _module_bundle)
+	if not _walkmesh_dirty:
+		_parsed_walkmesh = KotorModuleContext.load_parsed_walkmesh(gamefs, _module_bundle)
+		_walkmesh_source_bytes = serialize_loaded_walkmesh_bytes()
 	_parsed_room_meshes = _load_room_meshes(gamefs)
 
 
@@ -1099,6 +1113,8 @@ func _show_add_instance_dialog() -> void:
 		_pending_add_instance_template = template_resref
 		_map_view.set_add_path_point_armed(false)
 		_map_view.set_add_path_connection_armed(false)
+		if _viewport_3d != null:
+			_viewport_3d.set_paint_walkmesh_armed(false)
 		_map_view.set_add_instance_armed(true)
 		_status_text = "Click the map to place a new %s (%s)." % [category, template_resref]
 		_refresh_status()
@@ -1124,9 +1140,41 @@ func _remove_selected_instance() -> void:
 	_apply_instance_remove_with_undo(category, index)
 
 
+func _arm_paint_walkmesh() -> void:
+	if _viewport_3d == null or _parsed_walkmesh.is_empty():
+		_status_text = "Load an area walkmesh before painting."
+		_refresh_status()
+		return
+	if _map_view != null:
+		_map_view.set_add_instance_armed(false)
+		_map_view.set_add_path_point_armed(false)
+		_map_view.set_add_path_connection_armed(false)
+	_viewport_3d.set_paint_walkmesh_armed(true)
+	_status_text = "Click a walkmesh triangle in the 3D view to toggle walkable."
+	_refresh_status()
+
+
+func _on_viewport_walkmesh_face_paint_requested(face_index: int) -> void:
+	if _parsed_walkmesh.is_empty() or face_index < 0:
+		return
+	var current_material := BWMParser.get_face_material(_parsed_walkmesh, face_index)
+	if current_material < 0:
+		return
+	var target_material: int = (
+		BWMParser.DEFAULT_UNWALKABLE_MATERIAL
+		if BWMParser.is_walkable_material(current_material)
+		else BWMParser.DEFAULT_WALKABLE_MATERIAL
+	)
+	_apply_walkmesh_material_with_undo(face_index, current_material, target_material)
+	_status_text = ""
+	_refresh_status()
+
+
 func _arm_add_path_point() -> void:
 	if _map_view == null or _path_document == null:
 		return
+	if _viewport_3d != null:
+		_viewport_3d.set_paint_walkmesh_armed(false)
 	_map_view.set_add_instance_armed(false)
 	_map_view.set_add_path_connection_armed(false)
 	_map_view.set_add_path_point_armed(true)
@@ -1158,6 +1206,8 @@ func _arm_add_path_connection() -> void:
 	_map_view.set_add_instance_armed(false)
 	_map_view.set_add_path_point_armed(false)
 	_map_view.set_add_path_connection_armed(true)
+	if _viewport_3d != null:
+		_viewport_3d.set_paint_walkmesh_armed(false)
 	_status_text = "Click a target path point to connect from the selected source."
 	_refresh_status()
 
@@ -1400,6 +1450,7 @@ func _clear_document_state(message: String) -> void:
 	_file_name = "module.git"
 	_git_dirty = false
 	_pth_dirty = false
+	_walkmesh_dirty = false
 	_refresh_dirty_state()
 	_status_text = message
 	_module_bundle = {}
@@ -1408,6 +1459,7 @@ func _clear_document_state(message: String) -> void:
 	_path_resource = null
 	_path_document = null
 	_parsed_walkmesh = {}
+	_walkmesh_source_bytes = PackedByteArray()
 	_parsed_room_meshes = []
 	if _instance_tree != null:
 		_instance_tree.clear()
@@ -1894,9 +1946,13 @@ func _apply_walkmesh_install_now(bytes: PackedByteArray, file_name: String) -> D
 	)
 	_status_text = _mutation_message(result)
 	if result.get("applied", false):
+		_walkmesh_dirty = false
+		_walkmesh_source_bytes = bytes.duplicate()
+		_refresh_dirty_state()
 		_refresh_gamefs()
 		_refresh_module_bundle()
 		_refresh_bundle_label()
+	_update_controller_dirty_state()
 	_refresh_status()
 	return result
 
@@ -2145,6 +2201,34 @@ func _exec_path_connection_remove(connection_index: int) -> void:
 	if _detail_label != null:
 		_detail_label.text = ""
 	_reset_overlay_selection()
+
+
+func _apply_walkmesh_material_with_undo(
+	face_index: int,
+	old_material: int,
+	new_material: int
+) -> void:
+	if _parsed_walkmesh.is_empty():
+		return
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Paint walkmesh face", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_walkmesh_set_face_material", face_index, new_material)
+		ur.add_undo_method(self, "_exec_walkmesh_set_face_material", face_index, old_material)
+		ur.commit_action()
+	else:
+		_exec_walkmesh_set_face_material(face_index, new_material)
+
+
+func _exec_walkmesh_set_face_material(face_index: int, material_id: int) -> void:
+	if _parsed_walkmesh.is_empty():
+		return
+	if not BWMParser.set_face_material(_parsed_walkmesh, face_index, material_id):
+		return
+	_walkmesh_dirty = serialize_loaded_walkmesh_bytes() != _walkmesh_source_bytes
+	_refresh_dirty_state()
+	_update_controller_dirty_state()
+	_refresh_viewport_3d()
 
 
 func _apply_instance_add_with_undo(
@@ -2409,6 +2493,6 @@ func _set_path_resource(resource: PTHResource) -> void:
 
 
 func _refresh_dirty_state() -> void:
-	_dirty = _git_dirty or _pth_dirty
+	_dirty = _git_dirty or _pth_dirty or _walkmesh_dirty
 	_refresh_path_label()
 	_emit_dirty_state(_dirty)

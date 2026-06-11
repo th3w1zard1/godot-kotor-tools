@@ -14,6 +14,7 @@ func _run_tests() -> void:
 	_test_walkable_materials()
 	_test_compute_bounds()
 	_test_invalid_header()
+	_test_toggle_face_walkable()
 	print("✓ BWM parser tests passed")
 	quit()
 
@@ -61,6 +62,22 @@ func _test_invalid_header() -> void:
 	assert(BWMParser.parse_bytes(PackedByteArray()).is_empty())
 	assert(BWMParser.parse_bytes("not-a-walkmesh".to_utf8_buffer()).is_empty())
 	print("✓ BWM invalid header rejection passed")
+
+
+func _test_toggle_face_walkable() -> void:
+	var bytes := _build_minimal_wok(
+		[Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0)],
+		[0, 1, 2],
+		[BWMParser.DEFAULT_WALKABLE_MATERIAL]
+	)
+	var parsed := BWMParser.parse_bytes(bytes)
+	assert(int(parsed.get("face_count", 0)) == 1)
+	assert(BWMParser.get_face_material(parsed, 0) == BWMParser.DEFAULT_WALKABLE_MATERIAL)
+	BWMParser.set_face_material(parsed, 0, BWMParser.DEFAULT_UNWALKABLE_MATERIAL)
+	assert(BWMParser.get_face_material(parsed, 0) == BWMParser.DEFAULT_UNWALKABLE_MATERIAL)
+	BWMParser.toggle_face_walkable(parsed, 0)
+	assert(BWMParser.get_face_material(parsed, 0) == BWMParser.DEFAULT_WALKABLE_MATERIAL)
+	print("✓ BWM face material toggle passed")
 
 
 static func _build_minimal_wok(vertices: Array, face_indices: Array, materials: Array) -> PackedByteArray:

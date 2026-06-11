@@ -138,12 +138,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q122 | Module/MDL compare with override toolbar parity | Module Designer **Compare Walkmesh with Override...** + Model Editor **Compare MDL with Override...** via `KotorModdingPipeline.compare_gamefs_resource`; headless toolbar tests. |
 | Q123 | Module/MDL compare report export toolbar parity | **Export Compare Report...** in Module Designer + Model Editor after compare; uses `export_compare_result_to_path`; headless toolbar tests. |
 | Q124 | Module Designer GIT instance CRUD | **Add Instance…** / **Remove Instance** toolbar actions with category+template dialog, map placement, undo-safe typed mutation, install-ready persistence; headless `test_module_designer_git_instance_crud.gd`. |
+| Q125 | UTP typed parity expansion | Trap scalar and script hook typed helpers on UTP blueprints with aligned summary output; headless `test_gff_resource_factory.gd` UTP mapping coverage. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q125 | UTP typed parity expansion | Ship trap scalar and script hook typed helpers on UTP blueprints. | Q124 GIT instance CRUD shipped with headless CRUD + install roundtrip tests green. | Per `docs/plans/2026-06-03-001-feat-utp-typed-parity-expansion-plan.md`. |
+| Q126 | Module Designer BWM walkmesh painter foundations | **Paint Walkmesh** toolbar arm, 3D face pick, walkable/unwalkable material toggle with undo and dirty tracking. | Q125 UTP typed parity shipped with factory mapping tests green. | Headless `test_module_designer_bwm_paint.gd` + `test_bwm_parser.gd` toggle coverage. |
 
 ## Next Slices (Deferred)
 
