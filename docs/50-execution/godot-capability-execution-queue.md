@@ -115,12 +115,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q99 | TPC TXI sidecar pairing on image import | `TPCWriter.append_txi_bytes` + `TpcBatchConverter.attach_txi_sidecar` append sibling `.txi` on batch convert, GameFS import, and TPC editor single-file import; headless `test_tpc_writer.gd`, `test_tpc_batch_converter.gd`. |
 | Q100 | Flat-folder TGA/PNG batch import to override | `TpcBatchConverter.batch_directory_to_output` + `TpcGamefsBatchImporter.batch_folder_to_override`; TPC editor **Batch Import Image Folder to Override...**; headless `test_tpc_batch_converter.gd`, `test_tpc_gamefs_batch_importer.gd`. |
 | Q101 | TPC compare TXI sidecar diff | `TPCCompare` TXI presence/line-by-line summaries; mip-only payload diff; headless `test_tpc_compare.gd`. |
+| Q102 | Batch WAV sound-convert | `WavBatchConverter` flat-folder PyKotor `sound-convert`; WAV editor **Batch Convert WAV...**; headless `test_wav_batch_converter.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q101 shipped TPC compare TXI sidecar diff. | Next: parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q102 shipped batch WAV sound-convert. | Next: parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
