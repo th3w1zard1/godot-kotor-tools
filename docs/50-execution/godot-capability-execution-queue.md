@@ -141,14 +141,15 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q125 | UTP typed parity expansion *(PR #119)* | Trap scalar and script hook typed helpers on UTP blueprints with aligned summary output; headless `test_gff_resource_factory.gd` UTP mapping coverage. |
 | Q126 | Module Designer BWM walkmesh painter foundations *(PR #119)* | **Paint Walkmesh** toolbar arm, 3D face pick, walkable/unwalkable material toggle with undo, dirty baseline tracking, and install-ready persistence; headless `test_module_designer_bwm_paint.gd`. |
 | Q127 | ERF archive workspace UX *(PR #119)* | **Archive Browser** workspace tab with member table, nested member open routing, and extract-to-override with preflight; headless `test_erf_workspace_editor.gd`. |
+| Q128a | DLG node CRUD and orphan hygiene *(PR #119)* | **Add Entry/Reply/Start** and **Remove Node** toolbar actions, orphan dock with restore-link, document index repair + topology snapshot undo; headless `test_dlg_workspace_editor.gd` node CRUD tests. |
 
-> **Branch note:** Q124–Q127 are implemented on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)) and move to unconditional shipped status when merged to `main`. `main` @ Q123 remains the merge base until that PR lands.
+> **Branch note:** Q124–Q128a are implemented on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)) and move to unconditional shipped status when merged to `main`. `main` @ Q123 remains the merge base until that PR lands.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q128a | DLG node CRUD and orphan hygiene | Add/remove Entry/Reply/Start nodes with reference-safe index repair, orphan dock, toolbar undo. | Q128 child plan written; Holocron `editors/dlg/` audit captured. | See `docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md` § Q128a. |
+| Q128b | DLG read-only graph canvas | Tree ↔ graph toggle with `GraphEdit` layout synced from document metadata. | Q128a node CRUD shipped with headless DLG tests green. | See `docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md` § Q128b. |
 
 ## Next Slices (Deferred)
 

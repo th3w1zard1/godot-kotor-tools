@@ -2,6 +2,8 @@
 title: "feat: Q128 DLG graph editor depth"
 type: feat
 status: active
+shipped_units:
+  - Q128a
 date: 2026-06-10
 origin: docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md
 phase: Q128

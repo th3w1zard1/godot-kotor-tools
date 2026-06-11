@@ -2,6 +2,7 @@
 extends SceneTree
 
 const KotorDLGWorkspaceEditor := preload("../../ui/workspace/editors/dlg_workspace_editor.gd")
+const KotorDLGDocument := preload("../../resources/documents/kotor_dlg_document.gd")
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const DLGResource := preload("../../resources/typed/dlg_resource.gd")
 const GFFParser := preload("../../formats/gff_parser.gd")
@@ -75,6 +76,14 @@ func _assert_editor_behavior() -> void:
 	_test_array_undo_redo_round_trip()
 	_test_array_validation_required_field()
 	_test_array_validation_optional_field()
+
+	_test_node_add_entry()
+	_test_node_add_reply_and_link()
+	_test_node_remove_entry_repairs_indices()
+	_test_find_orphaned_nodes_after_reference_removal()
+	_test_restore_orphan_link()
+	_test_node_add_remove_undo_redo()
+
 	_cleanup()
 	quit()
 
@@ -603,6 +612,92 @@ func _test_jump_to_link_target() -> void:
 
 	_editor._jump_to_link_target("entry", 0, 99)
 	assert(str(_editor._dlg_selection.get("kind", "")) == "reply", "Invalid jump should leave selection unchanged")
+
+
+func _test_node_add_entry() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var initial_count := doc.get_entry_count()
+	var new_index := doc.add_entry()
+	assert(new_index == initial_count, "New entry should append at end")
+	assert(doc.get_entry_count() == initial_count + 1, "Entry count should increase")
+	assert(doc.validate().is_empty(), "Dialogue should validate after add entry")
+
+
+func _test_node_add_reply_and_link() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var reply_index := doc.add_reply()
+	assert(reply_index == doc.get_reply_count() - 1, "Reply should append at end")
+	var entry := doc.get_node("entry", 0)
+	var links: Array = entry.get("RepliesList", [])
+	links.append(KotorDLGDocument.create_default_link_struct(reply_index))
+	entry["RepliesList"] = links
+	doc.mark_changed()
+	assert(
+		doc.get_link_target_metadata("entry", 0, links.size() - 1).get("index", -1) == reply_index,
+		"New reply link should resolve to added reply"
+	)
+	assert(doc.validate().is_empty(), "Linked reply should validate")
+
+
+func _test_node_remove_entry_repairs_indices() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	assert(doc.add_entry() == 1, "Second entry should be index 1")
+	assert(doc.add_entry() == 2, "Third entry should be index 2")
+	doc.add_start(2)
+	assert(doc.remove_entry(0), "Remove entry should succeed")
+	assert(doc.get_entry_count() == 2, "Entry count should decrease")
+	var found_shifted_start := false
+	for start_index in range(doc.get_start_count()):
+		if int(doc.get_start(start_index).get("Index", -1)) == 1:
+			found_shifted_start = true
+	assert(found_shifted_start, "Start targeting entry 2 should shift to index 1 after entry 0 removed")
+	assert(doc.validate().is_empty(), "Repaired dialogue should validate")
+
+
+func _test_find_orphaned_nodes_after_reference_removal() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var reply_index := doc.add_reply()
+	assert(doc.remove_all_references_to_node("reply", 0) >= 1, "Should remove incoming links to reply 0")
+	var orphans := doc.find_orphaned_nodes()
+	var found_reply_zero := false
+	for orphan in orphans:
+		if str(orphan.get("kind", "")) == "reply" and int(orphan.get("index", -1)) == 0:
+			found_reply_zero = true
+	assert(found_reply_zero, "Reply 0 should be orphaned after references removed")
+	assert(reply_index == 1, "Added reply should remain at index 1")
+
+
+func _test_restore_orphan_link() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	doc.remove_all_references_to_node("reply", 0)
+	assert(doc.restore_link_to_orphan("entry", 0, "reply", 0), "Restore should add reply link from entry 0")
+	assert(doc.get_node_links("entry", 0).size() >= 1, "Entry should have restored reply link")
+	assert(doc.validate().is_empty(), "Restored link should validate")
+
+
+func _test_node_add_remove_undo_redo() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var initial_entries := doc.get_entry_count()
+	_editor._apply_node_add("entry")
+	assert(doc.get_entry_count() == initial_entries + 1, "Apply add entry should increase count")
+	var ur := _editor._get_undo_redo()
+	if ur != null:
+		ur.undo()
+		assert(doc.get_entry_count() == initial_entries, "Undo add entry should restore count")
+		ur.redo()
+		assert(doc.get_entry_count() == initial_entries + 1, "Redo add entry should restore added entry")
 
 
 func _cleanup() -> void:
