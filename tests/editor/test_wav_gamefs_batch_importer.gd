@@ -14,14 +14,71 @@ func _initialize() -> void:
 
 
 func _run_tests() -> void:
+	_test_batch_install_convert_dry_run()
+	_test_batch_install_skip_existing()
+	_test_batch_install_skip_clean_sources()
 	_test_batch_folder_import_dry_run()
 	_test_skip_existing()
-	var button_ok := await _test_wav_editor_batch_import_button()
+	var button_ok := await _test_wav_editor_batch_buttons()
 	if not button_ok:
 		push_error("WAV GameFS batch importer toolbar test failed")
 		quit(1)
 	print("✓ WAV GameFS batch importer tests passed")
 	quit()
+
+
+func _test_batch_install_convert_dry_run() -> void:
+	var install_root := _make_install_root()
+	_seed_install_wavs(install_root)
+	var gamefs := _build_gamefs(install_root)
+
+	var result := WavGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"dry_run": true,
+		"pykotor_cli_path": "/bin/true",
+		"sound_type": "SFX",
+	})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	assert(str(result.get("summary", "")).contains("Install batch WAV convert"))
+	var first: Dictionary = generated[0]
+	assert(str(first.get("output_path", "")).ends_with("_clean.wav"))
+	_cleanup(install_root)
+	print("✓ GameFS batch install WAV convert dry-run passed")
+
+
+func _test_batch_install_skip_existing() -> void:
+	var install_root := _make_install_root()
+	_seed_install_wavs(install_root)
+	_write_file(install_root.path_join("override").path_join("line01_clean.wav"), PackedByteArray([0x00]))
+	var gamefs := _build_gamefs(install_root)
+
+	var result := WavGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"dry_run": true,
+		"pykotor_cli_path": "/bin/true",
+		"skip_existing": true,
+	})
+	var skipped: Array = result.get("skipped", [])
+	assert(skipped.size() == 1)
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 1)
+	_cleanup(install_root)
+	print("✓ GameFS batch install WAV convert skip-existing passed")
+
+
+func _test_batch_install_skip_clean_sources() -> void:
+	var install_root := _make_install_root()
+	_write_file(install_root.path_join("override").path_join("line01_clean.wav"), _build_pcm_wav(8000, 1, 400))
+	var gamefs := _build_gamefs(install_root)
+
+	var result := WavGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"dry_run": true,
+		"pykotor_cli_path": "/bin/true",
+	})
+	assert((result.get("generated", []) as Array).is_empty())
+	assert((result.get("skipped", []) as Array).is_empty())
+	_cleanup(install_root)
+	print("✓ GameFS batch install WAV convert skip clean sources passed")
 
 
 func _test_batch_folder_import_dry_run() -> void:
@@ -70,16 +127,17 @@ func _test_skip_existing() -> void:
 	print("✓ GameFS batch WAV import skip-existing passed")
 
 
-func _test_wav_editor_batch_import_button() -> bool:
+func _test_wav_editor_batch_buttons() -> bool:
 	var editor := KotorWAVWorkspaceEditor.new()
 	var holder := Node.new()
 	root.add_child(holder)
 	holder.add_child(editor)
 	await process_frame
 	assert(_find_button(editor, "Batch Import WAV Folder to Override...") != null)
+	assert(_find_button(editor, "Batch Convert Install WAV...") != null)
 	holder.queue_free()
 	await process_frame
-	print("✓ WAV editor batch import button passed")
+	print("✓ WAV editor batch import/convert buttons passed")
 	return true
 
 
@@ -104,6 +162,12 @@ func _build_gamefs(install_root: String) -> RefCounted:
 	editor_state.game_path = install_root
 	editor_state.refresh_gamefs()
 	return editor_state.gamefs
+
+
+func _seed_install_wavs(install_root: String) -> void:
+	var override_dir := install_root.path_join("override")
+	_write_file(override_dir.path_join("line01.wav"), _build_pcm_wav(8000, 1, 400))
+	_write_file(override_dir.path_join("line02.wav"), _build_pcm_wav(8000, 1, 800))
 
 
 func _seed_wavs(source_root: String) -> void:

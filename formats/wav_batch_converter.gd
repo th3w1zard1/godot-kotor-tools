@@ -98,6 +98,26 @@ static func batch_directory_to_output(
 	}
 
 
+## Convert one WAV file to a target output path via PyKotor sound-convert.
+static func convert_file(
+		wav_path: String,
+		output_path: String,
+		options: Dictionary = {}
+) -> Dictionary:
+	return _convert_single(
+		wav_path,
+		output_path,
+		str(options.get("pykotor_cli_path", "")).strip_edges(),
+		str(options.get("sound_type", "SFX")).strip_edges().to_upper(),
+		bool(options.get("to_clean", true)),
+		bool(options.get("dry_run", false))
+	)
+
+
+static func clean_output_path_for_resref(output_dir: String, resref: String) -> String:
+	return _clean_output_path_for_resref(output_dir, resref)
+
+
 static func format_report(result: Dictionary) -> String:
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append(str(result.get("summary", "Batch WAV convert finished.")))

@@ -152,6 +152,11 @@ func _build_ui() -> void:
 	batch_import_btn.pressed.connect(_batch_import_wav_folder_to_override)
 	_toolbar.add_child(batch_import_btn)
 
+	var batch_install_convert_btn := Button.new()
+	batch_install_convert_btn.text = "Batch Convert Install WAV..."
+	batch_install_convert_btn.pressed.connect(_batch_convert_install_wav)
+	_toolbar.add_child(batch_install_convert_btn)
+
 	var save_btn := Button.new()
 	save_btn.text = "Save WAV"
 	save_btn.pressed.connect(_save_wav)
@@ -271,6 +276,27 @@ func _batch_import_wav_folder_to_override() -> void:
 	dialog.canceled.connect(dialog.queue_free)
 	EditorInterface.get_editor_main_screen().add_child(dialog)
 	dialog.popup_centered_ratio(0.6)
+
+
+func _batch_convert_install_wav() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch convert."
+		_refresh_status()
+		return
+	_run_batch_convert_install_wav(gamefs)
+
+
+func _run_batch_convert_install_wav(gamefs: RefCounted) -> void:
+	var sound_type := "VO" if _sound_type_option.get_selected_id() == 1 else "SFX"
+	var result := WavGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"pykotor_cli_path": _editor_state.get("pykotor_cli_path") if _editor_state != null else "",
+		"sound_type": sound_type,
+		"source_filter": "override",
+	})
+	_apply_batch_wav_status(result, "Install batch WAV convert finished.")
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_gamefs()
 
 
 func _run_batch_import_wav_folder_to_override(gamefs: RefCounted, source_dir: String) -> void:
