@@ -2,6 +2,7 @@
 extends SceneTree
 
 const KotorDLGDocument := preload("../../resources/documents/kotor_dlg_document.gd")
+const KotorDLGGraphView := preload("../../ui/workspace/panels/dlg_graph_view.gd")
 const GFFParser := preload("../../formats/gff_parser.gd")
 const DLGResource := preload("../../resources/typed/dlg_resource.gd")
 
@@ -16,6 +17,7 @@ func _run_tests() -> void:
 	_test_layout_edge_count_matches_valid_links()
 	_test_layout_omits_invalid_link_targets()
 	_test_parse_graph_node_id_round_trip()
+	_test_connection_request_rejects_same_kind()
 	quit()
 
 
@@ -89,6 +91,22 @@ func _test_layout_omits_invalid_link_targets() -> void:
 		var to_id := str(edge_data.get("to_id", ""))
 		assert(not from_id.contains("99"))
 		assert(not to_id.contains("99"))
+
+
+func _test_connection_request_rejects_same_kind() -> void:
+	var graph_view := KotorDLGGraphView.new()
+	var requested: Array[Dictionary] = []
+	graph_view.connection_link_requested.connect(func(from_metadata: Dictionary, to_metadata: Dictionary) -> void:
+		requested.append(from_metadata)
+		requested.append(to_metadata)
+	)
+	graph_view._on_connection_request(&"entry:0", 1, &"entry:1", 0)
+	assert(requested.is_empty(), "Entry-to-entry connection should be ignored")
+	graph_view._on_connection_request(&"entry:0", 1, &"reply:0", 0)
+	assert(requested.size() == 2, "Entry-to-reply connection should emit metadata pair")
+	assert(requested[0].get("kind", "") == "entry")
+	assert(int(requested[1].get("index", -1)) == 0)
+	graph_view.free()
 
 
 func _test_parse_graph_node_id_round_trip() -> void:

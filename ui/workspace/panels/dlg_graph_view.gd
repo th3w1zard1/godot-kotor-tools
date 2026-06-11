@@ -3,6 +3,7 @@ extends GraphEdit
 class_name KotorDLGGraphView
 
 signal node_metadata_selected(metadata: Dictionary)
+signal connection_link_requested(from_metadata: Dictionary, to_metadata: Dictionary)
 
 const KotorDLGDocument := preload("../../../resources/documents/kotor_dlg_document.gd")
 
@@ -23,9 +24,21 @@ func _ready() -> void:
 	node_selected.connect(_on_node_selected)
 
 
-func _on_connection_request(_from_node: StringName, _from_port: int, _to_node: StringName, _to_port: int) -> void:
-	# Read-only graph: ignore interactive connection attempts.
-	pass
+func _on_connection_request(
+		from_node: StringName,
+		from_port: int,
+		to_node: StringName,
+		to_port: int
+) -> void:
+	if from_port != 1 or to_port != 0:
+		return
+	var from_metadata := KotorDLGDocument.parse_graph_node_id(str(from_node))
+	var to_metadata := KotorDLGDocument.parse_graph_node_id(str(to_node))
+	if from_metadata.is_empty() or to_metadata.is_empty():
+		return
+	if from_metadata.get("kind", "") == to_metadata.get("kind", ""):
+		return
+	connection_link_requested.emit(from_metadata, to_metadata)
 
 
 func _on_node_selected(node: Node) -> void:

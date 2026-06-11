@@ -91,6 +91,10 @@ func _assert_editor_behavior() -> void:
 	_test_remove_all_references_reply_via_editor()
 	_test_remove_all_references_undo_redo()
 
+	_test_add_node_link_document_api()
+	_test_graph_link_via_editor()
+	_test_graph_link_undo_redo()
+
 	_cleanup()
 	quit()
 
@@ -750,6 +754,49 @@ func _test_remove_all_references_reply_via_editor() -> void:
 		if str(orphan.get("kind", "")) == "reply" and int(orphan.get("index", -1)) == 0:
 			found_reply_zero = true
 	assert(found_reply_zero, "Reply 0 should appear in orphan list after references removed")
+
+
+func _test_add_node_link_document_api() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	assert(doc.add_entry() == 1, "Second entry should be index 1")
+	assert(doc.add_node_link("entry", 1, "reply", 0), "Entry should link to reply via add_node_link")
+	assert(
+		doc.get_link_target_metadata("entry", 1, 0).get("index", -1) == 0,
+		"New entry link should resolve to reply 0"
+	)
+	assert(not doc.add_node_link("entry", 0, "entry", 1), "Same-kind links should be rejected")
+	assert(doc.validate().is_empty(), "Linked dialogue should validate")
+
+
+func _test_graph_link_via_editor() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var entry_index := doc.add_entry()
+	assert(entry_index == 1, "Second entry should be index 1")
+	assert(doc.get_node_links("entry", entry_index).is_empty(), "New entry should have no outgoing links")
+	_editor._apply_graph_link("entry", entry_index, "reply", 0)
+	assert(
+		doc.get_link_target_metadata("entry", entry_index, 0).get("index", -1) == 0,
+		"Graph link apply should append entry-to-reply link"
+	)
+
+
+func _test_graph_link_undo_redo() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	var entry_index := doc.add_entry()
+	_editor._apply_graph_link("entry", entry_index, "reply", 0)
+	assert(doc.get_node_links("entry", entry_index).size() == 1, "Graph link should exist after apply")
+	var ur := _editor._get_undo_redo()
+	if ur != null:
+		ur.undo()
+		assert(doc.get_node_links("entry", entry_index).is_empty(), "Undo graph link should remove appended link")
+		ur.redo()
+		assert(doc.get_node_links("entry", entry_index).size() == 1, "Redo graph link should restore link")
 
 
 func _test_remove_all_references_undo_redo() -> void:

@@ -423,6 +423,7 @@ func _build_ui() -> void:
 	_dlg_graph_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_dlg_graph_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_dlg_graph_view.node_metadata_selected.connect(_on_graph_node_metadata_selected)
+	_dlg_graph_view.connection_link_requested.connect(_on_graph_connection_link_requested)
 	split.add_child(_dlg_graph_view)
 
 	var tree_scroll := ScrollContainer.new()
@@ -1699,6 +1700,61 @@ func _on_graph_node_metadata_selected(metadata: Dictionary) -> void:
 	if metadata.is_empty():
 		return
 	_select_dlg_metadata(metadata)
+
+
+func _on_graph_connection_link_requested(from_metadata: Dictionary, to_metadata: Dictionary) -> void:
+	if _dlg_document == null or from_metadata.is_empty() or to_metadata.is_empty():
+		return
+	var owner_kind := str(from_metadata.get("kind", ""))
+	var owner_index := int(from_metadata.get("index", -1))
+	var target_kind := str(to_metadata.get("kind", ""))
+	var target_index := int(to_metadata.get("index", -1))
+	if owner_kind.is_empty() or target_kind.is_empty() or owner_index < 0 or target_index < 0:
+		return
+	if _dlg_document.get_link_target_kind(owner_kind) != target_kind:
+		_dlg_status_text = "Graph links must connect entry to reply or reply to entry."
+		_refresh_dlg_status()
+		return
+	_apply_graph_link(owner_kind, owner_index, target_kind, target_index)
+
+
+func _apply_graph_link(
+		owner_kind: String,
+		owner_index: int,
+		target_kind: String,
+		target_index: int
+) -> void:
+	if _dlg_document == null or owner_index < 0 or target_index < 0:
+		return
+	var snapshot := _dlg_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Add DLG graph link", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_add_graph_link", owner_kind, owner_index, target_kind, target_index)
+		ur.add_undo_method(self, "_exec_restore_topology", snapshot)
+		ur.commit_action()
+	else:
+		_exec_add_graph_link(owner_kind, owner_index, target_kind, target_index)
+
+
+func _exec_add_graph_link(
+		owner_kind: String,
+		owner_index: int,
+		target_kind: String,
+		target_index: int
+) -> void:
+	if _dlg_document == null:
+		return
+	if not _dlg_document.add_node_link(owner_kind, owner_index, target_kind, target_index):
+		_dlg_status_text = "Could not add graph link from %s %d to %s %d." % [
+			owner_kind, owner_index, target_kind, target_index
+		]
+		_refresh_dlg_status()
+		return
+	_dlg_status_text = "Added graph link from %s %d to %s %d." % [
+		owner_kind, owner_index, target_kind, target_index
+	]
+	_refresh_after_topology_change({"kind": owner_kind, "index": owner_index})
 
 
 func _refresh_dlg_graph() -> void:

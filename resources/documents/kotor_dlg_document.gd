@@ -320,21 +320,22 @@ func find_orphaned_nodes() -> Array[Dictionary]:
 	return orphans
 
 
-func restore_link_to_orphan(
+func add_node_link(
 		owner_kind: String,
 		owner_index: int,
 		target_kind: String,
 		target_index: int
 ) -> bool:
 	var normalized_owner := owner_kind.to_lower()
+	var normalized_target := target_kind.to_lower()
 	if normalized_owner != KIND_ENTRY and normalized_owner != KIND_REPLY:
 		return false
-	if get_link_target_kind(normalized_owner) != target_kind.to_lower():
+	if get_link_target_kind(normalized_owner) != normalized_target:
 		return false
 	var owner := get_node(normalized_owner, owner_index)
 	if owner.is_empty():
 		return false
-	if target_index < 0 or target_index >= get_node_list(target_kind).size():
+	if target_index < 0 or target_index >= get_node_list(normalized_target).size():
 		return false
 	var link_field := "RepliesList" if normalized_owner == KIND_ENTRY else "EntriesList"
 	var links_raw = owner.get(link_field, [])
@@ -343,6 +344,15 @@ func restore_link_to_orphan(
 	owner[link_field] = links
 	mark_changed()
 	return true
+
+
+func restore_link_to_orphan(
+		owner_kind: String,
+		owner_index: int,
+		target_kind: String,
+		target_index: int
+) -> bool:
+	return add_node_link(owner_kind, owner_index, target_kind, target_index)
 
 
 func capture_topology_snapshot() -> Dictionary:
