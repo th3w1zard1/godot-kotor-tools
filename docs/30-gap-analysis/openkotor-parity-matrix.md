@@ -163,6 +163,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 95. **Q125 (PR #119, 2026-06-10):** UTP typed parity expansion — trap scalar and script hook typed helpers with factory mapping tests; see `docs/plans/2026-06-03-001-feat-utp-typed-parity-expansion-plan.md`.
 96. **Q126 (PR #119, 2026-06-10):** Module Designer BWM walkmesh paint foundations — **Paint Walkmesh** 3D face pick, material toggle with undo/dirty baseline; see `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` U5.
 97. ERF archive workspace UX (Q127, PR #119) and DLG graph depth (Q128a–c per `docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md`).
+98. **Q134–Q137 (PR #124–#127, 2026-06-12):** ERF archive authoring/deploy wave — add/save, remove/replace, compare/export, install to `modules/`; see `docs/plans/2026-06-12-065-feat-q134-erf-member-add-plan.md` through `068-feat-q137-erf-install-archive-to-modules-plan.md`.
 
 ## Evidence Notes
 
