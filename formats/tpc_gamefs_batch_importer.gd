@@ -98,6 +98,29 @@ static func batch_install_to_override(
 	}
 
 
+## Convert each `.tga`/`.png` in `source_dir` and write `.tpc` files into install override.
+static func batch_folder_to_override(
+		gamefs: RefCounted,
+		source_dir: String,
+		options: Dictionary = {}
+) -> Dictionary:
+	if gamefs == null:
+		return {"ok": false, "message": "GameFS index is unavailable for batch import."}
+
+	var override_path := _resolve_override_path(gamefs)
+	if override_path.is_empty():
+		return {"ok": false, "message": "Override folder is unavailable for batch import."}
+	if source_dir.is_empty() or not DirAccess.dir_exists_absolute(source_dir):
+		return {"ok": false, "message": "Source directory not found: %s" % source_dir}
+
+	var result := TpcBatchConverter.batch_directory_to_output(source_dir, override_path, options)
+	var generated: Array = result.get("generated", [])
+	var skipped: Array = result.get("skipped", [])
+	var failed: Array = result.get("failed", [])
+	result["summary"] = _format_folder_summary(generated.size(), skipped.size(), failed.size())
+	return result
+
+
 static func _collect_candidates(
 		gamefs: RefCounted,
 		override_path: String,
@@ -202,6 +225,14 @@ static func _write_bytes(path: String, bytes: PackedByteArray) -> Error:
 
 static func _format_summary(generated_count: int, skipped_count: int, failed_count: int) -> String:
 	return "Install batch TPC import: %d imported, %d skipped, %d failed." % [
+		generated_count,
+		skipped_count,
+		failed_count,
+	]
+
+
+static func _format_folder_summary(generated_count: int, skipped_count: int, failed_count: int) -> String:
+	return "Install batch TPC folder import: %d imported, %d skipped, %d failed." % [
 		generated_count,
 		skipped_count,
 		failed_count,

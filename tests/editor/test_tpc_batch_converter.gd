@@ -24,6 +24,7 @@ func _run_tests() -> void:
 	_test_invalid_image_rejected()
 	_test_batch_directory()
 	_test_batch_directory_with_txi_sidecar()
+	_test_batch_directory_to_output()
 	var button_ok := await _test_tpc_editor_batch_buttons()
 	_cleanup()
 	if not button_ok:
@@ -147,6 +148,22 @@ func _test_batch_directory_with_txi_sidecar() -> void:
 	file.close()
 	assert(int(metadata.get("txi_length", 0)) > 0)
 	print("✓ TPC batch directory with TXI sidecar passed")
+
+
+func _test_batch_directory_to_output() -> void:
+	var source_dir := _test_root.path_join("import_source")
+	var output_dir := _test_root.path_join("import_output")
+	DirAccess.make_dir_recursive_absolute(source_dir)
+	DirAccess.make_dir_recursive_absolute(output_dir)
+
+	_write_png(source_dir.path_join("tex_out.png"), 8, 8)
+
+	var batch := TpcBatchConverter.batch_directory_to_output(source_dir, output_dir)
+	assert(batch.get("ok", false))
+	assert(int((batch.get("generated", []) as Array).size()) == 1)
+	assert(FileAccess.file_exists(output_dir.path_join("tex_out.tpc")))
+	assert(not FileAccess.file_exists(source_dir.path_join("tex_out.tpc")))
+	print("✓ TPC batch directory to output passed")
 
 
 func _test_batch_directory() -> void:

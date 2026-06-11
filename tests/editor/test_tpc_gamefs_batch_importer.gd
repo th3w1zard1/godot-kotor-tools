@@ -8,6 +8,7 @@ const TPCReader := preload("../../formats/tpc_reader.gd")
 const TpcGamefsBatchImporter := preload("../../formats/tpc_gamefs_batch_importer.gd")
 
 var _install_counter := 0
+var _source_counter := 0
 
 
 func _initialize() -> void:
@@ -20,6 +21,10 @@ func _run_tests() -> void:
 	_test_batch_install_writes_dxt1()
 	_test_batch_install_writes_dxt5()
 	_test_skip_existing()
+	_test_batch_folder_import_dry_run()
+	_test_batch_folder_import_writes_override()
+	_test_batch_folder_import_txi_sidecar()
+	_test_batch_folder_skip_existing()
 	var button_ok := await _test_tpc_editor_batch_install_import_buttons()
 	if not button_ok:
 		push_error("TPC editor install batch import button test failed")
@@ -112,6 +117,87 @@ func _test_skip_existing() -> void:
 	print("✓ GameFS batch import skip-existing passed")
 
 
+func _test_batch_folder_import_dry_run() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	_seed_source_images(source_root)
+	var gamefs := _build_gamefs(install_root)
+
+	var result := TpcGamefsBatchImporter.batch_folder_to_override(gamefs, source_root, {
+		"dry_run": true,
+	})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	assert(str(result.get("summary", "")).contains("Install batch TPC folder import"))
+	assert(not FileAccess.file_exists(install_root.path_join("override").path_join("tex_a.tpc")))
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch TPC folder import dry-run passed")
+
+
+func _test_batch_folder_import_writes_override() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	_seed_source_images(source_root)
+	var gamefs := _build_gamefs(install_root)
+
+	var result := TpcGamefsBatchImporter.batch_folder_to_override(gamefs, source_root, {})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	var override_dir := install_root.path_join("override")
+	assert(FileAccess.file_exists(override_dir.path_join("tex_a.tpc")))
+	assert(FileAccess.file_exists(override_dir.path_join("tex_b.tpc")))
+	var metadata := TPCReader.read_metadata(FileAccess.get_file_as_bytes(override_dir.path_join("tex_a.tpc")))
+	assert(metadata.get("ok", false))
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch TPC folder import write passed")
+
+
+func _test_batch_folder_import_txi_sidecar() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	_write_image(source_root.path_join("sidecar.png"), 8, 8)
+	_write_file(source_root.path_join("sidecar.txi"), "envmap\n".to_utf8_buffer())
+	var gamefs := _build_gamefs(install_root)
+
+	var result := TpcGamefsBatchImporter.batch_folder_to_override(gamefs, source_root, {})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 1)
+	var first: Dictionary = generated[0]
+	assert(first.get("txi_attached", false))
+
+	var metadata := TPCReader.read_metadata(
+		FileAccess.get_file_as_bytes(install_root.path_join("override").path_join("sidecar.tpc"))
+	)
+	assert(int(metadata.get("txi_length", 0)) > 0)
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch TPC folder import TXI sidecar passed")
+
+
+func _test_batch_folder_skip_existing() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	_seed_source_images(source_root)
+	_write_tpc(install_root.path_join("override").path_join("tex_a.tpc"))
+	var gamefs := _build_gamefs(install_root)
+
+	var result := TpcGamefsBatchImporter.batch_folder_to_override(gamefs, source_root, {
+		"skip_existing": true,
+	})
+	var skipped: Array = result.get("skipped", [])
+	assert(skipped.size() == 1)
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 1)
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch TPC folder import skip-existing passed")
+
+
 func _test_tpc_editor_batch_install_import_buttons() -> bool:
 	var editor := KotorTPCWorkspaceEditor.new()
 	var holder := Node.new()
@@ -122,6 +208,7 @@ func _test_tpc_editor_batch_install_import_buttons() -> bool:
 	assert(_find_button(editor, "Batch Import Install TGA/PNG→TPC...") != null)
 	assert(_find_button(editor, "Batch Import Install DXT1...") != null)
 	assert(_find_button(editor, "Batch Import Install DXT5...") != null)
+	assert(_find_button(editor, "Batch Import Image Folder to Override...") != null)
 	holder.queue_free()
 	await process_frame
 	print("✓ TPC editor install batch import buttons passed")
@@ -142,6 +229,20 @@ func _build_gamefs(install_root: String) -> RefCounted:
 	editor_state.game_path = install_root
 	editor_state.refresh_gamefs()
 	return editor_state.gamefs
+
+
+func _make_source_root() -> String:
+	_source_counter += 1
+	var source_root := ProjectSettings.globalize_path(
+		"user://tpc_gamefs_batch_importer_source_%d_%d" % [_source_counter, Time.get_ticks_usec()]
+	)
+	DirAccess.make_dir_recursive_absolute(source_root)
+	return source_root
+
+
+func _seed_source_images(source_root: String) -> void:
+	_write_image(source_root.path_join("tex_a.png"), 8, 8)
+	_write_image(source_root.path_join("tex_b.png"), 4, 4)
 
 
 func _seed_install_images(install_root: String) -> void:

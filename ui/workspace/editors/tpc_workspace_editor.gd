@@ -212,6 +212,11 @@ func _build_ui() -> void:
 	batch_install_import_dxt5_btn.pressed.connect(_batch_import_install_dxt5)
 	_toolbar.add_child(batch_install_import_dxt5_btn)
 
+	var batch_folder_import_btn := Button.new()
+	batch_folder_import_btn.text = "Batch Import Image Folder to Override..."
+	batch_folder_import_btn.pressed.connect(_batch_import_image_folder_to_override)
+	_toolbar.add_child(batch_folder_import_btn)
+
 	var save_btn := Button.new()
 	save_btn.text = "Save TPC"
 	save_btn.pressed.connect(_save_tpc)
@@ -547,6 +552,34 @@ func _run_batch_install_import(gamefs: RefCounted, encoding: String = "rgba") ->
 		"encoding": encoding,
 	})
 	_apply_batch_export_status(result, "Install batch TPC import finished.")
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_gamefs()
+
+
+func _batch_import_image_folder_to_override() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch import."
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select image source folder for override import"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(source_dir: String) -> void:
+		_run_batch_import_image_folder_to_override(gamefs, source_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_import_image_folder_to_override(gamefs: RefCounted, source_dir: String) -> void:
+	var result := TpcGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir)
+	_apply_batch_export_status(result, "Install batch TPC folder import finished.")
 	if not (result.get("generated", []) as Array).is_empty():
 		_refresh_gamefs()
 

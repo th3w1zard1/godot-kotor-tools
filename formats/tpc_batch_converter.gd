@@ -172,6 +172,107 @@ static func batch_directory(
 	}
 
 
+## Scan a flat source directory and write `{resref}.tpc` files into `output_dir`.
+## Options: `skip_existing`, `dry_run`, `alpha_test`, `encoding`, `include_txi_sidecar`.
+static func batch_directory_to_output(
+		source_dir: String,
+		output_dir: String,
+		options: Dictionary = {}
+) -> Dictionary:
+	var skip_existing := bool(options.get("skip_existing", true))
+	var dry_run := bool(options.get("dry_run", false))
+	var convert_options := {
+		"alpha_test": float(options.get("alpha_test", 0.0)),
+		"encoding": str(options.get("encoding", "rgba")).to_lower(),
+		"include_txi_sidecar": bool(options.get("include_txi_sidecar", true)),
+	}
+
+	if source_dir.is_empty() or not DirAccess.dir_exists_absolute(source_dir):
+		return {"ok": false, "message": "Source directory not found: %s" % source_dir}
+	if output_dir.is_empty() or not DirAccess.dir_exists_absolute(output_dir):
+		return {"ok": false, "message": "Output directory not found: %s" % output_dir}
+
+	var dir := DirAccess.open(source_dir)
+	if dir == null:
+		return {"ok": false, "message": "Failed to open source directory: %s" % source_dir}
+
+	dir.list_dir_begin()
+	var generated: Array[Dictionary] = []
+	var skipped: Array[Dictionary] = []
+	var failed: Array[Dictionary] = []
+
+	while true:
+		var entry_name := dir.get_next()
+		if entry_name.is_empty():
+			break
+		if dir.current_is_dir():
+			continue
+		var extension := entry_name.get_extension().to_lower()
+		if extension not in SUPPORTED_EXTENSIONS:
+			continue
+
+		var resref := entry_name.get_basename()
+		var image_path := source_dir.path_join(entry_name)
+		var tpc_path := output_dir.path_join("%s.tpc" % resref)
+		if skip_existing and FileAccess.file_exists(tpc_path):
+			skipped.append({
+				"resref": resref,
+				"image_path": image_path,
+				"tpc_path": tpc_path,
+				"reason": "exists",
+			})
+			continue
+
+		if dry_run:
+			generated.append({
+				"resref": resref,
+				"image_path": image_path,
+				"tpc_path": tpc_path,
+				"dry_run": true,
+			})
+			continue
+
+		var result := convert_from_image_file(image_path, convert_options)
+		if not result.get("ok", false):
+			failed.append({
+				"resref": resref,
+				"image_path": image_path,
+				"tpc_path": tpc_path,
+				"message": str(result.get("message", "Conversion failed")),
+			})
+			continue
+
+		var write_error := _write_bytes(tpc_path, result.get("bytes", PackedByteArray()) as PackedByteArray)
+		if write_error != OK:
+			failed.append({
+				"resref": resref,
+				"image_path": image_path,
+				"tpc_path": tpc_path,
+				"message": "Failed to write TPC (error %d)" % write_error,
+			})
+			continue
+
+		generated.append({
+			"resref": resref,
+			"image_path": image_path,
+			"tpc_path": tpc_path,
+			"width": int(result.get("width", 0)),
+			"height": int(result.get("height", 0)),
+			"encoding": str(result.get("encoding", convert_options.get("encoding", "rgba"))),
+			"txi_attached": bool(result.get("txi_attached", false)),
+		})
+
+	dir.list_dir_end()
+
+	return {
+		"ok": failed.is_empty() or not generated.is_empty(),
+		"generated": generated,
+		"skipped": skipped,
+		"failed": failed,
+		"summary": _format_output_summary(generated.size(), skipped.size(), failed.size()),
+	}
+
+
 static func _normalize_convert_options(alpha_test_or_options: Variant) -> Dictionary:
 	if alpha_test_or_options is Dictionary:
 		return alpha_test_or_options.duplicate()
@@ -224,6 +325,14 @@ static func _write_bytes(path: String, bytes: PackedByteArray) -> Error:
 
 static func _format_summary(generated_count: int, skipped_count: int, failed_count: int) -> String:
 	return "Batch TPC: %d generated, %d skipped, %d failed." % [
+		generated_count,
+		skipped_count,
+		failed_count,
+	]
+
+
+static func _format_output_summary(generated_count: int, skipped_count: int, failed_count: int) -> String:
+	return "Folder batch TPC import: %d imported, %d skipped, %d failed." % [
 		generated_count,
 		skipped_count,
 		failed_count,
