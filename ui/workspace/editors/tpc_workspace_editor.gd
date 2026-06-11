@@ -147,6 +147,16 @@ func _build_ui() -> void:
 	import_image_btn.pressed.connect(_import_image_as_tpc)
 	_toolbar.add_child(import_image_btn)
 
+	var reencode_dxt1_btn := Button.new()
+	reencode_dxt1_btn.text = "Re-encode DXT1..."
+	reencode_dxt1_btn.pressed.connect(_reencode_loaded_as_dxt1)
+	_toolbar.add_child(reencode_dxt1_btn)
+
+	var reencode_dxt5_btn := Button.new()
+	reencode_dxt5_btn.text = "Re-encode DXT5..."
+	reencode_dxt5_btn.pressed.connect(_reencode_loaded_as_dxt5)
+	_toolbar.add_child(reencode_dxt5_btn)
+
 	var batch_convert_btn := Button.new()
 	batch_convert_btn.text = "Batch Convert TGA/PNG→TPC..."
 	batch_convert_btn.pressed.connect(_batch_convert_images_to_tpc)
@@ -281,6 +291,60 @@ func _import_image_as_tpc() -> void:
 	)
 	EditorInterface.get_editor_main_screen().add_child(dialog)
 	dialog.popup_centered_ratio(0.6)
+
+
+func reencode_loaded_as_dxt1() -> bool:
+	return _reencode_loaded_image(TPCReader.ENC_DXT1)
+
+
+func reencode_loaded_as_dxt5() -> bool:
+	return _reencode_loaded_image(TPCReader.ENC_DXT5)
+
+
+func _reencode_loaded_as_dxt1() -> void:
+	reencode_loaded_as_dxt1()
+
+
+func _reencode_loaded_as_dxt5() -> void:
+	reencode_loaded_as_dxt5()
+
+
+func _reencode_loaded_image(encoding: int) -> bool:
+	if _bytes.is_empty() or not _metadata.get("ok", false):
+		_status_text = "Load a valid TPC before re-encoding."
+		_refresh_status()
+		return false
+
+	var image := TPCReader.read_image(_bytes)
+	if image == null:
+		_status_text = "TPC preview decode failed; cannot re-encode."
+		_refresh_status()
+		return false
+
+	var alpha_test := float(_metadata.get("alpha_test", 0.0))
+	var new_bytes := PackedByteArray()
+	match encoding:
+		TPCReader.ENC_DXT1:
+			new_bytes = TPCWriter.serialize_dxt1(image, alpha_test)
+		TPCReader.ENC_DXT5:
+			new_bytes = TPCWriter.serialize_dxt5(image, alpha_test)
+		_:
+			_status_text = "Unsupported DXT encoding."
+			_refresh_status()
+			return false
+
+	if new_bytes.is_empty():
+		_status_text = "Failed to re-encode TPC as %s." % _metadata.get("encoding_name", "DXT")
+		_refresh_status()
+		return false
+
+	_bytes = new_bytes
+	_metadata = TPCReader.read_metadata(_bytes)
+	_dirty = true
+	_status_text = "Re-encoded as %s." % _metadata.get("encoding_name", "DXT")
+	_register_controller_document()
+	_refresh_view()
+	return _metadata.get("encoding", -1) == encoding
 
 
 func _load_image_as_rgba_tpc(path: String) -> void:

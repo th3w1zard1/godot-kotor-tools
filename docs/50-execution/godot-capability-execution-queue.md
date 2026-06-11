@@ -100,12 +100,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q84 | MDL workspace editor (read-only inspector) | `KotorMDLWorkspaceEditor` shows trimesh metadata, MDX sidecar context, export/install actions; workspace routing for `.mdl`; headless `test_mdl_workspace_editor.gd`. |
 | Q85 | MDL workspace 3D preview | `MdlPreviewViewport` + `MdlMeshSurfaceBuilder` render K1 trimesh in Model Editor; orbit camera; headless `test_mdl_mesh_surface_builder.gd` + extended `test_mdl_workspace_editor.gd`. |
 | Q86 | Native TPC DXT encode | `TpcDxtEncoder` + `TPCWriter.serialize_dxt1/dxt5` for compressed mip-0 TPC write-back; headless `test_tpc_dxt_encoder.gd`. |
+| Q87 | TPC editor DXT re-encode | TPC workspace **Re-encode DXT1/DXT5...** toolbar actions; headless `test_tpc_dxt_reencode.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q86 shipped native TPC DXT1/DXT5 encode. | Next: parity wave items per master plan Phase C–E. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q87 shipped TPC editor DXT re-encode UI. | Next: parity wave items per master plan Phase C–E. |
 
 ## Next Slices (Deferred)
 
