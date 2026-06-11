@@ -95,6 +95,10 @@ func _assert_editor_behavior() -> void:
 	_test_graph_link_via_editor()
 	_test_graph_link_undo_redo()
 
+	_test_find_linkable_orphans_for_owner()
+	_test_restore_orphan_via_editor()
+	_test_orphan_double_click_restore()
+
 	_cleanup()
 	quit()
 
@@ -782,6 +786,54 @@ func _test_graph_link_via_editor() -> void:
 		doc.get_link_target_metadata("entry", entry_index, 0).get("index", -1) == 0,
 		"Graph link apply should append entry-to-reply link"
 	)
+
+
+func _test_find_linkable_orphans_for_owner() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	doc.remove_all_references_to_node("reply", 0)
+	var linkable := doc.find_linkable_orphans_for_owner("entry")
+	assert(linkable.size() >= 1, "Entry owner should see orphaned reply targets")
+	var found_reply_zero := false
+	for orphan in linkable:
+		if str(orphan.get("kind", "")) == "reply" and int(orphan.get("index", -1)) == 0:
+			found_reply_zero = true
+	assert(found_reply_zero, "Orphaned reply 0 should be linkable from entry owner")
+	assert(doc.can_link_orphan_to_owner("entry", "reply"))
+	assert(not doc.can_link_orphan_to_owner("entry", "entry"))
+
+
+func _test_restore_orphan_via_editor() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	doc.remove_all_references_to_node("reply", 0)
+	_editor._apply_restore_orphan_link("entry", 0, "reply", 0)
+	assert(doc.get_node_links("entry", 0).size() >= 1, "Editor restore should recreate reply link")
+	assert(doc.find_orphaned_nodes().filter(
+		func(o: Dictionary) -> bool:
+			return str(o.get("kind", "")) == "reply" and int(o.get("index", -1)) == 0
+	).is_empty(), "Reply 0 should leave orphan list after restore")
+
+
+func _test_orphan_double_click_restore() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	doc.remove_all_references_to_node("reply", 0)
+	_editor._select_dlg_metadata({"kind": "entry", "index": 0})
+	_editor._refresh_orphan_list()
+	var orphan_index := -1
+	for row in range(_editor._orphan_list.item_count):
+		var metadata = _editor._orphan_list.get_item_metadata(row)
+		if typeof(metadata) == TYPE_DICTIONARY:
+			if str(metadata.get("kind", "")) == "reply" and int(metadata.get("index", -1)) == 0:
+				orphan_index = row
+				break
+	assert(orphan_index >= 0, "Fixture should list orphaned reply 0")
+	_editor._on_orphan_item_activated(orphan_index)
+	assert(doc.get_node_links("entry", 0).size() >= 1, "Double-click orphan should restore link to selected entry")
 
 
 func _test_graph_link_undo_redo() -> void:

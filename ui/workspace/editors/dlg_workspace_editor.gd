@@ -442,6 +442,7 @@ func _build_ui() -> void:
 	_orphan_list.custom_minimum_size = Vector2(0, 72)
 	_orphan_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_orphan_list.item_selected.connect(_on_orphan_item_selected)
+	_orphan_list.item_activated.connect(_on_orphan_item_activated)
 	_tree_column.add_child(_orphan_list)
 
 	var restore_orphan_btn := Button.new()
@@ -721,14 +722,26 @@ func _show_node_context_menu(position: Vector2) -> void:
 		return
 	_node_context_menu.clear()
 	_node_context_menu.add_item("Delete All References", 0)
+	var orphan_metadata := _get_selected_orphan_metadata()
+	if not orphan_metadata.is_empty() and _dlg_document != null:
+		if _dlg_document.can_link_orphan_to_owner(
+			_context_node_kind,
+			str(orphan_metadata.get("kind", ""))
+		):
+			_node_context_menu.add_item("Link Selected Orphan Here", 1)
 	_node_context_menu.popup_rect(Rect2(position, Vector2.ZERO))
 
 
 func _on_node_context_menu_selected(menu_id: int) -> void:
 	if _context_node_kind.is_empty() or _context_node_index < 0:
 		return
-	if menu_id == 0:
-		_apply_remove_all_references(_context_node_kind, _context_node_index)
+	match menu_id:
+		0:
+			_apply_remove_all_references(_context_node_kind, _context_node_index)
+		1:
+			var orphan_metadata := _get_selected_orphan_metadata()
+			if not orphan_metadata.is_empty():
+				_try_restore_orphan_link(_context_node_kind, _context_node_index, orphan_metadata)
 	_context_node_kind = ""
 	_context_node_index = -1
 
@@ -807,6 +820,7 @@ func _refresh_dlg_detail() -> void:
 				_apply_remove_all_references(kind, index)
 			)
 			_dlg_details.add_child(delete_refs_btn)
+			_add_linkable_orphans_panel(kind, index)
 			_add_dlg_link_summary(kind, index)
 		"start":
 			var start_index := int(_dlg_selection.get("index", -1))
@@ -1820,19 +1834,34 @@ func _on_remove_node_pressed() -> void:
 	_apply_node_remove(kind, int(_dlg_selection.get("index", -1)))
 
 
-func _on_orphan_item_selected(index: int) -> void:
+func _on_orphan_item_selected(_index: int) -> void:
+	# Keep tree selection on the intended link source; orphan list selection drives restore.
+	pass
+
+
+func _on_orphan_item_activated(index: int) -> void:
 	if _dlg_document == null or _orphan_list == null or index < 0:
 		return
-	var metadata = _orphan_list.get_item_metadata(index)
-	if typeof(metadata) == TYPE_DICTIONARY:
-		_select_dlg_metadata(metadata)
+	var orphan_metadata = _orphan_list.get_item_metadata(index)
+	if typeof(orphan_metadata) != TYPE_DICTIONARY:
+		return
+	var owner_kind := str(_dlg_selection.get("kind", ""))
+	if owner_kind != KotorDLGDocument.KIND_ENTRY and owner_kind != KotorDLGDocument.KIND_REPLY:
+		_dlg_status_text = "Select an entry or reply, then double-click an orphan to link."
+		_refresh_dlg_status()
+		return
+	_try_restore_orphan_link(
+		owner_kind,
+		int(_dlg_selection.get("index", -1)),
+		orphan_metadata
+	)
 
 
 func _on_restore_orphan_pressed() -> void:
 	if _dlg_document == null or _orphan_list == null:
 		return
-	var selected := _orphan_list.get_selected_items()
-	if selected.is_empty():
+	var orphan_metadata := _get_selected_orphan_metadata()
+	if orphan_metadata.is_empty():
 		_dlg_status_text = "Select an orphan node to restore."
 		_refresh_dlg_status()
 		return
@@ -1841,15 +1870,68 @@ func _on_restore_orphan_pressed() -> void:
 		_dlg_status_text = "Select an entry or reply as the link source, then restore."
 		_refresh_dlg_status()
 		return
-	var orphan_metadata = _orphan_list.get_item_metadata(selected[0])
-	if typeof(orphan_metadata) != TYPE_DICTIONARY:
-		return
-	_apply_restore_orphan_link(
+	_try_restore_orphan_link(
 		owner_kind,
 		int(_dlg_selection.get("index", -1)),
-		str(orphan_metadata.get("kind", "")),
-		int(orphan_metadata.get("index", -1))
+		orphan_metadata
 	)
+
+
+func _get_selected_orphan_metadata() -> Dictionary:
+	if _orphan_list == null:
+		return {}
+	var selected := _orphan_list.get_selected_items()
+	if selected.is_empty():
+		return {}
+	var orphan_metadata = _orphan_list.get_item_metadata(selected[0])
+	if typeof(orphan_metadata) != TYPE_DICTIONARY:
+		return {}
+	return orphan_metadata
+
+
+func _try_restore_orphan_link(
+		owner_kind: String,
+		owner_index: int,
+		orphan_metadata: Dictionary
+) -> void:
+	if _dlg_document == null or orphan_metadata.is_empty() or owner_index < 0:
+		return
+	var target_kind := str(orphan_metadata.get("kind", ""))
+	var target_index := int(orphan_metadata.get("index", -1))
+	if not _dlg_document.can_link_orphan_to_owner(owner_kind, target_kind):
+		_dlg_status_text = "Cannot link %s orphan to %s node." % [target_kind, owner_kind]
+		_refresh_dlg_status()
+		return
+	_apply_restore_orphan_link(owner_kind, owner_index, target_kind, target_index)
+
+
+func _add_linkable_orphans_panel(owner_kind: String, owner_index: int) -> void:
+	if _dlg_document == null:
+		return
+	var linkable := _dlg_document.find_linkable_orphans_for_owner(owner_kind)
+	if linkable.is_empty():
+		return
+	_add_dlg_section_title("Linkable Orphans")
+	for orphan in linkable:
+		var target_kind := str(orphan.get("kind", ""))
+		var target_index := int(orphan.get("index", -1))
+		var row := HBoxContainer.new()
+		var summary := Label.new()
+		summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		summary.text = "%s %d — %s" % [
+			target_kind.capitalize(),
+			target_index,
+			_dlg_document.build_node_preview(target_kind, target_index, "No preview"),
+		]
+		row.add_child(summary)
+		var link_btn := Button.new()
+		link_btn.text = "Link"
+		link_btn.pressed.connect(func() -> void:
+			_try_restore_orphan_link(owner_kind, owner_index, orphan)
+		)
+		row.add_child(link_btn)
+		_dlg_details.add_child(row)
 
 
 func _refresh_orphan_list() -> void:

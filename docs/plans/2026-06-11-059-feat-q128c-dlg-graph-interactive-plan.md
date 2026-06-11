@@ -1,7 +1,7 @@
 ---
 title: "feat: Q128c DLG interactive graph depth"
 type: feat
-status: active
+status: completed
 date: 2026-06-11
 origin: docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md
 phase: Q128c

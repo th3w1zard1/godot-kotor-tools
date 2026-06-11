@@ -320,6 +320,25 @@ func find_orphaned_nodes() -> Array[Dictionary]:
 	return orphans
 
 
+func find_linkable_orphans_for_owner(owner_kind: String) -> Array[Dictionary]:
+	var normalized_owner := owner_kind.to_lower()
+	if normalized_owner != KIND_ENTRY and normalized_owner != KIND_REPLY:
+		return []
+	var target_kind := get_link_target_kind(normalized_owner)
+	var linkable: Array[Dictionary] = []
+	for orphan in find_orphaned_nodes():
+		if str(orphan.get("kind", "")) == target_kind:
+			linkable.append(orphan)
+	return linkable
+
+
+func can_link_orphan_to_owner(owner_kind: String, orphan_kind: String) -> bool:
+	var normalized_owner := owner_kind.to_lower()
+	if normalized_owner != KIND_ENTRY and normalized_owner != KIND_REPLY:
+		return false
+	return get_link_target_kind(normalized_owner) == orphan_kind.to_lower()
+
+
 func add_node_link(
 		owner_kind: String,
 		owner_index: int,
