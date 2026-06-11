@@ -145,6 +145,8 @@ func set_instance_meshes(entries: Array) -> void:
 
 
 func set_selection(category: String, index: int) -> void:
+	if _rotate_active and (category != _rotate_category or index != _rotate_index):
+		_cancel_rotate()
 	_selected_category = category
 	_selected_index = index
 	_refresh_marker_highlights()
@@ -157,7 +159,8 @@ func set_preview_bearing(category: String, index: int, bearing: float) -> void:
 		return
 	var area: Area3D = _marker_nodes[key]
 	area.rotation.y = KotorWorldCoordinates.kotor_bearing_to_yaw(bearing)
-	_update_rotate_gizmo_rotation(bearing)
+	if category == _gizmo_anchor_category() and index == _gizmo_anchor_index():
+		_update_rotate_gizmo_rotation(bearing)
 
 
 func _notification(what: int) -> void:
@@ -587,16 +590,29 @@ func _has_selection() -> bool:
 
 
 func _selected_record() -> Dictionary:
+	return _find_record(_selected_category, _selected_index)
+
+
+func _find_record(category: String, index: int) -> Dictionary:
 	for record in _records:
-		if str(record.get("category", "")) == _selected_category and int(record.get("index", -1)) == _selected_index:
+		if str(record.get("category", "")) == category and int(record.get("index", -1)) == index:
 			return record
 	return {}
+
+
+func _gizmo_anchor_category() -> String:
+	return _rotate_category if _rotate_active else _selected_category
+
+
+func _gizmo_anchor_index() -> int:
+	return _rotate_index if _rotate_active else _selected_index
 
 
 func _begin_rotate(screen_pos: Vector2) -> void:
 	var record := _selected_record()
 	if record.is_empty():
 		return
+	grab_click_focus()
 	_rotate_active = true
 	_rotate_category = _selected_category
 	_rotate_index = _selected_index
@@ -609,7 +625,7 @@ func _begin_rotate(screen_pos: Vector2) -> void:
 func _update_rotate_preview(screen_pos: Vector2) -> void:
 	if not _rotate_active:
 		return
-	var record := _selected_record()
+	var record := _find_record(_rotate_category, _rotate_index)
 	if record.is_empty():
 		_cancel_rotate()
 		return
@@ -632,14 +648,19 @@ func _finish_rotate() -> void:
 
 
 func _cancel_rotate() -> void:
+	var restore_category := _rotate_category
+	var restore_index := _rotate_index
 	_rotate_active = false
 	_rotate_category = ""
 	_rotate_index = -1
 	_rotate_start_bearing = 0.0
 	_rotate_preview_bearing = 0.0
-	if _has_selection():
-		var record := _selected_record()
-		set_preview_bearing(_selected_category, _selected_index, float(record.get("bearing", 0.0)))
+	if is_inside_tree() and has_focus():
+		release_focus()
+	var record := _find_record(restore_category, restore_index)
+	if not record.is_empty():
+		set_preview_bearing(restore_category, restore_index, float(record.get("bearing", 0.0)))
+	_rebuild_rotate_gizmo()
 
 
 func _bearing_from_screen(screen_pos: Vector2, record: Dictionary) -> float:
@@ -681,10 +702,12 @@ func _rebuild_rotate_gizmo() -> void:
 		return
 	for child in _rotate_gizmo_root.get_children():
 		child.queue_free()
-	if not _has_selection():
+	var gizmo_category := _gizmo_anchor_category()
+	var gizmo_index := _gizmo_anchor_index()
+	if gizmo_category.is_empty() or gizmo_index < 0:
 		_rotate_gizmo_root.visible = false
 		return
-	var key := "%s:%d" % [_selected_category, _selected_index]
+	var key := "%s:%d" % [gizmo_category, gizmo_index]
 	if not _marker_nodes.has(key):
 		_rotate_gizmo_root.visible = false
 		return
@@ -716,8 +739,11 @@ func _rebuild_rotate_gizmo() -> void:
 	arrow.material_override = arrow_material
 	_rotate_gizmo_root.add_child(arrow)
 
-	var record := _selected_record()
-	_update_rotate_gizmo_rotation(float(record.get("bearing", 0.0)))
+	var record := _find_record(gizmo_category, gizmo_index)
+	var bearing := float(record.get("bearing", 0.0))
+	if _rotate_active and gizmo_category == _rotate_category and gizmo_index == _rotate_index:
+		bearing = _rotate_preview_bearing
+	_update_rotate_gizmo_rotation(bearing)
 
 
 func _update_rotate_gizmo_rotation(bearing: float) -> void:
