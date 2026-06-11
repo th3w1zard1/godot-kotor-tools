@@ -24,6 +24,10 @@ func _run_tests() -> void:
 	if not button_ok:
 		push_error("Resource browser batch MDL export button test failed")
 		quit(1)
+	var copy_button_ok := await _test_resource_browser_batch_mdl_copy_button()
+	if not copy_button_ok:
+		push_error("Resource browser batch MDL install copy button test failed")
+		quit(1)
 	print("✓ MDL GameFS batch exporter tests passed")
 	quit()
 
@@ -110,6 +114,21 @@ func _test_resource_browser_batch_mdl_button() -> bool:
 	holder.queue_free()
 	await process_frame
 	print("✓ Resource browser batch MDL export button passed")
+	return true
+
+
+func _test_resource_browser_batch_mdl_copy_button() -> bool:
+	var panel := KotorResourceBrowserPanel.new()
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(panel)
+	await process_frame
+
+	var button := _find_button(panel, "Batch Copy Install MDL to Override...")
+	assert(button != null)
+	holder.queue_free()
+	await process_frame
+	print("✓ Resource browser batch MDL install copy button passed")
 	return true
 
 

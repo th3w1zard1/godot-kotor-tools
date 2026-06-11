@@ -11,7 +11,9 @@ signal references_requested(entry: Dictionary)
 const KotorResourceLocator := preload("../../../editor/navigation/kotor_resource_locator.gd")
 const KotorResRefReferenceScanner := preload("../../../editor/tools/kotor_resref_reference_scanner.gd")
 const MdlGamefsBatchExporter := preload("../../../formats/mdl_gamefs_batch_exporter.gd")
+const MdlGamefsBatchImporter := preload("../../../formats/mdl_gamefs_batch_importer.gd")
 const BwmGamefsBatchExporter := preload("../../../formats/bwm_gamefs_batch_exporter.gd")
+const BwmGamefsBatchImporter := preload("../../../formats/bwm_gamefs_batch_importer.gd")
 
 var _target_context: RefCounted
 var _status_label: Label
@@ -108,6 +110,16 @@ func _build_ui() -> void:
 	batch_wok_btn.text = "Batch Export Install WOK..."
 	batch_wok_btn.pressed.connect(_batch_export_install_wok)
 	actions_row.add_child(batch_wok_btn)
+
+	var batch_copy_wok_btn := Button.new()
+	batch_copy_wok_btn.text = "Batch Copy Install WOK to Override..."
+	batch_copy_wok_btn.pressed.connect(_batch_copy_install_wok_to_override)
+	actions_row.add_child(batch_copy_wok_btn)
+
+	var batch_copy_mdl_btn := Button.new()
+	batch_copy_mdl_btn.text = "Batch Copy Install MDL to Override..."
+	batch_copy_mdl_btn.pressed.connect(_batch_copy_install_mdl_to_override)
+	actions_row.add_child(batch_copy_mdl_btn)
 
 	var search_row := HBoxContainer.new()
 	add_child(search_row)
@@ -298,3 +310,45 @@ func _run_batch_install_wok_export(gamefs: RefCounted, output_dir: String) -> vo
 		"source_filter": "override",
 	})
 	_set_detail_text(BwmGamefsBatchExporter.format_report(result))
+
+
+func _batch_copy_install_wok_to_override() -> void:
+	if _target_context == null or not _target_context.has_method("get_gamefs"):
+		_set_detail_text("Target context is unavailable for batch WOK copy.")
+		return
+	var gamefs: RefCounted = _target_context.get_gamefs()
+	if gamefs == null:
+		_set_detail_text("Configure a valid game install before batch WOK copy.")
+		return
+	_run_batch_copy_install_wok_to_override(gamefs)
+
+
+func _run_batch_copy_install_wok_to_override(gamefs: RefCounted) -> void:
+	var result := BwmGamefsBatchImporter.batch_install_to_override(gamefs, {})
+	_set_detail_text(BwmGamefsBatchImporter.format_report(result))
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_after_batch_copy()
+
+
+func _batch_copy_install_mdl_to_override() -> void:
+	if _target_context == null or not _target_context.has_method("get_gamefs"):
+		_set_detail_text("Target context is unavailable for batch MDL copy.")
+		return
+	var gamefs: RefCounted = _target_context.get_gamefs()
+	if gamefs == null:
+		_set_detail_text("Configure a valid game install before batch MDL copy.")
+		return
+	_run_batch_copy_install_mdl_to_override(gamefs)
+
+
+func _run_batch_copy_install_mdl_to_override(gamefs: RefCounted) -> void:
+	var result := MdlGamefsBatchImporter.batch_install_to_override(gamefs, {})
+	_set_detail_text(MdlGamefsBatchImporter.format_report(result))
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_after_batch_copy()
+
+
+func _refresh_after_batch_copy() -> void:
+	if _target_context != null and _target_context.has_method("refresh_gamefs"):
+		_target_context.call("refresh_gamefs")
+	_refresh_view()

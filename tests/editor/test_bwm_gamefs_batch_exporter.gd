@@ -25,6 +25,10 @@ func _run_tests() -> void:
 	if not button_ok:
 		push_error("Resource browser batch WOK export button test failed")
 		quit(1)
+	var copy_button_ok := await _test_resource_browser_batch_wok_copy_button()
+	if not copy_button_ok:
+		push_error("Resource browser batch WOK install copy button test failed")
+		quit(1)
 	var module_button_ok := await _test_module_designer_batch_export_install_button()
 	if not module_button_ok:
 		push_error("Module Designer batch WOK export install button test failed")
@@ -117,6 +121,21 @@ func _test_resource_browser_batch_wok_button() -> bool:
 	holder.queue_free()
 	await process_frame
 	print("✓ Resource browser batch WOK export button passed")
+	return true
+
+
+func _test_resource_browser_batch_wok_copy_button() -> bool:
+	var panel := KotorResourceBrowserPanel.new()
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(panel)
+	await process_frame
+
+	var button := _find_button(panel, "Batch Copy Install WOK to Override...")
+	assert(button != null)
+	holder.queue_free()
+	await process_frame
+	print("✓ Resource browser batch WOK install copy button passed")
 	return true
 
 

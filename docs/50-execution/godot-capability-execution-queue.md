@@ -134,12 +134,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q118 | LIP/TPC export recursive batch directory scan | `recursive` on `LipBatchGenerator` / `TpcBatchExporter`; LIP + TPC editor folder batch actions enable recursion; headless LIP/TPC export tests. |
 | Q119 | Module/MDL install batch export toolbar parity | **Batch Export Install WOK...** in Module Designer + **Batch Export Install MDL...** in Model Editor via existing GameFS batch exporters; headless toolbar tests. |
 | Q120 | WOK/MDL install batch copy to override | `batch_install_to_override` on WOK/MDL GameFS batch importers; Module Designer + Model Editor one-click install-copy toolbar actions; headless importer tests. |
+| Q121 | Resource browser WOK/MDL install copy to override | Resource browser **Batch Copy Install WOK/MDL to Override...** wired to Q120 importers with GameFS refresh; headless browser button tests. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q120 shipped WOK/MDL install batch copy to override. | Next: module/area designer parity wave or next matrix backlog item. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q121 shipped resource browser install-copy parity for WOK/MDL. | Next: module/area designer parity wave or next matrix backlog item. |
 
 ## Next Slices (Deferred)
 
