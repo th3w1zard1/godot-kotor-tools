@@ -96,6 +96,9 @@ func open_resource(resource: GITResource, source_path: String = "", file_name: S
 	_pth_dirty = false
 	_refresh_dirty_state()
 	_status_text = ""
+	_reset_overlay_selection()
+	if _detail_label != null:
+		_detail_label.text = ""
 	_refresh_module_bundle()
 	_register_controller_document()
 	_connect_document_signal()
@@ -813,6 +816,9 @@ func _on_map_path_connection_retarget_requested(connection_index: int, target_in
 	var connection_record := _module_path_connection_by_index(connection_index)
 	if connection_record.is_empty():
 		return
+	var source_index := int(connection_record.get("source_index", -1))
+	if source_index == target_index:
+		return
 	var old_target := int(connection_record.get("target_index", -1))
 	if old_target == target_index:
 		return
@@ -1019,6 +1025,18 @@ func _select_tree_item(kind: String, category: String, index: int) -> void:
 			return
 
 
+func _reset_overlay_selection() -> void:
+	if _map_view != null:
+		_map_view.set_add_path_point_armed(false)
+		_map_view.set_selection("", -1)
+		_map_view.set_path_point_selection(-1)
+		_map_view.set_path_connection_selection(-1)
+	if _viewport_3d != null:
+		_viewport_3d.set_selection("", -1)
+		_viewport_3d.set_path_point_selection(-1)
+		_viewport_3d.set_path_connection_selection(-1)
+
+
 func _clear_document_state(message: String) -> void:
 	_disconnect_document_signal()
 	_disconnect_path_document_signal()
@@ -1041,14 +1059,13 @@ func _clear_document_state(message: String) -> void:
 		_instance_tree.clear()
 	if _map_view != null:
 		_map_view.set_instances([], Rect2())
-		_map_view.set_path_point_selection(-1)
-		_map_view.set_path_connection_selection(-1)
 	if _viewport_3d != null:
 		_viewport_3d.set_instances([], {})
-		_viewport_3d.set_path_point_selection(-1)
-		_viewport_3d.set_path_connection_selection(-1)
+		_viewport_3d.set_path_points([])
+		_viewport_3d.set_path_edges([])
 		_viewport_3d.set_walkmesh({})
 		_viewport_3d.set_room_meshes([])
+	_reset_overlay_selection()
 	if _detail_label != null:
 		_detail_label.text = ""
 	if _summary_label != null:
