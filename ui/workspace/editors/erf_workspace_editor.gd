@@ -10,7 +10,7 @@ const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 
-const ARCHIVE_EXTENSIONS := ["erf", "rim", "mod", "sav"]
+const ARCHIVE_EXTENSIONS := ["erf", "rim", "mod"]
 
 var _toolbar: HBoxContainer
 var _path_label: Label
@@ -248,7 +248,7 @@ func _open_selected_member() -> void:
 func _open_archive_dialog() -> void:
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
-		PackedStringArray(["*.erf,*.rim,*.mod,*.sav ; KotOR Archives"]),
+		PackedStringArray(["*.erf,*.rim,*.mod ; KotOR Archives"]),
 		"Open Archive"
 	)
 	dialog.file_selected.connect(func(path: String) -> void:

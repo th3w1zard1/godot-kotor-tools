@@ -122,6 +122,31 @@ func open_gff_bytes(label: String, data: PackedByteArray, source_path: String = 
 	_refresh_status()
 
 
+## Open any parseable GFF payload for read-only inspection (save members, generic GFF).
+func open_inspect_gff_bytes(label: String, data: PackedByteArray, source_path: String = "") -> bool:
+	if not payload_is_gff(data):
+		return false
+	var parsed := GFFParser.parse_bytes(data)
+	if parsed.is_empty():
+		return false
+	var resource := GFFResourceFactory.create_from_parser_result(parsed)
+	open_resource(resource, source_path, _guess_loaded_file_name(label, "inspect.gff"))
+	_status_text = "Loaded %s (inspect)" % _current_file_name()
+	_refresh_status()
+	return true
+
+
+static func payload_is_gff(data: PackedByteArray) -> bool:
+	if data.size() < 8:
+		return false
+	var version := ""
+	for index in range(4, 8):
+		if data[index] == 0:
+			break
+		version += char(data[index])
+	return version == "V3.2"
+
+
 func get_document() -> KotorGFFDocument:
 	return _document
 
