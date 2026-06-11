@@ -119,6 +119,53 @@ func install_selected_entry_to_override() -> Dictionary:
 	return install_entry_to_override(index)
 
 
+func export_selected_member_to_path(path: String) -> Dictionary:
+	var index := get_selected_entry_index()
+	if index < 0:
+		_status_text = "Select an archive member first."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	return export_member_to_path(index, path)
+
+
+func export_member_to_path(entry_index: int, path: String) -> Dictionary:
+	if _document == null:
+		return {"ok": false, "message": "No archive is loaded."}
+	if entry_index < 0:
+		return {"ok": false, "message": "Select an archive member first."}
+	var entry := _document.get_entry(entry_index)
+	if entry == null or entry.resref.strip_edges().is_empty():
+		_status_text = "Archive member has an invalid file name."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var target_path := path.strip_edges()
+	if target_path.is_empty():
+		_status_text = "Choose a destination file."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var payload := _document.get_entry_payload(entry_index)
+	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, payload)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Export failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "File is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		var result: Dictionary = _mutation_service.apply_export_to_path(target_path, payload, true)
+		_status_text = _mutation_message(result)
+		_refresh_status()
+		return result
+	_preflight_pending_path = target_path
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "export_member"
+	_preflight_pending_entry_index = entry_index
+	_show_preflight_dialog(preview)
+	return {}
+
+
 func extract_all_members_to_override() -> Dictionary:
 	if _document == null:
 		_status_text = "No archive is loaded."
@@ -480,6 +527,11 @@ func _build_ui() -> void:
 	install_btn.pressed.connect(install_selected_entry_to_override)
 	_toolbar.add_child(install_btn)
 
+	var export_member_btn := Button.new()
+	export_member_btn.text = "Export Selected..."
+	export_member_btn.pressed.connect(_export_selected_member_dialog)
+	_toolbar.add_child(export_member_btn)
+
 	var extract_all_btn := Button.new()
 	extract_all_btn.text = "Extract All to Override"
 	extract_all_btn.pressed.connect(extract_all_members_to_override)
@@ -650,6 +702,40 @@ func _replace_member_dialog() -> void:
 	dialog.popup_centered_ratio(0.6)
 
 
+func _export_selected_member_dialog() -> void:
+	if _document == null:
+		_status_text = "Open an archive before exporting members."
+		_refresh_status()
+		return
+	var index := get_selected_entry_index()
+	if index < 0:
+		_status_text = "Select an archive member first."
+		_refresh_status()
+		return
+	var entry := _document.get_entry(index)
+	if entry == null or entry.resref.strip_edges().is_empty():
+		_status_text = "Archive member has an invalid file name."
+		_refresh_status()
+		return
+	var default_name := _document.entry_file_name(index)
+	var root_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		root_dir = str(editor_state.get("game_path"))
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_SAVE_FILE,
+		PackedStringArray(),
+		"Export Archive Member",
+		root_dir,
+		default_name
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		export_selected_member_to_path(path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
 func _extract_all_to_folder_dialog() -> void:
 	if _document == null:
 		_status_text = "Open an archive before extracting members."
@@ -766,6 +852,14 @@ func _on_preflight_proceed() -> void:
 		_status_text = _mutation_message(result)
 		if result.get("applied", false):
 			_refresh_gamefs()
+	elif _preflight_pending_kind == "export_member" and _preflight_pending_entry_index >= 0 and not _preflight_pending_path.is_empty() and _document != null:
+		var payload := _document.get_entry_payload(_preflight_pending_entry_index)
+		var result: Dictionary = _mutation_service.apply_export_to_path(
+			_preflight_pending_path,
+			payload,
+			true
+		)
+		_status_text = _mutation_message(result)
 	_update_controller_dirty_state()
 	_clear_preflight_state()
 	_refresh_status()
