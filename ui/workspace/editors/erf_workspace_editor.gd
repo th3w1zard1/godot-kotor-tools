@@ -119,6 +119,53 @@ func install_selected_entry_to_override() -> Dictionary:
 	return install_entry_to_override(index)
 
 
+func extract_all_members_to_override() -> Dictionary:
+	if _document == null:
+		_status_text = "No archive is loaded."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	if _document.is_empty():
+		_status_text = "Archive has no members to extract."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var applied := 0
+	var unchanged := 0
+	var skipped := 0
+	var failed := 0
+	for index in range(_document.get_entry_count()):
+		var result := _apply_entry_install_to_override(index, true)
+		if result.is_empty():
+			skipped += 1
+			continue
+		if not result.get("ok", false):
+			if _document.get_entry(index) != null and _document.get_entry(index).resref.strip_edges().is_empty():
+				skipped += 1
+			else:
+				failed += 1
+			continue
+		if result.get("applied", false):
+			applied += 1
+		elif result.get("action", "") == "noop":
+			unchanged += 1
+	if applied > 0:
+		_refresh_gamefs()
+	_status_text = "Extracted %d member(s) to override (%d unchanged, %d skipped, %d failed)." % [
+		applied,
+		unchanged,
+		skipped,
+		failed,
+	]
+	_refresh_status()
+	return {
+		"ok": failed == 0,
+		"applied": applied,
+		"unchanged": unchanged,
+		"skipped": skipped,
+		"failed": failed,
+		"message": _status_text,
+	}
+
+
 func is_document_dirty() -> bool:
 	return _document != null and _document.is_dirty()
 
@@ -310,19 +357,9 @@ func save_archive_to_path(path: String) -> Dictionary:
 func install_entry_to_override(entry_index: int) -> Dictionary:
 	if _document == null or entry_index < 0:
 		return {}
-	var entry := _document.get_entry(entry_index)
-	if entry == null or entry.resref.strip_edges().is_empty():
-		var invalid: Dictionary = _mutation_service.preview_install_to_override(_resolve_gamefs(), "", PackedByteArray())
-		_status_text = invalid.get("message", "Archive member has an invalid override file name.")
-		_refresh_status()
-		return invalid
-	var file_name := _document.entry_file_name(entry_index)
-	var payload := _document.get_entry_payload(entry_index)
-	var preview: Dictionary = _mutation_service.preview_install_to_override(
-		_resolve_gamefs(),
-		file_name,
-		payload
-	)
+	var preview: Dictionary = _apply_entry_install_to_override(entry_index, false)
+	if preview.is_empty():
+		return preview
 	if not preview.get("ok", false):
 		_status_text = preview.get("message", "Install failed")
 		_refresh_status()
@@ -332,12 +369,7 @@ func install_entry_to_override(entry_index: int) -> Dictionary:
 		_refresh_status()
 		return preview
 	if _skip_preflight_for_testing:
-		var result: Dictionary = _mutation_service.apply_install_to_override(
-			_resolve_gamefs(),
-			file_name,
-			payload,
-			true
-		)
+		var result: Dictionary = _apply_entry_install_to_override(entry_index, true)
 		_status_text = _mutation_message(result)
 		if result.get("applied", false):
 			_refresh_gamefs()
@@ -348,6 +380,34 @@ func install_entry_to_override(entry_index: int) -> Dictionary:
 	_preflight_pending_entry_index = entry_index
 	_show_preflight_dialog(preview)
 	return {}
+
+
+func _apply_entry_install_to_override(entry_index: int, proceed: bool) -> Dictionary:
+	if _document == null or entry_index < 0:
+		return {}
+	var entry := _document.get_entry(entry_index)
+	if entry == null or entry.resref.strip_edges().is_empty():
+		return _mutation_service.preview_install_to_override(_resolve_gamefs(), "", PackedByteArray())
+	var file_name := _document.entry_file_name(entry_index)
+	var payload := _document.get_entry_payload(entry_index)
+	var preview: Dictionary = _mutation_service.preview_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		payload
+	)
+	if not preview.get("ok", false):
+		return preview
+	if preview.get("action", "") == "noop":
+		preview["applied"] = false
+		return preview
+	if not proceed:
+		return preview
+	return _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		payload,
+		true
+	)
 
 
 func _build_ui() -> void:
@@ -370,6 +430,11 @@ func _build_ui() -> void:
 	install_btn.text = "Extract to Override"
 	install_btn.pressed.connect(install_selected_entry_to_override)
 	_toolbar.add_child(install_btn)
+
+	var extract_all_btn := Button.new()
+	extract_all_btn.text = "Extract All to Override"
+	extract_all_btn.pressed.connect(extract_all_members_to_override)
+	_toolbar.add_child(extract_all_btn)
 
 	var add_member_btn := Button.new()
 	add_member_btn.text = "Add Member..."

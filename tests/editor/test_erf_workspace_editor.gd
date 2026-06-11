@@ -31,6 +31,7 @@ func _run_tests() -> void:
 	await _test_compare_member_with_override()
 	await _test_install_archive_to_modules()
 	_test_install_sav_to_modules_blocked()
+	await _test_extract_all_members_to_override()
 	_cleanup()
 	print("✓ ERF workspace editor tests passed")
 	quit()
@@ -222,6 +223,34 @@ func _test_install_sav_to_modules_blocked() -> void:
 	var result := editor.install_archive_to_modules()
 	assert(not result.get("ok", true))
 	print("✓ ERF install SAV to modules blocked passed")
+
+
+func _test_extract_all_members_to_override() -> void:
+	var mod_bytes := ERFWriter.build("MOD ", [
+		{"resref": "tar_m02aa", "extension": "git", "bytes": _build_empty_git_bytes()},
+		{"resref": "extra_are", "extension": "are", "bytes": _build_empty_are_bytes()},
+	])
+	var mod_path := _install_root.path_join("batch_module.mod")
+	var mod_file := FileAccess.open(mod_path, FileAccess.WRITE)
+	mod_file.store_buffer(mod_bytes)
+	mod_file.close()
+
+	var git_override := _install_root.path_join("override").path_join("tar_m02aa.git")
+	var are_override := _install_root.path_join("override").path_join("extra_are.are")
+	for path in [git_override, are_override]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
+
+	var editor := _build_editor()
+	editor.open_archive_file(mod_path)
+	await process_frame
+
+	var result := editor.extract_all_members_to_override()
+	assert(result.get("ok", false), str(result))
+	assert(int(result.get("applied", 0)) == 2)
+	assert(FileAccess.file_exists(git_override))
+	assert(FileAccess.file_exists(are_override))
+	print("✓ ERF extract all members to override passed")
 
 
 func _test_invalid_extract_file_name() -> void:
