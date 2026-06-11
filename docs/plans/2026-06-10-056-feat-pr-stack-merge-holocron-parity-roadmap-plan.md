@@ -351,15 +351,15 @@ flowchart TD
 - Open PR count = 0 (achieved)
 - `main` commit includes Q123 compare report export (achieved: `9fbaf84`)
 - Full headless test suite green on `main` (U1)
-- Execution queue active slice = Q124 after U2
-- Parity matrix module designer GIT row upgrades after U3
+- Execution queue active slice = Q127 after U2–U5 (Q124–Q126 shipped on PR #119)
+- Parity matrix module designer GIT row upgrades after U3; BWM paint noted after U5
 
 ---
 
 ## Sources and Research
 
 - Repo: 94 PR stack topology, merge to `main`, test conventions (`.github/copilot-instructions.md`)
-- `docs/30-gap-analysis/openkotor-parity-matrix.md` — authoritative through Q123 on merged `main`
+- `docs/30-gap-analysis/openkotor-parity-matrix.md` — authoritative through Q123 on `main`; Q124–Q126 entries track PR #119 until merge
 - `docs/50-execution/godot-capability-execution-queue.md` — queue governance
 - `docs/plans/2026-05-29-018-feat-holocron-full-parity-master-plan.md` — north-star inventory (stale; U2 target)
 - Prior gap audit (~55–65% functional parity; ~78–117 slices remaining at current granularity)

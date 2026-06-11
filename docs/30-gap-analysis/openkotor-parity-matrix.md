@@ -158,7 +158,10 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 91. **Q121 (shipped 2026-06-10):** Resource browser WOK/MDL install copy to override — browser toolbar install-copy actions + GameFS refresh; see `docs/plans/2026-06-10-053-feat-q121-resource-browser-wok-mdl-install-copy-override-plan.md`.
 92. **Q122 (shipped 2026-06-10):** Module/MDL compare with override toolbar parity — Module Designer walkmesh compare + Model Editor MDL compare via `KotorModdingPipeline`; see `docs/plans/2026-06-10-054-feat-q122-module-mdl-compare-override-toolbar-plan.md`.
 93. **Q123 (shipped 2026-06-10):** Module/MDL compare report export toolbar parity — **Export Compare Report...** in Module Designer + Model Editor via `export_compare_result_to_path`; see `docs/plans/2026-06-10-055-feat-q123-module-mdl-compare-report-export-plan.md`.
-94. Module/area designer parity wave (further model/walkmesh tooling).
+94. **Q124 (PR #119, 2026-06-10):** Module Designer GIT instance CRUD — **Add Instance…** / **Remove Instance** with map placement, undo, and headless `test_module_designer_git_instance_crud.gd`; see `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` U3.
+95. **Q125 (PR #119, 2026-06-10):** UTP typed parity expansion — trap scalar and script hook typed helpers with factory mapping tests; see `docs/plans/2026-06-03-001-feat-utp-typed-parity-expansion-plan.md`.
+96. **Q126 (PR #119, 2026-06-10):** Module Designer BWM walkmesh paint foundations — **Paint Walkmesh** 3D face pick, material toggle with undo/dirty baseline; see `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` U5.
+97. ERF archive workspace UX (Q127) and DLG graph depth (Q128+).
 
 ## Evidence Notes
 
