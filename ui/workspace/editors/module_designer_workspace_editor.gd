@@ -577,6 +577,8 @@ func _apply_install_now() -> Dictionary:
 		_refresh_gamefs()
 		_refresh_module_bundle()
 		_refresh_bundle_label()
+		_refresh_summary()
+		_refresh_map()
 	_update_controller_dirty_state()
 	_refresh_status()
 	return result
