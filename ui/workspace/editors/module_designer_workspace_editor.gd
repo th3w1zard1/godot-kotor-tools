@@ -12,6 +12,7 @@ const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorModuleContext := preload("../../../editor/module/kotor_module_context.gd")
 const BWMWriter := preload("../../../formats/bwm_writer.gd")
+const BwmBatchExporter := preload("../../../formats/bwm_batch_exporter.gd")
 const GFFWriter := preload("../../../formats/gff_writer.gd")
 const LYTWriter := preload("../../../formats/lyt_writer.gd")
 const VISWriter := preload("../../../formats/vis_writer.gd")
@@ -390,6 +391,11 @@ func _build_ui() -> void:
 	export_walkmesh_btn.text = "Export Walkmesh Preview…"
 	export_walkmesh_btn.pressed.connect(_export_walkmesh_preview_dialog)
 	_toolbar.add_child(export_walkmesh_btn)
+
+	var batch_copy_wok_btn := Button.new()
+	batch_copy_wok_btn.text = "Batch Copy WOK Folder..."
+	batch_copy_wok_btn.pressed.connect(_batch_copy_wok_folder)
+	_toolbar.add_child(batch_copy_wok_btn)
 
 	var export_layout_btn := Button.new()
 	export_layout_btn.text = "Export LYT Preview…"
@@ -1304,6 +1310,52 @@ func _save_git() -> void:
 		_refresh_status()
 		return
 	save_document_to_path(_source_path)
+
+
+func _batch_copy_wok_folder() -> void:
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select WOK source folder"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	dialog.dir_selected.connect(func(source_dir: String) -> void:
+		_prompt_batch_copy_wok_output_dir(source_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _prompt_batch_copy_wok_output_dir(source_dir: String) -> void:
+	var start_dir := source_dir
+	var editor_state := get_editor_state()
+	if editor_state != null and start_dir.is_empty():
+		start_dir = str(editor_state.game_path)
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select WOK output folder"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	dialog.dir_selected.connect(func(output_dir: String) -> void:
+		_run_batch_copy_wok_folder(source_dir, output_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_copy_wok_folder(source_dir: String, output_dir: String) -> void:
+	var result := BwmBatchExporter.batch_directory(source_dir, output_dir)
+	_status_text = BwmBatchExporter.format_report(result)
+	_refresh_status()
 
 
 func _export_walkmesh_preview_dialog() -> void:
