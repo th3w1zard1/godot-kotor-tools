@@ -14,11 +14,15 @@ const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const TypedFieldHelpers := preload("../typed_field_helpers.gd")
 const GFFTreePopulator := preload("../gff_tree_populator.gd")
 const KotorResRefPickerDialog := preload("../dialogs/kotor_resref_picker_dialog.gd")
+const KotorDLGGraphView := preload("../panels/dlg_graph_view.gd")
 
 var _toolbar: HBoxContainer
 var _path_label: Label
 var _dlg_tree: Tree
 var _orphan_list: ItemList
+var _dlg_graph_view: KotorDLGGraphView
+var _tree_column: VBoxContainer
+var _show_graph_view := false
 var _dlg_details: VBoxContainer
 var _validation_panel: KotorValidationPanel
 var _preflight_dialog: KotorPreflightDialog
@@ -367,6 +371,12 @@ func _build_ui() -> void:
 	remove_node_btn.pressed.connect(_on_remove_node_pressed)
 	_toolbar.add_child(remove_node_btn)
 
+	var graph_view_btn := Button.new()
+	graph_view_btn.text = "Graph View"
+	graph_view_btn.toggle_mode = true
+	graph_view_btn.toggled.connect(_on_graph_view_toggled)
+	_toolbar.add_child(graph_view_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -388,33 +398,40 @@ func _build_ui() -> void:
 	_dlg_tree.item_activated.connect(_on_dlg_item_activated)
 	_dlg_tree.item_mouse_selected.connect(_on_dlg_item_mouse_selected)
 
-	var tree_column := VBoxContainer.new()
-	tree_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tree_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	split.add_child(tree_column)
+	_tree_column = VBoxContainer.new()
+	_tree_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tree_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.add_child(_tree_column)
+
+	_dlg_graph_view = KotorDLGGraphView.new()
+	_dlg_graph_view.visible = false
+	_dlg_graph_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dlg_graph_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_dlg_graph_view.node_metadata_selected.connect(_on_graph_node_metadata_selected)
+	split.add_child(_dlg_graph_view)
 
 	var tree_scroll := ScrollContainer.new()
 	tree_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tree_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tree_column.add_child(tree_scroll)
+	_tree_column.add_child(tree_scroll)
 	tree_scroll.add_child(_dlg_tree)
 	_dlg_tree.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_dlg_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	var orphan_label := Label.new()
 	orphan_label.text = "Orphan Nodes"
-	tree_column.add_child(orphan_label)
+	_tree_column.add_child(orphan_label)
 
 	_orphan_list = ItemList.new()
 	_orphan_list.custom_minimum_size = Vector2(0, 72)
 	_orphan_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_orphan_list.item_selected.connect(_on_orphan_item_selected)
-	tree_column.add_child(_orphan_list)
+	_tree_column.add_child(_orphan_list)
 
 	var restore_orphan_btn := Button.new()
 	restore_orphan_btn.text = "Restore Orphan Link"
 	restore_orphan_btn.pressed.connect(_on_restore_orphan_pressed)
-	tree_column.add_child(restore_orphan_btn)
+	_tree_column.add_child(restore_orphan_btn)
 
 	# Setup context menu for array operations
 	_array_context_menu = PopupMenu.new()
@@ -1572,6 +1589,28 @@ func _exec_array_reorder(array_field_name: String, from_index: int, to_index: in
 	_dlg_document.reorder_array_item(array_field_name, from_index, to_index)
 
 
+func _on_graph_view_toggled(pressed: bool) -> void:
+	_show_graph_view = pressed
+	if _tree_column != null:
+		_tree_column.visible = not pressed
+	if _dlg_graph_view != null:
+		_dlg_graph_view.visible = pressed
+	if pressed:
+		_refresh_dlg_graph()
+
+
+func _on_graph_node_metadata_selected(metadata: Dictionary) -> void:
+	if metadata.is_empty():
+		return
+	_select_dlg_metadata(metadata)
+
+
+func _refresh_dlg_graph() -> void:
+	if _dlg_graph_view == null or _dlg_document == null or not _show_graph_view:
+		return
+	_dlg_graph_view.build_from_layout(_dlg_document.build_graph_layout_metadata())
+
+
 func _on_add_entry_pressed() -> void:
 	_apply_node_add(KotorDLGDocument.KIND_ENTRY)
 
@@ -1771,6 +1810,7 @@ func _exec_restore_topology(snapshot: Dictionary) -> void:
 
 func _refresh_after_topology_change(selection: Dictionary = {}) -> void:
 	_refresh_dlg_tree()
+	_refresh_dlg_graph()
 	if not selection.is_empty():
 		if str(selection.get("kind", "")) == "root":
 			var root_item := _dlg_tree.get_root()

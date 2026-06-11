@@ -118,6 +118,83 @@ func get_link_target_kind(kind: String) -> String:
 	return get_node_target_kind(kind)
 
 
+const GRAPH_ENTRY_COLUMN_X := 40.0
+const GRAPH_REPLY_COLUMN_X := 420.0
+const GRAPH_ROW_HEIGHT := 120.0
+
+
+func build_graph_node_id(kind: String, index: int) -> String:
+	return "%s:%d" % [kind.to_lower(), index]
+
+
+static func parse_graph_node_id(node_id: String) -> Dictionary:
+	var parts := node_id.split(":")
+	if parts.size() != 2:
+		return {}
+	var kind := str(parts[0]).to_lower()
+	if kind != KIND_ENTRY and kind != KIND_REPLY:
+		return {}
+	var index := int(parts[1])
+	if index < 0:
+		return {}
+	return {
+		"kind": kind,
+		"index": index,
+	}
+
+
+func build_graph_layout_metadata() -> Dictionary:
+	var nodes: Array[Dictionary] = []
+	var edges: Array[Dictionary] = []
+
+	for entry_index in range(get_entry_count()):
+		nodes.append({
+			"id": build_graph_node_id(KIND_ENTRY, entry_index),
+			"kind": KIND_ENTRY,
+			"index": entry_index,
+			"label": build_node_title(KIND_ENTRY, entry_index),
+			"preview": build_node_preview(KIND_ENTRY, entry_index, ""),
+			"pos": Vector2(GRAPH_ENTRY_COLUMN_X, entry_index * GRAPH_ROW_HEIGHT),
+		})
+
+	for reply_index in range(get_reply_count()):
+		nodes.append({
+			"id": build_graph_node_id(KIND_REPLY, reply_index),
+			"kind": KIND_REPLY,
+			"index": reply_index,
+			"label": build_node_title(KIND_REPLY, reply_index),
+			"preview": build_node_preview(KIND_REPLY, reply_index, ""),
+			"pos": Vector2(GRAPH_REPLY_COLUMN_X, reply_index * GRAPH_ROW_HEIGHT),
+		})
+
+	for entry_index in range(get_entry_count()):
+		for link_index in range(get_node_links(KIND_ENTRY, entry_index).size()):
+			var target := get_link_target_metadata(KIND_ENTRY, entry_index, link_index)
+			if target.is_empty():
+				continue
+			edges.append({
+				"from_id": build_graph_node_id(KIND_ENTRY, entry_index),
+				"to_id": build_graph_node_id(str(target.get("kind", "")), int(target.get("index", -1))),
+				"link_index": link_index,
+			})
+
+	for reply_index in range(get_reply_count()):
+		for link_index in range(get_node_links(KIND_REPLY, reply_index).size()):
+			var target := get_link_target_metadata(KIND_REPLY, reply_index, link_index)
+			if target.is_empty():
+				continue
+			edges.append({
+				"from_id": build_graph_node_id(KIND_REPLY, reply_index),
+				"to_id": build_graph_node_id(str(target.get("kind", "")), int(target.get("index", -1))),
+				"link_index": link_index,
+			})
+
+	return {
+		"nodes": nodes,
+		"edges": edges,
+	}
+
+
 func build_node_title(kind: String, index: int) -> String:
 	var label := "Entry" if kind.to_lower() == KIND_ENTRY else "Reply"
 	return "%s %d" % [label, index]

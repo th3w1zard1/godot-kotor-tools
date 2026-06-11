@@ -142,14 +142,15 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q126 | Module Designer BWM walkmesh painter foundations *(PR #119)* | **Paint Walkmesh** toolbar arm, 3D face pick, walkable/unwalkable material toggle with undo, dirty baseline tracking, and install-ready persistence; headless `test_module_designer_bwm_paint.gd`. |
 | Q127 | ERF archive workspace UX *(PR #119)* | **Archive Browser** workspace tab with member table, nested member open routing, and extract-to-override with preflight; headless `test_erf_workspace_editor.gd`. |
 | Q128a | DLG node CRUD and orphan hygiene *(PR #119)* | **Add Entry/Reply/Start** and **Remove Node** toolbar actions, orphan dock with restore-link, document index repair + topology snapshot undo; headless `test_dlg_workspace_editor.gd` node CRUD tests. |
+| Q128b | DLG read-only graph canvas *(PR #119)* | **Graph View** toolbar toggle with read-only `GraphEdit` layout (entries left, replies right), node click selects tree row; headless `test_dlg_graph_layout.gd`. |
 
-> **Branch note:** Q124–Q128a are implemented on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)) and move to unconditional shipped status when merged to `main`. `main` @ Q123 remains the merge base until that PR lands.
+> **Branch note:** Q124–Q128b are implemented on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)) and move to unconditional shipped status when merged to `main`. `main` @ Q123 remains the merge base until that PR lands.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q128b | DLG read-only graph canvas | Tree ↔ graph toggle with `GraphEdit` layout synced from document metadata. | Q128a node CRUD shipped with headless DLG tests green. | See `docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md` § Q128b. |
+| Q128c | DLG interactive graph (deferred) | Port drag-connect, orphan drag-restore, delete-all-references menu, back-nav stack. | Q128b read-only graph shipped with layout tests green. | Spawn child plan when Q128c is scheduled; see Q128 plan § Q128c. |
 
 ## Next Slices (Deferred)
 
