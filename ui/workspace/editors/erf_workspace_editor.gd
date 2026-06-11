@@ -115,6 +115,51 @@ func is_document_dirty() -> bool:
 	return _document != null and _document.is_dirty()
 
 
+func remove_selected_member() -> Dictionary:
+	if _document == null:
+		return {"ok": false, "message": "No archive is loaded."}
+	var index := get_selected_entry_index()
+	if index < 0:
+		_status_text = "Select an archive member to remove."
+		_refresh_status()
+		return {"ok": false, "message": "Select an archive member to remove."}
+	var before_snapshot := _members_snapshot()
+	var result := _document.remove_member_at(index)
+	if not result.get("ok", false):
+		_status_text = result.get("message", "Failed to remove member.")
+		_refresh_status()
+		return result
+	_commit_members_mutation_undo("Remove archive member", before_snapshot)
+	_status_text = result.get("message", "Member removed.")
+	_refresh_view()
+	return result
+
+
+func replace_member_from_file(path: String) -> Dictionary:
+	if _document == null:
+		return {"ok": false, "message": "No archive is loaded."}
+	var index := get_selected_entry_index()
+	if index < 0:
+		_status_text = "Select an archive member to replace."
+		_refresh_status()
+		return {"ok": false, "message": "Select an archive member to replace."}
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {"ok": false, "message": "Failed to read %s" % path.get_file()}
+	var bytes := file.get_buffer(file.get_length())
+	file.close()
+	var before_snapshot := _members_snapshot()
+	var result := _document.replace_member_at(index, bytes)
+	if not result.get("ok", false):
+		_status_text = result.get("message", "Failed to replace member.")
+		_refresh_status()
+		return result
+	_commit_members_mutation_undo("Replace archive member", before_snapshot)
+	_status_text = result.get("message", "Member replaced.")
+	_refresh_view()
+	return result
+
+
 func add_member_from_file(path: String) -> Dictionary:
 	if _document == null:
 		return {"ok": false, "message": "No archive is loaded."}
@@ -125,11 +170,12 @@ func add_member_from_file(path: String) -> Dictionary:
 	file.close()
 	var resref := path.get_file().get_basename().to_lower().left(16)
 	var extension := path.get_extension().to_lower()
+	var before_snapshot := _members_snapshot()
 	var result := _document.add_member(resref, extension, bytes)
 	if result.get("ok", false):
+		_commit_members_mutation_undo("Add archive member", before_snapshot)
 		_status_text = result.get("message", "Member added.")
 		_refresh_view()
-		_update_controller_dirty_state()
 	else:
 		_status_text = result.get("message", "Failed to add member.")
 		_refresh_status()
@@ -244,6 +290,16 @@ func _build_ui() -> void:
 	save_btn.pressed.connect(_save_archive_dialog)
 	_toolbar.add_child(save_btn)
 
+	var remove_member_btn := Button.new()
+	remove_member_btn.text = "Remove Member"
+	remove_member_btn.pressed.connect(remove_selected_member)
+	_toolbar.add_child(remove_member_btn)
+
+	var replace_member_btn := Button.new()
+	replace_member_btn.text = "Replace Member..."
+	replace_member_btn.pressed.connect(_replace_member_dialog)
+	_toolbar.add_child(replace_member_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -312,6 +368,27 @@ func _open_selected_member() -> void:
 	member_open_requested.emit(entry.resref, entry.extension, payload)
 	_status_text = "Opened member %s.%s" % [entry.resref, entry.extension]
 	_refresh_status()
+
+
+func _replace_member_dialog() -> void:
+	if _document == null:
+		_status_text = "Open an archive before replacing members."
+		_refresh_status()
+		return
+	if get_selected_entry_index() < 0:
+		_status_text = "Select an archive member to replace."
+		_refresh_status()
+		return
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_FILE,
+		PackedStringArray(["*.* ; All Files"]),
+		"Replace Archive Member"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		replace_member_from_file(path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
 
 
 func _add_member_dialog() -> void:
@@ -526,6 +603,37 @@ func _refresh_status() -> void:
 	_path_label.text = line
 	_emit_dirty_state(is_document_dirty())
 	_emit_status_text(_status_text)
+
+
+func _members_snapshot() -> Array:
+	if _document == null:
+		return []
+	var payload: Dictionary = _document.serialize_for_pipeline()
+	return payload.get("entries", []).duplicate(true)
+
+
+func _apply_members_snapshot(snapshot: Array) -> void:
+	if _document == null:
+		return
+	_document.restore_members(snapshot)
+	_refresh_view()
+
+
+func _commit_members_mutation_undo(action_name: String, before_snapshot: Array) -> void:
+	var after_snapshot := _members_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action(action_name, UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_apply_members_snapshot", after_snapshot)
+		ur.add_undo_method(self, "_apply_members_snapshot", before_snapshot)
+		ur.commit_action()
+	_update_controller_dirty_state()
+
+
+func _get_undo_redo() -> EditorUndoRedoManager:
+	if Engine.is_editor_hint():
+		return EditorInterface.get_editor_undo_redo()
+	return null
 
 
 func _ensure_archive_extension(path: String) -> String:

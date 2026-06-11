@@ -24,6 +24,8 @@ func _run_tests() -> void:
 	await _test_extract_member_to_override()
 	_test_invalid_extract_file_name()
 	await _test_add_member_and_save_archive()
+	await _test_remove_member_and_save_archive()
+	await _test_replace_member()
 	_cleanup()
 	print("✓ ERF workspace editor tests passed")
 	quit()
@@ -96,6 +98,51 @@ func _test_add_member_and_save_archive() -> void:
 	assert(reopened.get_document().get_entry_count() == 2)
 	assert(reopened.get_document().find_entry_index("extra_are", "are") >= 0)
 	print("✓ ERF add member and save archive passed")
+
+
+func _test_remove_member_and_save_archive() -> void:
+	var editor := _build_editor()
+	editor.open_archive_bytes("test_module.mod", _build_test_mod_bytes(), "")
+	await process_frame
+	editor._tree.get_root().get_first_child().select(0)
+	await process_frame
+
+	var remove_result := editor.remove_selected_member()
+	assert(remove_result.get("ok", false), str(remove_result))
+	assert(editor.get_document().get_entry_count() == 0)
+	assert(editor.is_document_dirty())
+
+	var saved_path := _install_root.path_join("removed_module.mod")
+	if FileAccess.file_exists(saved_path):
+		DirAccess.remove_absolute(saved_path)
+	var save_result := editor.save_archive_to_path(saved_path)
+	assert(save_result.get("applied", false), str(save_result))
+	assert(FileAccess.file_exists(saved_path))
+
+	var reopened := _build_editor()
+	reopened.open_archive_file(saved_path)
+	await process_frame
+	assert(reopened.get_document().get_entry_count() == 0)
+	print("✓ ERF remove member and save archive passed")
+
+
+func _test_replace_member() -> void:
+	var editor := _build_editor()
+	editor.open_archive_bytes("test_module.mod", _build_test_mod_bytes(), "")
+	await process_frame
+	editor._tree.get_root().get_first_child().select(0)
+	await process_frame
+
+	var replacement_path := _install_root.path_join("replacement_are.are")
+	var replacement_file := FileAccess.open(replacement_path, FileAccess.WRITE)
+	replacement_file.store_buffer(_build_empty_are_bytes())
+	replacement_file.close()
+
+	var replace_result := editor.replace_member_from_file(replacement_path)
+	assert(replace_result.get("ok", false), str(replace_result))
+	assert(editor.get_document().entry_file_name(0) == "tar_m02aa.git")
+	assert(editor.get_document().get_entry_payload(0) == _build_empty_are_bytes())
+	print("✓ ERF replace member passed")
 
 
 func _test_invalid_extract_file_name() -> void:

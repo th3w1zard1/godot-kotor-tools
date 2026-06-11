@@ -78,6 +78,52 @@ func find_entry_index(resref: String, extension: String) -> int:
 	return -1
 
 
+func remove_member_at(index: int) -> Dictionary:
+	if index < 0 or index >= _members.size():
+		return {"ok": false, "message": "Invalid archive member index."}
+	var removed: Dictionary = _members[index].duplicate(true)
+	_members.remove_at(index)
+	_rebuild_from_members()
+	_dirty = true
+	return {
+		"ok": true,
+		"message": "Removed %s.%s." % [removed.get("resref", ""), removed.get("extension", "")],
+		"removed": removed,
+	}
+
+
+func replace_member_at(index: int, bytes: PackedByteArray) -> Dictionary:
+	if index < 0 or index >= _members.size():
+		return {"ok": false, "message": "Invalid archive member index."}
+	var member: Dictionary = _members[index]
+	var previous_bytes: PackedByteArray = member.get("bytes", PackedByteArray())
+	_members[index] = {
+		"resref": member.get("resref", ""),
+		"extension": member.get("extension", ""),
+		"bytes": bytes,
+	}
+	_rebuild_from_members()
+	_dirty = true
+	return {
+		"ok": true,
+		"message": "Replaced %s.%s." % [member.get("resref", ""), member.get("extension", "")],
+		"previous_bytes": previous_bytes,
+	}
+
+
+func restore_members(entries: Array) -> void:
+	_members = []
+	for entry in entries:
+		if entry is Dictionary:
+			_members.append({
+				"resref": str(entry.get("resref", "")),
+				"extension": str(entry.get("extension", "")),
+				"bytes": entry.get("bytes", PackedByteArray()),
+			})
+	_rebuild_from_members()
+	_dirty = true
+
+
 func add_member(resref: String, extension: String, bytes: PackedByteArray) -> Dictionary:
 	var normalized_resref := resref.strip_edges().to_lower()
 	var normalized_extension := extension.strip_edges().to_lower()
