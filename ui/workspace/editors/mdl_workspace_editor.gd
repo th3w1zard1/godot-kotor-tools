@@ -2,6 +2,7 @@
 extends "./kotor_workspace_editor.gd"
 class_name KotorMDLWorkspaceEditor
 
+const MdlBatchExporter := preload("../../../formats/mdl_batch_exporter.gd")
 const MdlModelMetadataHelper := preload("../../../editor/tools/mdl_model_metadata_helper.gd")
 const MdlPreviewViewport := preload("../panels/mdl_preview_viewport.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
@@ -168,6 +169,11 @@ func _build_ui() -> void:
 	install_btn.pressed.connect(_install_mdl_to_override)
 	_toolbar.add_child(install_btn)
 
+	var batch_copy_btn := Button.new()
+	batch_copy_btn.text = "Batch Copy MDL Folder..."
+	batch_copy_btn.pressed.connect(_batch_copy_mdl_folder)
+	_toolbar.add_child(batch_copy_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -300,6 +306,44 @@ func _export_mdx_to_path(path: String) -> void:
 
 func _install_mdl_to_override() -> void:
 	install_document_to_override()
+
+
+func _batch_copy_mdl_folder() -> void:
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select MDL source folder"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(source_dir: String) -> void:
+		_prompt_batch_copy_output_dir(source_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _prompt_batch_copy_output_dir(source_dir: String) -> void:
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select MDL output folder"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", source_dir)
+	dialog.dir_selected.connect(func(output_dir: String) -> void:
+		_run_batch_copy_mdl_folder(source_dir, output_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_copy_mdl_folder(source_dir: String, output_dir: String) -> void:
+	var result := MdlBatchExporter.batch_directory(source_dir, output_dir)
+	_status_text = MdlBatchExporter.format_report(result)
+	_refresh_status()
 
 
 func _show_preflight_dialog(preview: Dictionary) -> void:
