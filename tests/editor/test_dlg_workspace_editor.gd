@@ -84,6 +84,9 @@ func _assert_editor_behavior() -> void:
 	_test_restore_orphan_link()
 	_test_node_add_remove_undo_redo()
 
+	_test_navigation_back_after_jump()
+	_test_navigation_back_empty_stack()
+
 	_cleanup()
 	quit()
 
@@ -613,6 +616,12 @@ func _test_jump_to_link_target() -> void:
 	_editor._jump_to_link_target("entry", 0, 99)
 	assert(str(_editor._dlg_selection.get("kind", "")) == "reply", "Invalid jump should leave selection unchanged")
 
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	_editor._select_dlg_metadata({"kind": "entry", "index": 0})
+	assert(_editor.get_navigation_stack_depth() == 0, "Reloaded editor should reset navigation stack")
+	_editor._jump_to_link_target("entry", 0, 99)
+	assert(_editor.get_navigation_stack_depth() == 0, "Invalid jump should not push navigation state")
+
 
 func _test_node_add_entry() -> void:
 	var resource := _build_dialogue_resource()
@@ -683,6 +692,29 @@ func _test_restore_orphan_link() -> void:
 	assert(doc.restore_link_to_orphan("entry", 0, "reply", 0), "Restore should add reply link from entry 0")
 	assert(doc.get_node_links("entry", 0).size() >= 1, "Entry should have restored reply link")
 	assert(doc.validate().is_empty(), "Restored link should validate")
+
+
+func _test_navigation_back_after_jump() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	_editor._select_dlg_metadata({"kind": "link", "owner": "entry", "index": 0, "link_index": 0})
+	var prior_selection := _editor._dlg_selection.duplicate(true)
+	assert(_editor.get_navigation_stack_depth() == 0, "Fresh document should have empty navigation stack")
+
+	_editor._jump_to_link_target("entry", 0, 0)
+	assert(str(_editor._dlg_selection.get("kind", "")) == "reply")
+	assert(_editor.get_navigation_stack_depth() == 1, "Successful jump should push prior selection")
+
+	_editor._on_navigation_back_pressed()
+	assert(_editor._metadata_matches(_editor._dlg_selection, prior_selection), "Back should restore prior link selection")
+	assert(_editor.get_navigation_stack_depth() == 0, "Back should pop navigation stack")
+
+
+func _test_navigation_back_empty_stack() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	_editor._on_navigation_back_pressed()
+	assert(_editor.get_navigation_stack_depth() == 0, "Back on empty stack should remain empty")
 
 
 func _test_node_add_remove_undo_redo() -> void:

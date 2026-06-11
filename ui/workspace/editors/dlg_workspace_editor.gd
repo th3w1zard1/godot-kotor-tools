@@ -23,6 +23,7 @@ var _orphan_list: ItemList
 var _dlg_graph_view: KotorDLGGraphView
 var _tree_column: VBoxContainer
 var _show_graph_view := false
+var _navigation_stack: Array[Dictionary] = []
 var _dlg_details: VBoxContainer
 var _validation_panel: KotorValidationPanel
 var _preflight_dialog: KotorPreflightDialog
@@ -101,6 +102,7 @@ func open_resource(resource: DLGResource, source_path: String = "", file_name: S
 	_dlg_dirty = false
 	_dlg_status_text = ""
 	_dlg_selection = {"kind": "root"}
+	_clear_navigation_stack()
 	_register_controller_document()
 	_refresh_dlg_tree()
 	_refresh_dlg_detail()
@@ -377,6 +379,11 @@ func _build_ui() -> void:
 	graph_view_btn.toggled.connect(_on_graph_view_toggled)
 	_toolbar.add_child(graph_view_btn)
 
+	var back_btn := Button.new()
+	back_btn.text = "Back"
+	back_btn.pressed.connect(_on_navigation_back_pressed)
+	_toolbar.add_child(back_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -602,9 +609,41 @@ func _jump_to_link_target(owner_kind: String, owner_index: int, link_index: int)
 		_dlg_status_text = "Link target is missing or out of range."
 		_refresh_dlg_status()
 		return
+	_push_navigation_state(_dlg_selection)
 	_select_dlg_metadata(target)
 	_dlg_status_text = ""
 	_refresh_dlg_status()
+
+
+func _on_navigation_back_pressed() -> void:
+	_pop_navigation_state()
+
+
+func _push_navigation_state(metadata: Dictionary) -> void:
+	if metadata.is_empty():
+		return
+	if _navigation_stack.size() > 0 and _metadata_matches(_navigation_stack[_navigation_stack.size() - 1], metadata):
+		return
+	_navigation_stack.append(metadata.duplicate(true))
+
+
+func _pop_navigation_state() -> void:
+	if _navigation_stack.is_empty():
+		_dlg_status_text = "No prior dialogue selection to restore."
+		_refresh_dlg_status()
+		return
+	var metadata: Dictionary = _navigation_stack.pop_back() as Dictionary
+	_select_dlg_metadata(metadata)
+	_dlg_status_text = "Restored prior selection."
+	_refresh_dlg_status()
+
+
+func _clear_navigation_stack() -> void:
+	_navigation_stack.clear()
+
+
+func get_navigation_stack_depth() -> int:
+	return _navigation_stack.size()
 
 
 func _on_dlg_item_mouse_selected(item: TreeItem, column: int, at_position: Vector2) -> void:
@@ -1275,6 +1314,7 @@ func _clear_document_state(message: String) -> void:
 	_dlg_file_name = "dialogue.dlg"
 	_dlg_dirty = false
 	_dlg_selection = {}
+	_clear_navigation_stack()
 	_dlg_status_text = message
 	_document_key = ""
 	if _dlg_tree != null:

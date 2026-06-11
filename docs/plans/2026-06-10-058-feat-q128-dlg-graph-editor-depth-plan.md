@@ -169,10 +169,10 @@ Close the largest remaining DLG parity gap versus Holocron by delivering **node-
 
 ---
 
-### Q128c — Interactive graph (deferred child plan)
+### Q128c — Interactive graph (child plan spawned)
 
-- Port drag-connect, orphan drag-restore, delete-all-references menu, back-nav stack
-- Spawn `docs/plans/2026-06-XX-XXX-feat-q129-dlg-graph-interactive-plan.md` when Q128b ships
+- Child plan: `docs/plans/2026-06-11-059-feat-q128c-dlg-graph-interactive-plan.md`
+- Q128c1 back-nav shipped; Q128c2–c4 deferred in child plan
 
 ---
 
