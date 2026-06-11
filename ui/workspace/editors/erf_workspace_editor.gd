@@ -1056,6 +1056,8 @@ func _refresh_status() -> void:
 		_emit_status_text(_status_text)
 		return
 	var line := _current_file_name()
+	if is_document_dirty():
+		line += " *"
 	if not _status_text.is_empty():
 		line += " — %s" % _status_text
 	_path_label.text = line
