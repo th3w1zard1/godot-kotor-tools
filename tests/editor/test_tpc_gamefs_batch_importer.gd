@@ -19,11 +19,13 @@ func _run_tests() -> void:
 	_test_batch_install_dry_run()
 	_test_batch_install_writes_tpc()
 	_test_batch_install_writes_dxt1()
+	_test_batch_install_writes_dxt3()
 	_test_batch_install_writes_dxt5()
 	_test_skip_existing()
 	_test_batch_folder_import_dry_run()
 	_test_batch_folder_import_writes_override()
 	_test_batch_folder_import_writes_dxt1()
+	_test_batch_folder_import_writes_dxt3()
 	_test_batch_folder_import_writes_dxt5()
 	_test_batch_folder_import_txi_sidecar()
 	_test_batch_folder_skip_existing()
@@ -83,6 +85,23 @@ func _test_batch_install_writes_dxt1() -> void:
 	assert(int(metadata.get("encoding", -1)) == TPCReader.ENC_DXT1)
 	_cleanup(install_root)
 	print("✓ GameFS batch install import DXT1 passed")
+
+
+func _test_batch_install_writes_dxt3() -> void:
+	var install_root := _make_install_root()
+	_seed_install_images(install_root)
+	var gamefs := _build_gamefs(install_root)
+	var result := TpcGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"encoding": "dxt3",
+	})
+	assert(result.get("ok", false))
+
+	var override_dir := install_root.path_join("override")
+	var metadata := TPCReader.read_metadata(FileAccess.get_file_as_bytes(override_dir.path_join("tex_a.tpc")))
+	assert(metadata.get("ok", false))
+	assert(int(metadata.get("encoding", -1)) == TPCReader.ENC_DXT3)
+	_cleanup(install_root)
+	print("✓ GameFS batch install import DXT3 passed")
 
 
 func _test_batch_install_writes_dxt5() -> void:
@@ -177,6 +196,25 @@ func _test_batch_folder_import_writes_dxt1() -> void:
 	print("✓ GameFS batch TPC folder import DXT1 passed")
 
 
+func _test_batch_folder_import_writes_dxt3() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	_seed_source_images(source_root)
+	var gamefs := _build_gamefs(install_root)
+
+	var result := TpcGamefsBatchImporter.batch_folder_to_override(gamefs, source_root, {
+		"encoding": "dxt3",
+	})
+	assert(result.get("ok", false))
+	var override_dir := install_root.path_join("override")
+	var metadata := TPCReader.read_metadata(FileAccess.get_file_as_bytes(override_dir.path_join("tex_a.tpc")))
+	assert(metadata.get("ok", false))
+	assert(int(metadata.get("encoding", -1)) == TPCReader.ENC_DXT3)
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch TPC folder import DXT3 passed")
+
+
 func _test_batch_folder_import_writes_dxt5() -> void:
 	var install_root := _make_install_root()
 	var source_root := _make_source_root()
@@ -247,9 +285,11 @@ func _test_tpc_editor_batch_install_import_buttons() -> bool:
 
 	assert(_find_button(editor, "Batch Import Install TGA/PNG→TPC...") != null)
 	assert(_find_button(editor, "Batch Import Install DXT1...") != null)
+	assert(_find_button(editor, "Batch Import Install DXT3...") != null)
 	assert(_find_button(editor, "Batch Import Install DXT5...") != null)
 	assert(_find_button(editor, "Batch Import Image Folder to Override...") != null)
 	assert(_find_button(editor, "Batch Import Folder DXT1 to Override...") != null)
+	assert(_find_button(editor, "Batch Import Folder DXT3 to Override...") != null)
 	assert(_find_button(editor, "Batch Import Folder DXT5 to Override...") != null)
 	holder.queue_free()
 	await process_frame

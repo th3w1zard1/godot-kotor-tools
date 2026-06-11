@@ -23,6 +23,7 @@ func _run_tests() -> void:
 	await _test_reencode_dxt3_preserves_txi()
 	await _test_reencode_dxt5_preserves_txi()
 	await _test_import_image_as_dxt1()
+	await _test_import_image_as_dxt3()
 	await _test_import_image_as_dxt5()
 	await _test_reencode_toolbar_buttons()
 	_cleanup()
@@ -114,6 +115,24 @@ func _test_import_image_as_dxt1() -> void:
 	print("✓ TPC editor import image as DXT1 passed")
 
 
+func _test_import_image_as_dxt3() -> void:
+	var editor := KotorTPCWorkspaceEditor.new()
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(editor)
+	await process_frame
+
+	var png_path := _test_root.path_join("import_dxt3.png")
+	_write_png(png_path, 8, 8)
+	var ok := editor.load_image_as_dxt3(png_path)
+	assert(ok)
+	assert(editor.is_document_dirty())
+	assert(int(editor.get("_metadata").get("encoding", 0)) == TPCReader.ENC_DXT3)
+	holder.queue_free()
+	await process_frame
+	print("✓ TPC editor import image as DXT3 passed")
+
+
 func _test_import_image_as_dxt5() -> void:
 	var editor := KotorTPCWorkspaceEditor.new()
 	var holder := Node.new()
@@ -142,6 +161,7 @@ func _test_reencode_toolbar_buttons() -> void:
 	assert(_find_button(editor, "Re-encode DXT3...") != null)
 	assert(_find_button(editor, "Re-encode DXT5...") != null)
 	assert(_find_button(editor, "Import TGA/PNG as DXT1...") != null)
+	assert(_find_button(editor, "Import TGA/PNG as DXT3...") != null)
 	assert(_find_button(editor, "Import TGA/PNG as DXT5...") != null)
 	holder.queue_free()
 	await process_frame

@@ -158,6 +158,11 @@ func _build_ui() -> void:
 	import_image_dxt5_btn.pressed.connect(_import_image_as_dxt5)
 	_toolbar.add_child(import_image_dxt5_btn)
 
+	var import_image_dxt3_btn := Button.new()
+	import_image_dxt3_btn.text = "Import TGA/PNG as DXT3..."
+	import_image_dxt3_btn.pressed.connect(_import_image_as_dxt3)
+	_toolbar.add_child(import_image_dxt3_btn)
+
 	var reencode_dxt1_btn := Button.new()
 	reencode_dxt1_btn.text = "Re-encode DXT1..."
 	reencode_dxt1_btn.pressed.connect(_reencode_loaded_as_dxt1)
@@ -187,6 +192,11 @@ func _build_ui() -> void:
 	batch_convert_dxt5_btn.text = "Batch Convert DXT5..."
 	batch_convert_dxt5_btn.pressed.connect(_batch_convert_images_to_dxt5)
 	_toolbar.add_child(batch_convert_dxt5_btn)
+
+	var batch_convert_dxt3_btn := Button.new()
+	batch_convert_dxt3_btn.text = "Batch Convert DXT3..."
+	batch_convert_dxt3_btn.pressed.connect(_batch_convert_images_to_dxt3)
+	_toolbar.add_child(batch_convert_dxt3_btn)
 
 	var export_tga_btn := Button.new()
 	export_tga_btn.text = "Export TGA..."
@@ -218,6 +228,11 @@ func _build_ui() -> void:
 	batch_install_import_dxt5_btn.pressed.connect(_batch_import_install_dxt5)
 	_toolbar.add_child(batch_install_import_dxt5_btn)
 
+	var batch_install_import_dxt3_btn := Button.new()
+	batch_install_import_dxt3_btn.text = "Batch Import Install DXT3..."
+	batch_install_import_dxt3_btn.pressed.connect(_batch_import_install_dxt3)
+	_toolbar.add_child(batch_install_import_dxt3_btn)
+
 	var batch_folder_import_btn := Button.new()
 	batch_folder_import_btn.text = "Batch Import Image Folder to Override..."
 	batch_folder_import_btn.pressed.connect(_batch_import_image_folder_to_override)
@@ -232,6 +247,11 @@ func _build_ui() -> void:
 	batch_folder_import_dxt5_btn.text = "Batch Import Folder DXT5 to Override..."
 	batch_folder_import_dxt5_btn.pressed.connect(_batch_import_folder_dxt5_to_override)
 	_toolbar.add_child(batch_folder_import_dxt5_btn)
+
+	var batch_folder_import_dxt3_btn := Button.new()
+	batch_folder_import_dxt3_btn.text = "Batch Import Folder DXT3 to Override..."
+	batch_folder_import_dxt3_btn.pressed.connect(_batch_import_folder_dxt3_to_override)
+	_toolbar.add_child(batch_folder_import_dxt3_btn)
 
 	var save_btn := Button.new()
 	save_btn.text = "Save TPC"
@@ -331,6 +351,10 @@ func _batch_convert_images_to_dxt5() -> void:
 	_prompt_batch_convert_directory("dxt5", "Batch Convert TGA/PNG to DXT5 TPC")
 
 
+func _batch_convert_images_to_dxt3() -> void:
+	_prompt_batch_convert_directory("dxt3", "Batch Convert TGA/PNG to DXT3 TPC")
+
+
 func _prompt_batch_convert_directory(encoding: String, title: String) -> void:
 	var dialog := EditorFileDialog.new()
 	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
@@ -371,6 +395,10 @@ func _import_image_as_dxt5() -> void:
 	_prompt_import_image_as_tpc(TPCReader.ENC_DXT5, "Import Image as DXT5 TPC")
 
 
+func _import_image_as_dxt3() -> void:
+	_prompt_import_image_as_tpc(TPCReader.ENC_DXT3, "Import Image as DXT3 TPC")
+
+
 func _prompt_import_image_as_tpc(encoding: int, title: String) -> void:
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
@@ -390,6 +418,10 @@ func load_image_as_dxt1(path: String) -> bool:
 
 func load_image_as_dxt5(path: String) -> bool:
 	return _load_image_as_tpc(path, TPCReader.ENC_DXT5)
+
+
+func load_image_as_dxt3(path: String) -> bool:
+	return _load_image_as_tpc(path, TPCReader.ENC_DXT3)
 
 
 func reencode_loaded_as_dxt1() -> bool:
@@ -528,6 +560,9 @@ func _load_image_as_tpc(path: String, encoding: int) -> bool:
 		TPCReader.ENC_DXT1:
 			bytes = TPCWriter.serialize_dxt1(image, alpha_test)
 			encoding_label = "DXT1 TPC"
+		TPCReader.ENC_DXT3:
+			bytes = TPCWriter.serialize_dxt3(image, alpha_test)
+			encoding_label = "DXT3 TPC"
 		TPCReader.ENC_DXT5:
 			bytes = TPCWriter.serialize_dxt5(image, alpha_test)
 			encoding_label = "DXT5 TPC"
@@ -632,6 +667,10 @@ func _batch_import_install_dxt5() -> void:
 	_run_batch_import_install_with_encoding("dxt5")
 
 
+func _batch_import_install_dxt3() -> void:
+	_run_batch_import_install_with_encoding("dxt3")
+
+
 func _run_batch_import_install_with_encoding(encoding: String) -> void:
 	var gamefs := _resolve_gamefs()
 	if gamefs == null:
@@ -661,6 +700,10 @@ func _batch_import_folder_dxt1_to_override() -> void:
 
 func _batch_import_folder_dxt5_to_override() -> void:
 	_prompt_batch_import_folder_to_override("dxt5")
+
+
+func _batch_import_folder_dxt3_to_override() -> void:
+	_prompt_batch_import_folder_to_override("dxt3")
 
 
 func _prompt_batch_import_folder_to_override(encoding: String) -> void:

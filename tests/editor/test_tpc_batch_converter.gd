@@ -18,8 +18,10 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_convert_from_png_file()
 	_test_convert_from_png_dxt1()
+	_test_convert_from_png_dxt3()
 	_test_convert_from_png_with_txi_sidecar()
 	_test_convert_skips_txi_when_disabled()
+	_test_batch_directory_dxt3()
 	_test_batch_directory_dxt5()
 	_test_invalid_image_rejected()
 	_test_batch_directory()
@@ -97,6 +99,44 @@ func _test_convert_from_png_dxt1() -> void:
 	assert(metadata.get("ok", false))
 	assert(int(metadata.get("encoding", -1)) == TPCReader.ENC_DXT1)
 	print("✓ TPC convert from PNG DXT1 passed")
+
+
+func _test_convert_from_png_dxt3() -> void:
+	var png_path := _test_root.path_join("dxt3.png")
+	_write_png(png_path, 16, 16)
+
+	var result := TpcBatchConverter.convert_from_image_file(png_path, {"encoding": "dxt3"})
+	assert(result.get("ok", false))
+
+	var bytes: PackedByteArray = result.get("bytes", PackedByteArray())
+	assert(not bytes.is_empty())
+
+	var metadata := TPCReader.read_metadata(bytes)
+	assert(metadata.get("ok", false))
+	assert(int(metadata.get("encoding", -1)) == TPCReader.ENC_DXT3)
+	print("✓ TPC convert from PNG DXT3 passed")
+
+
+func _test_batch_directory_dxt3() -> void:
+	var batch_dir := _test_root.path_join("batch_dxt3")
+	DirAccess.make_dir_recursive_absolute(batch_dir)
+
+	_write_png(batch_dir.path_join("tex_dxt3.png"), 8, 8)
+
+	var batch := TpcBatchConverter.batch_directory(batch_dir, {"encoding": "dxt3"})
+	assert(batch.get("ok", false))
+	var generated: Array = batch.get("generated", [])
+	assert(generated.size() == 1)
+
+	var tpc_path := batch_dir.path_join("tex_dxt3.tpc")
+	assert(FileAccess.file_exists(tpc_path))
+
+	var file := FileAccess.open(tpc_path, FileAccess.READ)
+	var metadata := TPCReader.read_metadata(file.get_buffer(file.get_length()))
+	file.close()
+	assert(metadata.get("ok", false))
+	assert(int(metadata.get("encoding", -1)) == TPCReader.ENC_DXT3)
+	print("✓ TPC batch directory DXT3 passed")
 
 
 func _test_batch_directory_dxt5() -> void:
@@ -195,6 +235,7 @@ func _test_tpc_editor_batch_buttons() -> bool:
 
 	assert(_find_button(editor, "Batch Convert TGA/PNG→TPC...") != null)
 	assert(_find_button(editor, "Batch Convert DXT1...") != null)
+	assert(_find_button(editor, "Batch Convert DXT3...") != null)
 	assert(_find_button(editor, "Batch Convert DXT5...") != null)
 	holder.queue_free()
 	await process_frame

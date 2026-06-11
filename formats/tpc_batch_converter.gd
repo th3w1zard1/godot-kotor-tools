@@ -9,7 +9,7 @@ const SUPPORTED_EXTENSIONS := ["png", "tga"]
 
 ## Encode a single image file as TPC bytes.
 ## `alpha_test_or_options` may be a float (legacy alpha test) or a Dictionary with
-## `alpha_test` (float, default 0.0) and `encoding` (`rgba`, `dxt1`, `dxt5`).
+## `alpha_test` (float, default 0.0) and `encoding` (`rgba`, `dxt1`, `dxt3`, `dxt5`).
 static func convert_from_image_file(
 		image_path: String,
 		alpha_test_or_options: Variant = 0.0
@@ -97,7 +97,7 @@ static func attach_txi_sidecar(
 
 
 ## Scan a flat directory for `.png` and `.tga` files and write matching `.tpc` files.
-## Options: `skip_existing` (bool), `alpha_test` (float), `encoding` (`rgba`, `dxt1`, `dxt5`).
+## Options: `skip_existing` (bool), `alpha_test` (float), `encoding` (`rgba`, `dxt1`, `dxt3`, `dxt5`).
 static func batch_directory(
 		dir_path: String,
 		options: Dictionary = {}
@@ -285,6 +285,8 @@ static func _serialize_image(image: Image, encoding: String, alpha_test: float) 
 			return TPCWriter.serialize_rgba(image, alpha_test)
 		"dxt1":
 			return TPCWriter.serialize_dxt1(image, alpha_test)
+		"dxt3":
+			return TPCWriter.serialize_dxt3(image, alpha_test)
 		"dxt5":
 			return TPCWriter.serialize_dxt5(image, alpha_test)
 		_:
@@ -298,6 +300,8 @@ static func _expected_encoding_value(encoding: String) -> int:
 			return TPCReader.ENC_RGBA
 		"dxt1":
 			return TPCReader.ENC_DXT1
+		"dxt3":
+			return TPCReader.ENC_DXT3
 		"dxt5":
 			return TPCReader.ENC_DXT5
 		_:
