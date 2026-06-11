@@ -441,6 +441,8 @@ func _load_image_as_tpc(path: String, encoding: int) -> bool:
 		_refresh_status()
 		return false
 
+	bytes = TpcBatchConverter.attach_txi_sidecar(path, bytes)
+
 	_bytes = bytes
 	_metadata = TPCReader.read_metadata(_bytes)
 	if not _metadata.get("ok", false):

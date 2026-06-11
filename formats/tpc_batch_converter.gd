@@ -37,6 +37,8 @@ static func convert_from_image_file(
 			"message": "Failed to encode %s TPC from %s" % [encoding.to_upper(), image_path.get_file()],
 		}
 
+	bytes = attach_txi_sidecar(image_path, bytes, options)
+
 	var metadata := TPCReader.read_metadata(bytes)
 	if not metadata.get("ok", false):
 		return {"ok": false, "message": "Encoded TPC failed validation for %s" % image_path.get_file()}
@@ -51,15 +53,47 @@ static func convert_from_image_file(
 			],
 		}
 
+	var txi_path := _txi_path_for_image(image_path)
+	var txi_attached := bool(options.get("include_txi_sidecar", true)) \
+			and FileAccess.file_exists(txi_path) \
+			and int(metadata.get("txi_length", 0)) > 0
+
 	return {
 		"ok": true,
 		"bytes": bytes,
 		"image_path": image_path,
 		"tpc_path": _tpc_path_for_image(image_path),
+		"txi_path": txi_path if txi_attached else "",
+		"txi_attached": txi_attached,
 		"width": int(metadata.get("width", 0)),
 		"height": int(metadata.get("height", 0)),
 		"encoding": encoding,
 	}
+
+
+## Append sibling `{basename}.txi` bytes to encoded TPC when present.
+static func attach_txi_sidecar(
+		image_path: String,
+		tpc_bytes: PackedByteArray,
+		options: Dictionary = {}
+) -> PackedByteArray:
+	if not bool(options.get("include_txi_sidecar", true)):
+		return tpc_bytes
+
+	var txi_path := _txi_path_for_image(image_path)
+	if txi_path.is_empty() or not FileAccess.file_exists(txi_path):
+		return tpc_bytes
+
+	var file := FileAccess.open(txi_path, FileAccess.READ)
+	if file == null:
+		return tpc_bytes
+
+	var txi_bytes := file.get_buffer(file.get_length())
+	file.close()
+	if txi_bytes.is_empty():
+		return tpc_bytes
+
+	return TPCWriter.append_txi_bytes(tpc_bytes, txi_bytes)
 
 
 ## Scan a flat directory for `.png` and `.tga` files and write matching `.tpc` files.
@@ -171,6 +205,10 @@ static func _expected_encoding_value(encoding: String) -> int:
 
 static func _tpc_path_for_image(image_path: String) -> String:
 	return "%s.tpc" % image_path.get_basename()
+
+
+static func _txi_path_for_image(image_path: String) -> String:
+	return "%s.txi" % image_path.get_basename()
 
 
 static func _write_bytes(path: String, bytes: PackedByteArray) -> Error:

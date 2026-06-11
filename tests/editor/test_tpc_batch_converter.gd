@@ -2,6 +2,7 @@
 extends SceneTree
 
 const TPCReader := preload("../../formats/tpc_reader.gd")
+const TPCWriter := preload("../../formats/tpc_writer.gd")
 const TpcBatchConverter := preload("../../formats/tpc_batch_converter.gd")
 const KotorTPCWorkspaceEditor := preload("../../ui/workspace/editors/tpc_workspace_editor.gd")
 
@@ -17,9 +18,12 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_convert_from_png_file()
 	_test_convert_from_png_dxt1()
+	_test_convert_from_png_with_txi_sidecar()
+	_test_convert_skips_txi_when_disabled()
 	_test_batch_directory_dxt5()
 	_test_invalid_image_rejected()
 	_test_batch_directory()
+	_test_batch_directory_with_txi_sidecar()
 	var button_ok := await _test_tpc_editor_batch_buttons()
 	_cleanup()
 	if not button_ok:
@@ -44,6 +48,38 @@ func _test_convert_from_png_file() -> void:
 	assert(int(metadata.get("width", 0)) == 32)
 	assert(int(metadata.get("height", 0)) == 16)
 	print("✓ TPC convert from PNG file passed")
+
+
+func _test_convert_from_png_with_txi_sidecar() -> void:
+	var png_path := _test_root.path_join("sidecar.png")
+	_write_png(png_path, 16, 16)
+	var txi_text := "envmap\nproceduretype cycle\n"
+	_write_file(_test_root.path_join("sidecar.txi"), txi_text.to_utf8_buffer())
+
+	var result := TpcBatchConverter.convert_from_image_file(png_path)
+	assert(result.get("ok", false))
+	assert(result.get("txi_attached", false))
+
+	var bytes: PackedByteArray = result.get("bytes", PackedByteArray())
+	var metadata := TPCReader.read_metadata(bytes)
+	assert(int(metadata.get("txi_length", 0)) == txi_text.to_utf8_buffer().size())
+	assert(TPCWriter.read_txi_bytes(bytes) == txi_text.to_utf8_buffer())
+	print("✓ TPC convert from PNG with TXI sidecar passed")
+
+
+func _test_convert_skips_txi_when_disabled() -> void:
+	var png_path := _test_root.path_join("no_txi.png")
+	_write_png(png_path, 8, 8)
+	_write_file(_test_root.path_join("no_txi.txi"), "envmap\n".to_utf8_buffer())
+
+	var result := TpcBatchConverter.convert_from_image_file(png_path, {"include_txi_sidecar": false})
+	assert(result.get("ok", false))
+	assert(not result.get("txi_attached", true))
+
+	var bytes: PackedByteArray = result.get("bytes", PackedByteArray())
+	var metadata := TPCReader.read_metadata(bytes)
+	assert(int(metadata.get("txi_length", 0)) == 0)
+	print("✓ TPC convert skips TXI when disabled passed")
 
 
 func _test_convert_from_png_dxt1() -> void:
@@ -92,6 +128,25 @@ func _test_invalid_image_rejected() -> void:
 	assert(not result.get("ok", true))
 	assert(str(result.get("message", "")) != "")
 	print("✓ TPC invalid image rejection passed")
+
+
+func _test_batch_directory_with_txi_sidecar() -> void:
+	var batch_dir := _test_root.path_join("batch_txi")
+	DirAccess.make_dir_recursive_absolute(batch_dir)
+
+	_write_png(batch_dir.path_join("tex_txi.png"), 8, 8)
+	_write_file(batch_dir.path_join("tex_txi.txi"), "bumpmap\n".to_utf8_buffer())
+
+	var batch := TpcBatchConverter.batch_directory(batch_dir)
+	assert(batch.get("ok", false))
+	assert(int((batch.get("generated", []) as Array).size()) == 1)
+
+	var tpc_path := batch_dir.path_join("tex_txi.tpc")
+	var file := FileAccess.open(tpc_path, FileAccess.READ)
+	var metadata := TPCReader.read_metadata(file.get_buffer(file.get_length()))
+	file.close()
+	assert(int(metadata.get("txi_length", 0)) > 0)
+	print("✓ TPC batch directory with TXI sidecar passed")
 
 
 func _test_batch_directory() -> void:

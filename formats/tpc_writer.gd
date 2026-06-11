@@ -74,6 +74,38 @@ static func serialize_dxt5(image: Image, alpha_test: float = 0.0) -> PackedByteA
 	return TpcDxtEncoder.encode_dxt5_image(image, alpha_test)
 
 
+## Append TXI metadata bytes after the mip payload tail (replaces any existing TXI tail).
+static func append_txi_bytes(tpc_bytes: PackedByteArray, txi_bytes: PackedByteArray) -> PackedByteArray:
+	var metadata := TPCReader.read_metadata(tpc_bytes)
+	if not metadata.get("ok", false):
+		push_error("TPCWriter: cannot append TXI to invalid TPC")
+		return PackedByteArray()
+
+	var data_size := int(metadata.get("data_size", 0))
+	var base_size := HEADER_SIZE + data_size
+	if tpc_bytes.size() < base_size:
+		push_error("TPCWriter: TPC payload shorter than header data_size")
+		return PackedByteArray()
+
+	var out := tpc_bytes.slice(0, base_size)
+	if not txi_bytes.is_empty():
+		out.append_array(txi_bytes)
+	return out
+
+
+## Return TXI tail bytes after the mip payload, or empty when absent.
+static func read_txi_bytes(tpc_bytes: PackedByteArray) -> PackedByteArray:
+	var metadata := TPCReader.read_metadata(tpc_bytes)
+	if not metadata.get("ok", false):
+		return PackedByteArray()
+
+	var data_size := int(metadata.get("data_size", 0))
+	var base_size := HEADER_SIZE + data_size
+	if tpc_bytes.size() <= base_size:
+		return PackedByteArray()
+	return tpc_bytes.slice(base_size)
+
+
 static func _write_u16(buffer: PackedByteArray, offset: int, value: int) -> void:
 	buffer[offset] = value & 0xFF
 	buffer[offset + 1] = (value >> 8) & 0xFF

@@ -12,6 +12,7 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_passthrough_round_trip()
 	_test_rgba_encode_round_trip()
+	_test_append_txi_bytes()
 	_test_invalid_passthrough()
 	_test_null_image()
 	print("✓ TPC writer tests passed")
@@ -56,6 +57,29 @@ func _test_rgba_encode_round_trip() -> void:
 	assert(decoded.get_pixel(0, 0) == image.get_pixel(0, 0))
 	assert(decoded.get_pixel(7, 7) == image.get_pixel(7, 7))
 	print("✓ TPC RGBA encode round-trip passed")
+
+
+func _test_append_txi_bytes() -> void:
+	var original := _make_rgba_tpc(4, 4, _checker_pixels(4, 4))
+	var txi := "envmap\nproceduretype cycle\n".to_utf8_buffer()
+
+	var with_txi := TPCWriter.append_txi_bytes(original, txi)
+	assert(not with_txi.is_empty())
+	assert(with_txi.size() == original.size() + txi.size())
+
+	var metadata := TPCReader.read_metadata(with_txi)
+	assert(metadata.get("ok", false))
+	assert(int(metadata.get("txi_length", 0)) == txi.size())
+
+	var read_txi := TPCWriter.read_txi_bytes(with_txi)
+	assert(read_txi.size() == txi.size())
+	for index in txi.size():
+		assert(read_txi[index] == txi[index])
+
+	var decoded := TPCReader.read_image(with_txi)
+	assert(decoded != null)
+	assert(decoded.get_width() == 4)
+	print("✓ TPC append TXI bytes passed")
 
 
 func _test_invalid_passthrough() -> void:
