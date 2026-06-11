@@ -7,6 +7,7 @@ const TPCWriter := preload("../../../formats/tpc_writer.gd")
 const TpcBatchConverter := preload("../../../formats/tpc_batch_converter.gd")
 const TpcBatchExporter := preload("../../../formats/tpc_batch_exporter.gd")
 const TpcGamefsBatchExporter := preload("../../../formats/tpc_gamefs_batch_exporter.gd")
+const TpcGamefsBatchImporter := preload("../../../formats/tpc_gamefs_batch_importer.gd")
 const KotorMediaToolBridge := preload("../../../resources/scripts/kotor_media_tool_bridge.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
@@ -165,6 +166,11 @@ func _build_ui() -> void:
 	batch_install_export_btn.text = "Batch Export Install TGA..."
 	batch_install_export_btn.pressed.connect(_batch_export_install_tga)
 	_toolbar.add_child(batch_install_export_btn)
+
+	var batch_install_import_btn := Button.new()
+	batch_install_import_btn.text = "Batch Import Install TGA/PNG→TPC..."
+	batch_install_import_btn.pressed.connect(_batch_import_install_tpc)
+	_toolbar.add_child(batch_install_import_btn)
 
 	var save_btn := Button.new()
 	save_btn.text = "Save TPC"
@@ -359,6 +365,24 @@ func _run_batch_install_export(gamefs: RefCounted, output_dir: String) -> void:
 		"pykotor_cli_path": _resolve_pykotor_cli_path(),
 		"source_filter": "override",
 	}), "Install batch TGA export finished.")
+
+
+func _batch_import_install_tpc() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch import."
+		_refresh_status()
+		return
+	_run_batch_install_import(gamefs)
+
+
+func _run_batch_install_import(gamefs: RefCounted) -> void:
+	var result := TpcGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"source_filter": "override",
+	})
+	_apply_batch_export_status(result, "Install batch TPC import finished.")
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_gamefs()
 
 
 func _resolve_pykotor_cli_path() -> String:
