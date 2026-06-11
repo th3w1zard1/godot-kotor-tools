@@ -137,29 +137,32 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q121 | Resource browser WOK/MDL install copy to override | Resource browser **Batch Copy Install WOK/MDL to Override...** wired to Q120 importers with GameFS refresh; headless browser button tests. |
 | Q122 | Module/MDL compare with override toolbar parity | Module Designer **Compare Walkmesh with Override...** + Model Editor **Compare MDL with Override...** via `KotorModdingPipeline.compare_gamefs_resource`; headless toolbar tests. |
 | Q123 | Module/MDL compare report export toolbar parity | **Export Compare Report...** in Module Designer + Model Editor after compare; uses `export_compare_result_to_path`; headless toolbar tests. |
-| Q124 | Module Designer GIT instance CRUD *(PR #119)* | **Add Instance…** / **Remove Instance** toolbar actions with category+template dialog, map placement, undo-safe typed mutation, install-ready persistence; headless `test_module_designer_git_instance_crud.gd`. |
-| Q125 | UTP typed parity expansion *(PR #119)* | Trap scalar and script hook typed helpers on UTP blueprints with aligned summary output; headless `test_gff_resource_factory.gd` UTP mapping coverage. |
-| Q126 | Module Designer BWM walkmesh painter foundations *(PR #119)* | **Paint Walkmesh** toolbar arm, 3D face pick, walkable/unwalkable material toggle with undo, dirty baseline tracking, and install-ready persistence; headless `test_module_designer_bwm_paint.gd`. |
-| Q127 | ERF archive workspace UX *(PR #119)* | **Archive Browser** workspace tab with member table, nested member open routing, and extract-to-override with preflight; headless `test_erf_workspace_editor.gd`. |
-| Q128a | DLG node CRUD and orphan hygiene *(PR #119)* | **Add Entry/Reply/Start** and **Remove Node** toolbar actions, orphan dock with restore-link, document index repair + topology snapshot undo; headless `test_dlg_workspace_editor.gd` node CRUD tests. |
-| Q128b | DLG read-only graph canvas *(PR #119)* | **Graph View** toolbar toggle with read-only `GraphEdit` layout (entries left, replies right), node click selects tree row; headless `test_dlg_graph_layout.gd`. |
-| Q128c1 | DLG jump back-navigation *(PR #119)* | **Back** toolbar restores prior selection after jump-to-target; navigation stack cleared on document open; headless `test_dlg_workspace_editor.gd` back-nav tests. |
-| Q128c2 | DLG delete-all-references *(PR #119)* | **Delete References** toolbar + detail panel + tree context menu call `remove_all_references_to_node` with topology undo; headless `test_dlg_workspace_editor.gd` delete-references tests. |
-| Q128c3 | DLG graph port drag-connect *(PR #119)* | `connection_link_requested` on graph view calls `add_node_link` with topology undo; headless `test_dlg_workspace_editor.gd` + `test_dlg_graph_layout.gd` graph-link tests. |
-| Q128c4 | DLG orphan restore UX *(PR #119)* | Double-click orphan restore, tree context **Link Selected Orphan Here**, detail-panel linkable orphans, `find_linkable_orphans_for_owner`; headless orphan-restore tests. |
-
-> **Branch note:** Q124–Q128c4 complete the Q128 child plan on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)). Merge to `main` to drop `*(PR #119)*` qualifiers. `main` @ Q123 remains merge base until landed.
+| Q124 | Module Designer GIT instance CRUD | **Add Instance…** / **Remove Instance** toolbar actions with category+template dialog, map placement, undo-safe typed mutation, install-ready persistence; headless `test_module_designer_git_instance_crud.gd`. |
+| Q125 | UTP typed parity expansion | Trap scalar and script hook typed helpers on UTP blueprints with aligned summary output; headless `test_gff_resource_factory.gd` UTP mapping coverage. |
+| Q126 | Module Designer BWM walkmesh painter foundations | **Paint Walkmesh** toolbar arm, 3D face pick, walkable/unwalkable material toggle with undo, dirty baseline tracking, and install-ready persistence; headless `test_module_designer_bwm_paint.gd`. |
+| Q127 | ERF archive workspace UX | **Archive Browser** workspace tab with member table, nested member open routing, and extract-to-override with preflight; headless `test_erf_workspace_editor.gd`. |
+| Q128a | DLG node CRUD and orphan hygiene | **Add Entry/Reply/Start** and **Remove Node** toolbar actions, orphan dock with restore-link, document index repair + topology snapshot undo; headless `test_dlg_workspace_editor.gd` node CRUD tests. |
+| Q128b | DLG read-only graph canvas | **Graph View** toolbar toggle with `GraphEdit` layout (entries left, replies right), node click selects tree row; headless `test_dlg_graph_layout.gd`. |
+| Q128c1 | DLG jump back-navigation | **Back** toolbar restores prior selection after jump-to-target; navigation stack cleared on document open; headless `test_dlg_workspace_editor.gd` back-nav tests. |
+| Q128c2 | DLG delete-all-references | **Delete References** toolbar + detail panel + tree context menu call `remove_all_references_to_node` with topology undo; headless `test_dlg_workspace_editor.gd` delete-references tests. |
+| Q128c3 | DLG graph port drag-connect | `connection_link_requested` on graph view calls `add_node_link` with topology undo; headless `test_dlg_workspace_editor.gd` + `test_dlg_graph_layout.gd` graph-link tests. |
+| Q128c4 | DLG orphan restore UX | Double-click orphan restore, tree context **Link Selected Orphan Here**, detail-panel linkable orphans, `find_linkable_orphans_for_owner`; headless orphan-restore tests. |
+| Q129 | Post-Q128 parity wave planning | Merged PR #119; post-merge doc authority sync; Q130+ wave sequenced in `docs/plans/2026-06-11-060-feat-q129-post-q128-parity-wave-plan.md`. |
+| Q130 | NSS compile-to-override UX | Script tab installs compiled `.ncs` to override with mutation preflight; auto-offer after successful compile. | Headless `test_script_compile_install.gd`. | See `docs/plans/2026-06-11-061-feat-q130-nss-compile-to-override-plan.md`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q129 | Post-Q128 parity wave planning | Define next Holocron/PyKotor slices after DLG graph depth (MDL write-back, savegame, LTR, NSS IDE). | Q128c4 shipped; PR #119 ready for merge. | See `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` deferred tier. |
+| Q131 | LTR parser + workspace editor | Read/write letter tables; route `.ltr` in workspace shell. | Q130 shipped. | Holocron `ltr.py`. |
 
 ## Next Slices (Deferred)
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
+| Q132 | Savegame inspector foundations | Read-only save metadata workspace surface. | Q131 or parallel green `main`. | Holocron `savegame.py`. |
+| Q133 | MDL write-back phase 0 | Trimesh metadata mutation boundaries + writer scaffold. | Model editor read path stable. | Holocron `mdl.py`. |
+| Q134 | ERF member create/add | Add members in archive workspace beyond extract/browse. | Q127 ERF UX shipped. | Holocron `erf.py`. |
 | Q10 | GFF inventory array editing | Add/remove/reorder `Inventory`, `EquippedInventory`, and proper `itemList` defaults. | Q9 item picker shipped. | **Shipped** — inventory arrays editable with shared item struct defaults. |
 | Q11 | GFF skill/feat array editing | Add/remove/reorder `SkillList` and `FeatList` with Rank/Feat defaults. | Q7 array machinery shipped. | **Shipped** — creature skill/feat lists editable in GFF tree. |
 | Q12 | Install-aware feat/skill 2DA labels | Feat values and SkillList indices show install 2DA labels in GFF tree. | Q9 enum registry + Q11 arrays shipped. | **Shipped** — feat.2da and skills.2da labels in creature editing. |
