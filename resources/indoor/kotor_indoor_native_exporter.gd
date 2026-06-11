@@ -27,8 +27,8 @@ static func validate_preflight(config: Dictionary) -> Dictionary:
 	var output_path := str(config.get("output_path", "")).strip_edges()
 	if output_path.is_empty():
 		errors.append("Choose an output .mod path.")
-	elif not output_path.get_extension().to_lower() in ["mod", "erf", "rim", "sav"]:
-		warnings.append("Output extension is not .mod; export will still write the chosen container.")
+	elif output_path.get_extension().to_lower() != "mod":
+		warnings.append("Output path will be rewritten with a .mod extension.")
 
 	if document != null and _needs_kits_path(document):
 		var kits_path := str(config.get("kits_path", "")).strip_edges()
@@ -54,6 +54,12 @@ static func export_indoor_to_mod(config: Dictionary) -> Dictionary:
 	var kit_library: RefCounted = config.get("kit_library")
 	if kit_library == null and document != null:
 		kit_library = document.get_kit_library()
+	var kits_path := str(config.get("kits_path", "")).strip_edges()
+	if kit_library != null and not kits_path.is_empty():
+		if kit_library.has_method("configure"):
+			kit_library.call("configure", kits_path)
+		if kit_library.has_method("refresh"):
+			kit_library.call("refresh")
 
 	var output_path := _ensure_mod_extension(str(config.get("output_path", "")).strip_edges())
 	var built := KotorIndoorModBuilder.write_to_path(document, output_path, kit_library)

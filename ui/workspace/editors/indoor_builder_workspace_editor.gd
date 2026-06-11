@@ -1068,6 +1068,7 @@ func _export_pykotor_mod_dialog() -> void:
 func _export_mod_to_path(path: String) -> void:
 	if _document == null:
 		return
+	_refresh_kit_library()
 	var kits_path := _kits_path_edit.text.strip_edges() if _kits_path_edit != null else ""
 	if kits_path.is_empty() and _editor_state != null:
 		kits_path = _editor_state.indoor_kits_path
@@ -1083,13 +1084,14 @@ func _export_mod_to_path(path: String) -> void:
 		_status_text = str(result.get("message", "Export failed."))
 		_refresh_status()
 		return
-	_status_text = str(result.get("message", "Export complete."))
+	_status_text = _format_export_status_message(result, "Export complete.")
 	_refresh_status()
 
 
 func _export_pykotor_mod_to_path(path: String) -> void:
 	if _document == null:
 		return
+	_refresh_kit_library()
 	var game_path := _editor_state.game_path if _editor_state != null else ""
 	var kits_path := _kits_path_edit.text.strip_edges() if _kits_path_edit != null else ""
 	if kits_path.is_empty() and _editor_state != null:
@@ -1111,5 +1113,12 @@ func _export_pykotor_mod_to_path(path: String) -> void:
 		_status_text = str(result.get("message", "Export failed."))
 		_refresh_status()
 		return
-	_status_text = str(result.get("message", "Export complete."))
+	_status_text = _format_export_status_message(result, "Export complete.")
 	_refresh_status()
+
+
+func _format_export_status_message(result: Dictionary, fallback: String) -> String:
+	var message := str(result.get("message", fallback))
+	for warning in result.get("warnings", []):
+		message += "\nWarning: %s" % str(warning)
+	return message
