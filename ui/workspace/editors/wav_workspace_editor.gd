@@ -5,6 +5,7 @@ class_name KotorWAVWorkspaceEditor
 const WavMetadata := preload("../../../formats/wav_metadata.gd")
 const WavBatchConverter := preload("../../../formats/wav_batch_converter.gd")
 const WavGamefsBatchImporter := preload("../../../formats/wav_gamefs_batch_importer.gd")
+const WavGamefsBatchExporter := preload("../../../formats/wav_gamefs_batch_exporter.gd")
 const KotorMediaToolBridge := preload("../../../resources/scripts/kotor_media_tool_bridge.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
@@ -157,6 +158,11 @@ func _build_ui() -> void:
 	batch_install_convert_btn.pressed.connect(_batch_convert_install_wav)
 	_toolbar.add_child(batch_install_convert_btn)
 
+	var batch_install_export_btn := Button.new()
+	batch_install_export_btn.text = "Batch Export Install WAV..."
+	batch_install_export_btn.pressed.connect(_batch_export_install_wav)
+	_toolbar.add_child(batch_install_export_btn)
+
 	var save_btn := Button.new()
 	save_btn.text = "Save WAV"
 	save_btn.pressed.connect(_save_wav)
@@ -285,6 +291,34 @@ func _batch_convert_install_wav() -> void:
 		_refresh_status()
 		return
 	_run_batch_convert_install_wav(gamefs)
+
+
+func _batch_export_install_wav() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch export."
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Batch Export WAV from install index"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(output_dir: String) -> void:
+		_run_batch_export_install_wav(gamefs, output_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_export_install_wav(gamefs: RefCounted, output_dir: String) -> void:
+	var result := WavGamefsBatchExporter.batch_install(gamefs, output_dir, {
+		"source_filter": "override",
+	})
+	_apply_batch_wav_status(result, "Install batch WAV export finished.")
 
 
 func _run_batch_convert_install_wav(gamefs: RefCounted) -> void:
