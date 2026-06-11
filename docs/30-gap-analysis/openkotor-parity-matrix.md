@@ -154,7 +154,8 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 87. **Q117 (shipped 2026-06-10):** BWM/MDL recursive batch directory scan — `recursive` on `BwmBatchExporter` / `MdlBatchExporter`; see `docs/plans/2026-06-10-049-feat-q117-bwm-mdl-recursive-batch-scan-plan.md`.
 88. **Q118 (shipped 2026-06-10):** LIP/TPC export recursive batch directory scan — `recursive` on `LipBatchGenerator` / `TpcBatchExporter`; see `docs/plans/2026-06-10-050-feat-q118-lip-tpc-export-recursive-batch-scan-plan.md`.
 89. **Q119 (shipped 2026-06-10):** Module/MDL install batch export toolbar parity — Module Designer **Batch Export Install WOK...** + Model Editor **Batch Export Install MDL...**; see `docs/plans/2026-06-10-051-feat-q119-module-mdl-install-batch-export-toolbar-plan.md`.
-90. Module/area designer parity wave (further model/walkmesh tooling).
+90. **Q120 (shipped 2026-06-10):** WOK/MDL install batch copy to override — `batch_install_to_override` + **Batch Copy Install WOK/MDL to Override...**; see `docs/plans/2026-06-10-052-feat-q120-wok-mdl-install-batch-copy-override-plan.md`.
+91. Module/area designer parity wave (further model/walkmesh tooling).
 
 ## Evidence Notes
 

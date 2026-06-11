@@ -409,6 +409,11 @@ func _build_ui() -> void:
 	batch_export_install_wok_btn.pressed.connect(_batch_export_install_wok)
 	_toolbar.add_child(batch_export_install_wok_btn)
 
+	var batch_copy_install_wok_btn := Button.new()
+	batch_copy_install_wok_btn.text = "Batch Copy Install WOK to Override..."
+	batch_copy_install_wok_btn.pressed.connect(_batch_copy_install_wok_to_override)
+	_toolbar.add_child(batch_copy_install_wok_btn)
+
 	var export_layout_btn := Button.new()
 	export_layout_btn.text = "Export LYT Preview…"
 	export_layout_btn.pressed.connect(_export_layout_preview_dialog)
@@ -1438,6 +1443,23 @@ func _run_batch_export_install_wok(gamefs: RefCounted, output_dir: String) -> vo
 	})
 	_status_text = BwmGamefsBatchExporter.format_report(result)
 	_refresh_status()
+
+
+func _batch_copy_install_wok_to_override() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch copy."
+		_refresh_status()
+		return
+	_run_batch_copy_install_wok_to_override(gamefs)
+
+
+func _run_batch_copy_install_wok_to_override(gamefs: RefCounted) -> void:
+	var result := BwmGamefsBatchImporter.batch_install_to_override(gamefs, {})
+	_status_text = BwmGamefsBatchImporter.format_report(result)
+	_refresh_status()
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_gamefs()
 
 
 func _export_walkmesh_preview_dialog() -> void:

@@ -20,9 +20,15 @@ func _run_tests() -> void:
 	_test_skip_existing()
 	_test_bwm_alias_import_writes_override()
 	_test_batch_folder_import_recursive()
+	_test_batch_install_copy_dry_run()
+	_test_batch_install_copy_writes_override()
 	var button_ok := await _test_module_designer_batch_import_button()
 	if not button_ok:
 		push_error("BWM GameFS batch importer toolbar test failed")
+		quit(1)
+	var copy_button_ok := await _test_module_designer_batch_install_copy_button()
+	if not copy_button_ok:
+		push_error("Module Designer batch install WOK copy button test failed")
 		quit(1)
 	print("✓ BWM GameFS batch importer tests passed")
 	quit()
@@ -136,6 +142,39 @@ func _test_batch_folder_import_recursive() -> void:
 	print("✓ GameFS batch WOK folder import recursive passed")
 
 
+func _test_batch_install_copy_dry_run() -> void:
+	var install_root := _make_install_root()
+	_seed_install_walkmeshes(install_root)
+	var gamefs := _build_gamefs(install_root)
+	var result := BwmGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"dry_run": true,
+		"skip_existing": false,
+	})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	assert(str(result.get("summary", "")).contains("copy to override"))
+	_cleanup(install_root)
+	print("✓ GameFS batch WOK install copy dry-run passed")
+
+
+func _test_batch_install_copy_writes_override() -> void:
+	var install_root := _make_install_root()
+	_seed_install_walkmeshes(install_root)
+	var gamefs := _build_gamefs(install_root)
+	var result := BwmGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"skip_existing": false,
+	})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	var override_dir := install_root.path_join("override")
+	assert(FileAccess.file_exists(override_dir.path_join("area_a.wok")))
+	assert(FileAccess.file_exists(override_dir.path_join("area_b.wok")))
+	_cleanup(install_root)
+	print("✓ GameFS batch WOK install copy write passed")
+
+
 func _test_module_designer_batch_import_button() -> bool:
 	var editor := KotorModuleDesignerWorkspaceEditor.new()
 	var holder := Node.new()
@@ -147,6 +186,24 @@ func _test_module_designer_batch_import_button() -> bool:
 	await process_frame
 	print("✓ Module Designer batch import WOK button passed")
 	return true
+
+
+func _test_module_designer_batch_install_copy_button() -> bool:
+	var editor := KotorModuleDesignerWorkspaceEditor.new()
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(editor)
+	await process_frame
+	assert(_find_button(editor, "Batch Copy Install WOK to Override...") != null)
+	holder.queue_free()
+	await process_frame
+	print("✓ Module Designer batch install WOK copy button passed")
+	return true
+
+
+func _seed_install_walkmeshes(install_root: String) -> void:
+	var override_dir := install_root.path_join("override")
+	_seed_walkmeshes(override_dir)
 
 
 func _make_install_root() -> String:

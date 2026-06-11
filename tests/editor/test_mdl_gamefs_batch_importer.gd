@@ -19,9 +19,15 @@ func _run_tests() -> void:
 	_test_batch_folder_import_writes_override()
 	_test_skip_existing()
 	_test_batch_folder_import_recursive()
+	_test_batch_install_copy_dry_run()
+	_test_batch_install_copy_writes_override()
 	var button_ok := await _test_mdl_editor_batch_import_button()
 	if not button_ok:
 		push_error("MDL GameFS batch importer toolbar test failed")
+		quit(1)
+	var copy_button_ok := await _test_mdl_editor_batch_install_copy_button()
+	if not copy_button_ok:
+		push_error("MDL editor batch install copy button test failed")
 		quit(1)
 	print("✓ MDL GameFS batch importer tests passed")
 	quit()
@@ -117,6 +123,40 @@ func _test_batch_folder_import_recursive() -> void:
 	print("✓ GameFS batch MDL folder import recursive passed")
 
 
+func _test_batch_install_copy_dry_run() -> void:
+	var install_root := _make_install_root()
+	_seed_install_models(install_root)
+	var gamefs := _build_gamefs(install_root)
+	var result := MdlGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"dry_run": true,
+		"skip_existing": false,
+	})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	assert(str(result.get("summary", "")).contains("copy to override"))
+	_cleanup(install_root)
+	print("✓ GameFS batch MDL install copy dry-run passed")
+
+
+func _test_batch_install_copy_writes_override() -> void:
+	var install_root := _make_install_root()
+	_seed_install_models(install_root)
+	var gamefs := _build_gamefs(install_root)
+	var result := MdlGamefsBatchImporter.batch_install_to_override(gamefs, {
+		"skip_existing": false,
+	})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	var override_dir := install_root.path_join("override")
+	assert(FileAccess.file_exists(override_dir.path_join("room_a.mdl")))
+	assert(FileAccess.file_exists(override_dir.path_join("room_b.mdl")))
+	assert(FileAccess.file_exists(override_dir.path_join("room_a.mdx")))
+	_cleanup(install_root)
+	print("✓ GameFS batch MDL install copy write passed")
+
+
 func _test_mdl_editor_batch_import_button() -> bool:
 	var editor := KotorMDLWorkspaceEditor.new()
 	var holder := Node.new()
@@ -128,6 +168,23 @@ func _test_mdl_editor_batch_import_button() -> bool:
 	await process_frame
 	print("✓ MDL editor batch import button passed")
 	return true
+
+
+func _test_mdl_editor_batch_install_copy_button() -> bool:
+	var editor := KotorMDLWorkspaceEditor.new()
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(editor)
+	await process_frame
+	assert(_find_button(editor, "Batch Copy Install MDL to Override...") != null)
+	holder.queue_free()
+	await process_frame
+	print("✓ MDL editor batch install copy button passed")
+	return true
+
+
+func _seed_install_models(install_root: String) -> void:
+	_seed_models(install_root.path_join("override"))
 
 
 func _make_install_root() -> String:

@@ -186,6 +186,11 @@ func _build_ui() -> void:
 	batch_export_install_btn.pressed.connect(_batch_export_install_mdl)
 	_toolbar.add_child(batch_export_install_btn)
 
+	var batch_copy_install_btn := Button.new()
+	batch_copy_install_btn.text = "Batch Copy Install MDL to Override..."
+	batch_copy_install_btn.pressed.connect(_batch_copy_install_mdl_to_override)
+	_toolbar.add_child(batch_copy_install_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -418,6 +423,23 @@ func _run_batch_export_install_mdl(gamefs: RefCounted, output_dir: String) -> vo
 	})
 	_status_text = MdlGamefsBatchExporter.format_report(result)
 	_refresh_status()
+
+
+func _batch_copy_install_mdl_to_override() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch copy."
+		_refresh_status()
+		return
+	_run_batch_copy_install_mdl_to_override(gamefs)
+
+
+func _run_batch_copy_install_mdl_to_override(gamefs: RefCounted) -> void:
+	var result := MdlGamefsBatchImporter.batch_install_to_override(gamefs, {})
+	_status_text = MdlGamefsBatchImporter.format_report(result)
+	_refresh_status()
+	if not (result.get("generated", []) as Array).is_empty():
+		_refresh_gamefs()
 
 
 func _show_preflight_dialog(preview: Dictionary) -> void:

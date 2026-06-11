@@ -2,6 +2,7 @@
 class_name BwmGamefsBatchImporter
 
 const BwmBatchExporter := preload("bwm_batch_exporter.gd")
+const BwmGamefsBatchExporter := preload("bwm_gamefs_batch_exporter.gd")
 
 
 ## Copy each `.wok` or `.bwm` in `source_dir` into override as `{resref}.wok`.
@@ -27,7 +28,39 @@ static func batch_folder_to_override(
 	return result
 
 
+## Copy indexed `.wok` resources from the install index into override.
+static func batch_install_to_override(
+		gamefs: RefCounted,
+		options: Dictionary = {}
+) -> Dictionary:
+	if gamefs == null:
+		return {"ok": false, "message": "GameFS index is unavailable for batch import."}
+
+	var override_path := _resolve_override_path(gamefs)
+	if override_path.is_empty():
+		return {"ok": false, "message": "Override folder is unavailable for batch import."}
+	if not DirAccess.dir_exists_absolute(override_path):
+		DirAccess.make_dir_recursive_absolute(override_path)
+
+	var copy_options := options.duplicate()
+	if not copy_options.has("source_filter"):
+		copy_options["source_filter"] = ""
+
+	var result := BwmGamefsBatchExporter.batch_install(gamefs, override_path, copy_options)
+	var generated: Array = result.get("generated", [])
+	var skipped: Array = result.get("skipped", [])
+	var failed: Array = result.get("failed", [])
+	result["summary"] = _format_install_copy_summary(
+		generated.size(),
+		skipped.size(),
+		failed.size(),
+	)
+	return result
+
+
 static func format_report(result: Dictionary) -> String:
+	if result.has("scanned"):
+		return BwmGamefsBatchExporter.format_report(result)
 	return BwmBatchExporter.format_report(result)
 
 
@@ -41,6 +74,14 @@ static func _resolve_override_path(gamefs: RefCounted) -> String:
 
 static func _format_summary(generated_count: int, skipped_count: int, failed_count: int) -> String:
 	return "Install batch WOK import: %d imported, %d skipped, %d failed." % [
+		generated_count,
+		skipped_count,
+		failed_count,
+	]
+
+
+static func _format_install_copy_summary(generated_count: int, skipped_count: int, failed_count: int) -> String:
+	return "Install batch WOK copy to override: %d copied, %d skipped, %d failed." % [
 		generated_count,
 		skipped_count,
 		failed_count,
