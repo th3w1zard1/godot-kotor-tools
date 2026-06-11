@@ -217,6 +217,16 @@ func _build_ui() -> void:
 	batch_folder_import_btn.pressed.connect(_batch_import_image_folder_to_override)
 	_toolbar.add_child(batch_folder_import_btn)
 
+	var batch_folder_import_dxt1_btn := Button.new()
+	batch_folder_import_dxt1_btn.text = "Batch Import Folder DXT1 to Override..."
+	batch_folder_import_dxt1_btn.pressed.connect(_batch_import_folder_dxt1_to_override)
+	_toolbar.add_child(batch_folder_import_dxt1_btn)
+
+	var batch_folder_import_dxt5_btn := Button.new()
+	batch_folder_import_dxt5_btn.text = "Batch Import Folder DXT5 to Override..."
+	batch_folder_import_dxt5_btn.pressed.connect(_batch_import_folder_dxt5_to_override)
+	_toolbar.add_child(batch_folder_import_dxt5_btn)
+
 	var save_btn := Button.new()
 	save_btn.text = "Save TPC"
 	save_btn.pressed.connect(_save_tpc)
@@ -557,6 +567,18 @@ func _run_batch_install_import(gamefs: RefCounted, encoding: String = "rgba") ->
 
 
 func _batch_import_image_folder_to_override() -> void:
+	_prompt_batch_import_folder_to_override("rgba")
+
+
+func _batch_import_folder_dxt1_to_override() -> void:
+	_prompt_batch_import_folder_to_override("dxt1")
+
+
+func _batch_import_folder_dxt5_to_override() -> void:
+	_prompt_batch_import_folder_to_override("dxt5")
+
+
+func _prompt_batch_import_folder_to_override(encoding: String) -> void:
 	var gamefs := _resolve_gamefs()
 	if gamefs == null:
 		_status_text = "Configure a valid game install before batch import."
@@ -565,11 +587,11 @@ func _batch_import_image_folder_to_override() -> void:
 	var dialog := EditorFileDialog.new()
 	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
 	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
-	dialog.title = "Select image source folder for override import"
+	dialog.title = "Select image source folder for %s override import" % encoding.to_upper()
 	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
 		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
 	dialog.dir_selected.connect(func(source_dir: String) -> void:
-		_run_batch_import_image_folder_to_override(gamefs, source_dir)
+		_run_batch_import_image_folder_to_override(gamefs, source_dir, encoding)
 		dialog.queue_free()
 	)
 	dialog.canceled.connect(dialog.queue_free)
@@ -577,8 +599,14 @@ func _batch_import_image_folder_to_override() -> void:
 	dialog.popup_centered_ratio(0.6)
 
 
-func _run_batch_import_image_folder_to_override(gamefs: RefCounted, source_dir: String) -> void:
-	var result := TpcGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir)
+func _run_batch_import_image_folder_to_override(
+		gamefs: RefCounted,
+		source_dir: String,
+		encoding: String = "rgba"
+) -> void:
+	var result := TpcGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir, {
+		"encoding": encoding,
+	})
 	_apply_batch_export_status(result, "Install batch TPC folder import finished.")
 	if not (result.get("generated", []) as Array).is_empty():
 		_refresh_gamefs()
