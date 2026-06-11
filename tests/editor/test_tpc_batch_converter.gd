@@ -27,6 +27,9 @@ func _run_tests() -> void:
 	_test_batch_directory()
 	_test_batch_directory_with_txi_sidecar()
 	_test_batch_directory_to_output()
+	_test_batch_directory_recursive()
+	_test_batch_directory_to_output_recursive()
+	_test_batch_directory_to_output_duplicate_resref()
 	var button_ok := await _test_tpc_editor_batch_buttons()
 	_cleanup()
 	if not button_ok:
@@ -204,6 +207,59 @@ func _test_batch_directory_to_output() -> void:
 	assert(FileAccess.file_exists(output_dir.path_join("tex_out.tpc")))
 	assert(not FileAccess.file_exists(source_dir.path_join("tex_out.tpc")))
 	print("✓ TPC batch directory to output passed")
+
+
+func _test_batch_directory_recursive() -> void:
+	var batch_dir := _test_root.path_join("batch_recursive")
+	var nested := batch_dir.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+
+	_write_png(batch_dir.path_join("root_tex.png"), 8, 8)
+	_write_png(nested.path_join("nested_tex.png"), 4, 4)
+
+	var batch := TpcBatchConverter.batch_directory(batch_dir, {"recursive": true})
+	assert(batch.get("ok", false))
+	assert(int((batch.get("generated", []) as Array).size()) == 2)
+	assert(FileAccess.file_exists(batch_dir.path_join("root_tex.tpc")))
+	assert(FileAccess.file_exists(nested.path_join("nested_tex.tpc")))
+	print("✓ TPC batch directory recursive passed")
+
+
+func _test_batch_directory_to_output_recursive() -> void:
+	var source_dir := _test_root.path_join("recursive_source")
+	var output_dir := _test_root.path_join("recursive_output")
+	var nested := source_dir.path_join("child")
+	DirAccess.make_dir_recursive_absolute(nested)
+	DirAccess.make_dir_recursive_absolute(output_dir)
+
+	_write_png(source_dir.path_join("flat_tex.png"), 8, 8)
+	_write_png(nested.path_join("nested_tex.png"), 4, 4)
+
+	var batch := TpcBatchConverter.batch_directory_to_output(source_dir, output_dir, {"recursive": true})
+	assert(batch.get("ok", false))
+	assert(int((batch.get("generated", []) as Array).size()) == 2)
+	assert(FileAccess.file_exists(output_dir.path_join("flat_tex.tpc")))
+	assert(FileAccess.file_exists(output_dir.path_join("nested_tex.tpc")))
+	print("✓ TPC batch directory to output recursive passed")
+
+
+func _test_batch_directory_to_output_duplicate_resref() -> void:
+	var source_dir := _test_root.path_join("duplicate_source")
+	var output_dir := _test_root.path_join("duplicate_output")
+	DirAccess.make_dir_recursive_absolute(source_dir.path_join("a"))
+	DirAccess.make_dir_recursive_absolute(source_dir.path_join("b"))
+	DirAccess.make_dir_recursive_absolute(output_dir)
+
+	_write_png(source_dir.path_join("a").path_join("same.png"), 8, 8)
+	_write_png(source_dir.path_join("b").path_join("same.png"), 4, 4)
+
+	var batch := TpcBatchConverter.batch_directory_to_output(source_dir, output_dir, {"recursive": true})
+	var generated: Array = batch.get("generated", [])
+	var failed: Array = batch.get("failed", [])
+	assert(generated.size() == 1)
+	assert(failed.size() == 1)
+	assert(str((failed[0] as Dictionary).get("message", "")).contains("Duplicate resref"))
+	print("✓ TPC batch directory duplicate resref passed")
 
 
 func _test_batch_directory() -> void:

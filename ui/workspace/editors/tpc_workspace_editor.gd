@@ -381,7 +381,10 @@ func _prompt_batch_convert_directory(encoding: String, title: String) -> void:
 
 
 func _run_batch_convert(dir_path: String, encoding: String = "rgba") -> void:
-	var result := TpcBatchConverter.batch_directory(dir_path, {"encoding": encoding})
+	var result := TpcBatchConverter.batch_directory(dir_path, {
+		"encoding": encoding,
+		"recursive": true,
+	})
 	_status_text = str(result.get("summary", "Batch TPC finished."))
 	var failed: Array = result.get("failed", [])
 	if not failed.is_empty():
@@ -820,6 +823,7 @@ func _run_batch_import_image_folder_to_override(
 ) -> void:
 	var result := TpcGamefsBatchImporter.batch_folder_to_override(gamefs, source_dir, {
 		"encoding": encoding,
+		"recursive": true,
 	})
 	_apply_batch_export_status(result, "Install batch TPC folder import finished.")
 	if not (result.get("generated", []) as Array).is_empty():

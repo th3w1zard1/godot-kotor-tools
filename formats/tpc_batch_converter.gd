@@ -1,6 +1,7 @@
 ## Batch TGA/PNG to TPC conversion — RGBA or DXT encode for folder workflows.
 class_name TpcBatchConverter
 
+const BatchDirectoryScanner := preload("batch_directory_scanner.gd")
 const TPCReader := preload("tpc_reader.gd")
 const TPCWriter := preload("tpc_writer.gd")
 
@@ -96,13 +97,14 @@ static func attach_txi_sidecar(
 	return TPCWriter.append_txi_bytes(tpc_bytes, txi_bytes)
 
 
-## Scan a flat directory for `.png` and `.tga` files and write matching `.tpc` files.
-## Options: `skip_existing` (bool), `alpha_test` (float), `encoding` (`rgba`, `dxt1`, `dxt3`, `dxt5`).
+## Scan a directory for `.png` and `.tga` files and write matching `.tpc` files.
+## Options: `skip_existing` (bool), `alpha_test` (float), `encoding` (`rgba`, `dxt1`, `dxt3`, `dxt5`), `recursive` (bool).
 static func batch_directory(
 		dir_path: String,
 		options: Dictionary = {}
 ) -> Dictionary:
 	var skip_existing := bool(options.get("skip_existing", true))
+	var recursive := bool(options.get("recursive", false))
 	var convert_options := {
 		"alpha_test": float(options.get("alpha_test", 0.0)),
 		"encoding": str(options.get("encoding", "rgba")).to_lower(),
@@ -111,26 +113,16 @@ static func batch_directory(
 	if dir_path.is_empty() or not DirAccess.dir_exists_absolute(dir_path):
 		return {"ok": false, "message": "Directory not found: %s" % dir_path}
 
-	var dir := DirAccess.open(dir_path)
-	if dir == null:
-		return {"ok": false, "message": "Failed to open directory: %s" % dir_path}
-
-	dir.list_dir_begin()
+	var image_paths := BatchDirectoryScanner.list_files(
+		dir_path,
+		PackedStringArray(SUPPORTED_EXTENSIONS),
+		recursive
+	)
 	var generated: Array[Dictionary] = []
 	var skipped: Array[Dictionary] = []
 	var failed: Array[Dictionary] = []
 
-	while true:
-		var entry_name := dir.get_next()
-		if entry_name.is_empty():
-			break
-		if dir.current_is_dir():
-			continue
-		var extension := entry_name.get_extension().to_lower()
-		if extension not in SUPPORTED_EXTENSIONS:
-			continue
-
-		var image_path := dir_path.path_join(entry_name)
+	for image_path in image_paths:
 		var tpc_path := _tpc_path_for_image(image_path)
 		if skip_existing and FileAccess.file_exists(tpc_path):
 			skipped.append({"image_path": image_path, "tpc_path": tpc_path, "reason": "exists"})
@@ -161,8 +153,6 @@ static func batch_directory(
 			"encoding": str(result.get("encoding", convert_options.get("encoding", "rgba"))),
 		})
 
-	dir.list_dir_end()
-
 	return {
 		"ok": failed.is_empty() or not generated.is_empty(),
 		"generated": generated,
@@ -172,8 +162,8 @@ static func batch_directory(
 	}
 
 
-## Scan a flat source directory and write `{resref}.tpc` files into `output_dir`.
-## Options: `skip_existing`, `dry_run`, `alpha_test`, `encoding`, `include_txi_sidecar`.
+## Scan a source directory and write `{resref}.tpc` files into `output_dir`.
+## Options: `skip_existing`, `dry_run`, `alpha_test`, `encoding`, `include_txi_sidecar`, `recursive`.
 static func batch_directory_to_output(
 		source_dir: String,
 		output_dir: String,
@@ -181,6 +171,7 @@ static func batch_directory_to_output(
 ) -> Dictionary:
 	var skip_existing := bool(options.get("skip_existing", true))
 	var dry_run := bool(options.get("dry_run", false))
+	var recursive := bool(options.get("recursive", false))
 	var convert_options := {
 		"alpha_test": float(options.get("alpha_test", 0.0)),
 		"encoding": str(options.get("encoding", "rgba")).to_lower(),
@@ -192,27 +183,28 @@ static func batch_directory_to_output(
 	if output_dir.is_empty() or not DirAccess.dir_exists_absolute(output_dir):
 		return {"ok": false, "message": "Output directory not found: %s" % output_dir}
 
-	var dir := DirAccess.open(source_dir)
-	if dir == null:
-		return {"ok": false, "message": "Failed to open source directory: %s" % source_dir}
-
-	dir.list_dir_begin()
+	var image_paths := BatchDirectoryScanner.list_files(
+		source_dir,
+		PackedStringArray(SUPPORTED_EXTENSIONS),
+		recursive
+	)
 	var generated: Array[Dictionary] = []
 	var skipped: Array[Dictionary] = []
 	var failed: Array[Dictionary] = []
+	var seen_resrefs: Dictionary = {}
 
-	while true:
-		var entry_name := dir.get_next()
-		if entry_name.is_empty():
-			break
-		if dir.current_is_dir():
+	for image_path in image_paths:
+		var resref := image_path.get_file().get_basename()
+		if recursive and seen_resrefs.has(resref):
+			failed.append({
+				"resref": resref,
+				"image_path": image_path,
+				"tpc_path": output_dir.path_join("%s.tpc" % resref),
+				"message": "Duplicate resref across subfolders: %s" % resref,
+			})
 			continue
-		var extension := entry_name.get_extension().to_lower()
-		if extension not in SUPPORTED_EXTENSIONS:
-			continue
+		seen_resrefs[resref] = image_path
 
-		var resref := entry_name.get_basename()
-		var image_path := source_dir.path_join(entry_name)
 		var tpc_path := output_dir.path_join("%s.tpc" % resref)
 		if skip_existing and FileAccess.file_exists(tpc_path):
 			skipped.append({
@@ -261,8 +253,6 @@ static func batch_directory_to_output(
 			"encoding": str(result.get("encoding", convert_options.get("encoding", "rgba"))),
 			"txi_attached": bool(result.get("txi_attached", false)),
 		})
-
-	dir.list_dir_end()
 
 	return {
 		"ok": failed.is_empty() or not generated.is_empty(),

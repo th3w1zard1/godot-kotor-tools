@@ -27,6 +27,7 @@ func _run_tests() -> void:
 	_test_batch_folder_import_writes_dxt1()
 	_test_batch_folder_import_writes_dxt3()
 	_test_batch_folder_import_writes_dxt5()
+	_test_batch_folder_import_recursive()
 	_test_batch_folder_import_txi_sidecar()
 	_test_batch_folder_skip_existing()
 	var button_ok := await _test_tpc_editor_batch_install_import_buttons()
@@ -232,6 +233,27 @@ func _test_batch_folder_import_writes_dxt5() -> void:
 	_cleanup(install_root)
 	_cleanup(source_root)
 	print("✓ GameFS batch TPC folder import DXT5 passed")
+
+
+func _test_batch_folder_import_recursive() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	var nested := source_root.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+	_write_image(source_root.path_join("tex_root.png"), 8, 8)
+	_write_image(nested.path_join("tex_nested.png"), 4, 4)
+	var gamefs := _build_gamefs(install_root)
+
+	var result := TpcGamefsBatchImporter.batch_folder_to_override(gamefs, source_root, {
+		"recursive": true,
+	})
+	assert(result.get("ok", false))
+	var override_dir := install_root.path_join("override")
+	assert(FileAccess.file_exists(override_dir.path_join("tex_root.tpc")))
+	assert(FileAccess.file_exists(override_dir.path_join("tex_nested.tpc")))
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch TPC folder import recursive passed")
 
 
 func _test_batch_folder_import_txi_sidecar() -> void:
