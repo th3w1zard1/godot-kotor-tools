@@ -232,7 +232,9 @@ func _batch_convert_images_to_tpc() -> void:
 		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
 	dialog.dir_selected.connect(func(dir_path: String) -> void:
 		_run_batch_convert(dir_path)
+		dialog.queue_free()
 	)
+	dialog.canceled.connect(dialog.queue_free)
 	EditorInterface.get_editor_main_screen().add_child(dialog)
 	dialog.popup_centered_ratio(0.6)
 
