@@ -147,6 +147,16 @@ func _build_ui() -> void:
 	import_image_btn.pressed.connect(_import_image_as_tpc)
 	_toolbar.add_child(import_image_btn)
 
+	var import_image_dxt1_btn := Button.new()
+	import_image_dxt1_btn.text = "Import TGA/PNG as DXT1..."
+	import_image_dxt1_btn.pressed.connect(_import_image_as_dxt1)
+	_toolbar.add_child(import_image_dxt1_btn)
+
+	var import_image_dxt5_btn := Button.new()
+	import_image_dxt5_btn.text = "Import TGA/PNG as DXT5..."
+	import_image_dxt5_btn.pressed.connect(_import_image_as_dxt5)
+	_toolbar.add_child(import_image_dxt5_btn)
+
 	var reencode_dxt1_btn := Button.new()
 	reencode_dxt1_btn.text = "Re-encode DXT1..."
 	reencode_dxt1_btn.pressed.connect(_reencode_loaded_as_dxt1)
@@ -313,16 +323,36 @@ func _run_batch_convert(dir_path: String, encoding: String = "rgba") -> void:
 
 
 func _import_image_as_tpc() -> void:
+	_prompt_import_image_as_tpc(TPCReader.ENC_RGBA, "Import Image as TPC")
+
+
+func _import_image_as_dxt1() -> void:
+	_prompt_import_image_as_tpc(TPCReader.ENC_DXT1, "Import Image as DXT1 TPC")
+
+
+func _import_image_as_dxt5() -> void:
+	_prompt_import_image_as_tpc(TPCReader.ENC_DXT5, "Import Image as DXT5 TPC")
+
+
+func _prompt_import_image_as_tpc(encoding: int, title: String) -> void:
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
 		PackedStringArray(["*.tga ; Targa Image", "*.png ; PNG Image"]),
-		"Import Image as TPC"
+		title
 	)
 	dialog.file_selected.connect(func(path: String) -> void:
-		_load_image_as_rgba_tpc(path)
+		_load_image_as_tpc(path, encoding)
 	)
 	EditorInterface.get_editor_main_screen().add_child(dialog)
 	dialog.popup_centered_ratio(0.6)
+
+
+func load_image_as_dxt1(path: String) -> bool:
+	return _load_image_as_tpc(path, TPCReader.ENC_DXT1)
+
+
+func load_image_as_dxt5(path: String) -> bool:
+	return _load_image_as_tpc(path, TPCReader.ENC_DXT5)
 
 
 func reencode_loaded_as_dxt1() -> bool:
@@ -380,38 +410,63 @@ func _reencode_loaded_image(encoding: int) -> bool:
 
 
 func _load_image_as_rgba_tpc(path: String) -> void:
-	var image := Image.new()
-	var extension := path.get_extension().to_lower()
-	var load_error := ERR_FILE_UNRECOGNIZED
-	match extension:
-		"png":
-			load_error = image.load_png(path)
-		"tga":
-			load_error = image.load(path)
-		_:
-			load_error = image.load(path)
-	if load_error != OK:
-		_status_text = "Failed to load image: %s" % path.get_file()
-		_refresh_status()
-		return
+	_load_image_as_tpc(path, TPCReader.ENC_RGBA)
+
+
+func _load_image_as_tpc(path: String, encoding: int) -> bool:
+	var image := _load_image_file(path)
+	if image == null:
+		return false
 
 	var alpha_test := float(_metadata.get("alpha_test", 0.0)) if _metadata.get("ok", false) else 0.0
-	var bytes := TPCWriter.serialize_rgba(image, alpha_test)
+	var bytes := PackedByteArray()
+	var encoding_label := "TPC"
+	match encoding:
+		TPCReader.ENC_RGBA:
+			bytes = TPCWriter.serialize_rgba(image, alpha_test)
+			encoding_label = "RGBA TPC"
+		TPCReader.ENC_DXT1:
+			bytes = TPCWriter.serialize_dxt1(image, alpha_test)
+			encoding_label = "DXT1 TPC"
+		TPCReader.ENC_DXT5:
+			bytes = TPCWriter.serialize_dxt5(image, alpha_test)
+			encoding_label = "DXT5 TPC"
+		_:
+			_status_text = "Unsupported TPC encoding for import."
+			_refresh_status()
+			return false
+
 	if bytes.is_empty():
-		_status_text = "Failed to encode RGBA TPC from %s" % path.get_file()
+		_status_text = "Failed to encode %s from %s" % [encoding_label, path.get_file()]
 		_refresh_status()
-		return
+		return false
 
 	_bytes = bytes
 	_metadata = TPCReader.read_metadata(_bytes)
+	if not _metadata.get("ok", false):
+		_status_text = "Imported TPC failed validation for %s" % path.get_file()
+		_refresh_status()
+		return false
+
 	if not _file_name.is_empty():
 		_file_name = _file_name.get_basename() + ".tpc"
 	else:
 		_file_name = path.get_file().get_basename() + ".tpc"
 	_dirty = true
-	_status_text = "Imported %s as RGBA TPC" % path.get_file()
+	_status_text = "Imported %s as %s" % [path.get_file(), encoding_label]
 	_register_controller_document()
 	_refresh_view()
+	return int(_metadata.get("encoding", -1)) == encoding
+
+
+func _load_image_file(path: String) -> Image:
+	var image := Image.new()
+	var load_error := image.load(path)
+	if load_error != OK:
+		_status_text = "Failed to load image: %s" % path.get_file()
+		_refresh_status()
+		return null
+	return image
 
 
 func _batch_export_tga() -> void:
