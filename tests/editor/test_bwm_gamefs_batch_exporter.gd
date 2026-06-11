@@ -3,6 +3,7 @@ extends SceneTree
 
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const KotorResourceBrowserPanel := preload("../../ui/workspace/panels/resource_browser_panel.gd")
+const KotorModuleDesignerWorkspaceEditor := preload("../../ui/workspace/editors/module_designer_workspace_editor.gd")
 const BWMWriter := preload("../../formats/bwm_writer.gd")
 const BwmGamefsBatchExporter := preload("../../formats/bwm_gamefs_batch_exporter.gd")
 const BwmMetadataHelper := preload("../../editor/tools/bwm_metadata_helper.gd")
@@ -23,6 +24,10 @@ func _run_tests() -> void:
 	var button_ok := await _test_resource_browser_batch_wok_button()
 	if not button_ok:
 		push_error("Resource browser batch WOK export button test failed")
+		quit(1)
+	var module_button_ok := await _test_module_designer_batch_export_install_button()
+	if not module_button_ok:
+		push_error("Module Designer batch WOK export install button test failed")
 		quit(1)
 	print("✓ BWM GameFS batch exporter tests passed")
 	quit()
@@ -112,6 +117,21 @@ func _test_resource_browser_batch_wok_button() -> bool:
 	holder.queue_free()
 	await process_frame
 	print("✓ Resource browser batch WOK export button passed")
+	return true
+
+
+func _test_module_designer_batch_export_install_button() -> bool:
+	var editor := KotorModuleDesignerWorkspaceEditor.new()
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(editor)
+	await process_frame
+
+	var button := _find_button(editor, "Batch Export Install WOK...")
+	assert(button != null)
+	holder.queue_free()
+	await process_frame
+	print("✓ Module Designer batch WOK export install button passed")
 	return true
 
 

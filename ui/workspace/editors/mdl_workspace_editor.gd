@@ -3,6 +3,7 @@ extends "./kotor_workspace_editor.gd"
 class_name KotorMDLWorkspaceEditor
 
 const MdlBatchExporter := preload("../../../formats/mdl_batch_exporter.gd")
+const MdlGamefsBatchExporter := preload("../../../formats/mdl_gamefs_batch_exporter.gd")
 const MdlGamefsBatchImporter := preload("../../../formats/mdl_gamefs_batch_importer.gd")
 const MdlModelMetadataHelper := preload("../../../editor/tools/mdl_model_metadata_helper.gd")
 const MdlPreviewViewport := preload("../panels/mdl_preview_viewport.gd")
@@ -179,6 +180,11 @@ func _build_ui() -> void:
 	batch_import_btn.text = "Batch Import MDL Folder to Override..."
 	batch_import_btn.pressed.connect(_batch_import_mdl_folder_to_override)
 	_toolbar.add_child(batch_import_btn)
+
+	var batch_export_install_btn := Button.new()
+	batch_export_install_btn.text = "Batch Export Install MDL..."
+	batch_export_install_btn.pressed.connect(_batch_export_install_mdl)
+	_toolbar.add_child(batch_export_install_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -383,6 +389,35 @@ func _run_batch_import_mdl_folder_to_override(gamefs: RefCounted, source_dir: St
 	_refresh_status()
 	if not (result.get("generated", []) as Array).is_empty():
 		_refresh_gamefs()
+
+
+func _batch_export_install_mdl() -> void:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null:
+		_status_text = "Configure a valid game install before batch export."
+		_refresh_status()
+		return
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Batch Export MDL from install index"
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(output_dir: String) -> void:
+		_run_batch_export_install_mdl(gamefs, output_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_export_install_mdl(gamefs: RefCounted, output_dir: String) -> void:
+	var result := MdlGamefsBatchExporter.batch_install(gamefs, output_dir, {
+		"source_filter": "override",
+	})
+	_status_text = MdlGamefsBatchExporter.format_report(result)
+	_refresh_status()
 
 
 func _show_preflight_dialog(preview: Dictionary) -> void:
