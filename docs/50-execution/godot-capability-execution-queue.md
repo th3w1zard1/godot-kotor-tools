@@ -131,12 +131,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q115 | TPC recursive batch directory scan | `BatchDirectoryScanner` + `recursive` option on `TpcBatchConverter`; editor batch convert/folder import enable recursion; headless scanner/batch tests. |
 | Q116 | WAV recursive batch directory scan | `recursive` on `WavBatchExporter` / `WavBatchConverter`; WAV editor folder batch actions enable recursion; headless WAV batch/importer tests. |
 | Q117 | BWM/MDL recursive batch directory scan | `recursive` on `BwmBatchExporter` / `MdlBatchExporter`; Module Designer + Model Editor folder batch actions enable recursion; headless BWM/MDL batch/importer tests. |
+| Q118 | LIP/TPC export recursive batch directory scan | `recursive` on `LipBatchGenerator` / `TpcBatchExporter`; LIP + TPC editor folder batch actions enable recursion; headless LIP/TPC export tests. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q117 shipped recursive BWM/MDL batch scan. | Next: module/area designer parity wave or next matrix backlog item. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q118 shipped recursive LIP/TPC export batch scan. | Next: module/area designer parity wave or next matrix backlog item. |
 
 ## Next Slices (Deferred)
 

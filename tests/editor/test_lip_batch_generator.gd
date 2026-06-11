@@ -15,6 +15,7 @@ func _run_tests() -> void:
 	_test_invalid_wav()
 	_test_adpcm_rejected()
 	_test_batch_directory()
+	_test_batch_directory_recursive()
 	print("✓ LIP batch generator tests passed")
 	quit()
 
@@ -84,6 +85,24 @@ func _test_batch_directory() -> void:
 	print("✓ LIP batch directory passed")
 
 
+func _test_batch_directory_recursive() -> void:
+	var root := ProjectSettings.globalize_path(
+		"user://lip_batch_recursive_test_%d" % Time.get_ticks_usec()
+	)
+	var nested := root.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+	_write_file(root.path_join("root.wav"), _build_pcm_wav(8000, 1, 4000))
+	_write_file(nested.path_join("nested.wav"), _build_pcm_wav(8000, 1, 8000))
+
+	var batch := LipBatchGenerator.batch_directory(root, {"recursive": true})
+	assert(batch.get("ok", false))
+	assert(int((batch.get("generated", []) as Array).size()) == 2)
+	assert(FileAccess.file_exists(root.path_join("root.lip")))
+	assert(FileAccess.file_exists(nested.path_join("nested.lip")))
+	_remove_tree(root)
+	print("✓ LIP batch directory recursive passed")
+
+
 func _write_file(path: String, bytes: PackedByteArray) -> void:
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	assert(file != null)
@@ -102,8 +121,13 @@ func _remove_tree(path: String) -> void:
 		var entry := dir.get_next()
 		if entry.is_empty():
 			break
-		if not dir.current_is_dir():
-			DirAccess.remove_absolute(path.path_join(entry))
+		if entry == "." or entry == "..":
+			continue
+		var full := path.path_join(entry)
+		if dir.current_is_dir():
+			_remove_tree(full)
+		else:
+			DirAccess.remove_absolute(full)
 	dir.list_dir_end()
 	DirAccess.remove_absolute(path)
 

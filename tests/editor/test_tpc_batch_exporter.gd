@@ -18,6 +18,7 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_batch_directory_dry_run()
 	_test_skip_existing()
+	_test_batch_directory_recursive()
 	var button_ok := await _test_tpc_editor_batch_export_button()
 	_cleanup()
 	if not button_ok:
@@ -59,6 +60,29 @@ func _test_skip_existing() -> void:
 	var generated: Array = batch.get("generated", [])
 	assert(generated.is_empty())
 	print("✓ TPC batch skip-existing passed")
+
+
+func _test_batch_directory_recursive() -> void:
+	var batch_dir := _test_root.path_join("recursive")
+	var nested := batch_dir.path_join("nested")
+	DirAccess.make_dir_recursive_absolute(nested)
+	_write_tpc(batch_dir.path_join("root.tpc"))
+	_write_tpc(nested.path_join("nested.tpc"))
+
+	var batch := TpcBatchExporter.batch_directory(batch_dir, {
+		"dry_run": true,
+		"pykotor_cli_path": "/bin/true",
+		"recursive": true,
+	})
+	assert(batch.get("ok", false))
+	var generated: Array = batch.get("generated", [])
+	assert(generated.size() == 2)
+	var paths: Array[String] = []
+	for raw_record in generated:
+		paths.append(str((raw_record as Dictionary).get("tga_path", "")))
+	assert(paths.has(batch_dir.path_join("root.tga")))
+	assert(paths.has(nested.path_join("nested.tga")))
+	print("✓ TPC batch directory recursive passed")
 
 
 func _test_tpc_editor_batch_export_button() -> bool:

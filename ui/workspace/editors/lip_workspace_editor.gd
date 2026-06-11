@@ -457,7 +457,9 @@ func _batch_generate_lip() -> void:
 
 
 func _run_batch_generate(dir_path: String) -> void:
-	var result := LipBatchGenerator.batch_directory(dir_path)
+	var result := LipBatchGenerator.batch_directory(dir_path, {
+		"recursive": true,
+	})
 	_status_text = str(result.get("summary", "Batch LIP finished."))
 	var failed: Array = result.get("failed", [])
 	if not failed.is_empty():

@@ -734,6 +734,7 @@ func _batch_export_install_tga() -> void:
 func _run_batch_export(dir_path: String) -> void:
 	_apply_batch_export_status(TpcBatchExporter.batch_directory(dir_path, {
 		"pykotor_cli_path": _resolve_pykotor_cli_path(),
+		"recursive": true,
 	}), "Batch TGA export finished.")
 
 

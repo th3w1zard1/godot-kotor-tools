@@ -1,11 +1,13 @@
 ## Batch LIP generation from WAV files — minimal duration-aligned placeholders.
 class_name LipBatchGenerator
 
+const BatchDirectoryScanner := preload("batch_directory_scanner.gd")
 const WavMetadata := preload("wav_metadata.gd")
 const LIPParser := preload("lip_parser.gd")
 const LIPWriter := preload("lip_writer.gd")
 
 const DEFAULT_SHAPE := 0  # NEUTRAL
+const SUPPORTED_EXTENSIONS := ["wav"]
 
 
 ## Build LIP bytes from WAV bytes using duration metadata and placeholder keyframes.
@@ -69,36 +71,29 @@ static func generate_from_wav_file(
 	return result
 
 
-## Scan a flat directory for `.wav` files and write matching `.lip` files.
+## Scan a directory for `.wav` files and write matching `.lip` files beside each source.
+## Options: `skip_existing`, `default_shape`, `recursive`.
 static func batch_directory(
 		dir_path: String,
 		options: Dictionary = {}
 ) -> Dictionary:
 	var skip_existing := bool(options.get("skip_existing", true))
 	var default_shape := int(options.get("default_shape", DEFAULT_SHAPE))
+	var recursive := bool(options.get("recursive", false))
 
 	if dir_path.is_empty() or not DirAccess.dir_exists_absolute(dir_path):
 		return {"ok": false, "message": "Directory not found: %s" % dir_path}
 
-	var dir := DirAccess.open(dir_path)
-	if dir == null:
-		return {"ok": false, "message": "Failed to open directory: %s" % dir_path}
-
-	dir.list_dir_begin()
+	var wav_paths := BatchDirectoryScanner.list_files(
+		dir_path,
+		PackedStringArray(SUPPORTED_EXTENSIONS),
+		recursive
+	)
 	var generated: Array[Dictionary] = []
 	var skipped: Array[Dictionary] = []
 	var failed: Array[Dictionary] = []
 
-	while true:
-		var entry_name := dir.get_next()
-		if entry_name.is_empty():
-			break
-		if dir.current_is_dir():
-			continue
-		if entry_name.get_extension().to_lower() != "wav":
-			continue
-
-		var wav_path := dir_path.path_join(entry_name)
+	for wav_path in wav_paths:
 		var lip_path := _lip_path_for_wav(wav_path)
 		if skip_existing and FileAccess.file_exists(lip_path):
 			skipped.append({"wav_path": wav_path, "lip_path": lip_path, "reason": "exists"})
@@ -127,8 +122,6 @@ static func batch_directory(
 			"duration": float(result.get("duration", 0.0)),
 		})
 
-	dir.list_dir_end()
-
 	return {
 		"ok": failed.is_empty() or not generated.is_empty(),
 		"generated": generated,
@@ -139,7 +132,7 @@ static func batch_directory(
 
 
 static func _lip_path_for_wav(wav_path: String) -> String:
-	return "%s.lip" % wav_path.get_basename()
+	return wav_path.get_base_dir().path_join("%s.lip" % wav_path.get_file().get_basename())
 
 
 static func _write_bytes(path: String, bytes: PackedByteArray) -> Error:

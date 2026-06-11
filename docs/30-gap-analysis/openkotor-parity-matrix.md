@@ -152,7 +152,8 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 85. **Q115 (shipped 2026-06-10):** TPC recursive batch directory scan — `BatchDirectoryScanner` + `recursive` on `TpcBatchConverter`; see `docs/plans/2026-06-10-047-feat-q115-tpc-recursive-batch-scan-plan.md`.
 86. **Q116 (shipped 2026-06-10):** WAV recursive batch directory scan — `recursive` on `WavBatchExporter` / `WavBatchConverter`; see `docs/plans/2026-06-10-048-feat-q116-wav-recursive-batch-scan-plan.md`.
 87. **Q117 (shipped 2026-06-10):** BWM/MDL recursive batch directory scan — `recursive` on `BwmBatchExporter` / `MdlBatchExporter`; see `docs/plans/2026-06-10-049-feat-q117-bwm-mdl-recursive-batch-scan-plan.md`.
-87. Module/area designer parity wave (further model/walkmesh tooling).
+88. **Q118 (shipped 2026-06-10):** LIP/TPC export recursive batch directory scan — `recursive` on `LipBatchGenerator` / `TpcBatchExporter`; see `docs/plans/2026-06-10-050-feat-q118-lip-tpc-export-recursive-batch-scan-plan.md`.
+89. Module/area designer parity wave (further model/walkmesh tooling).
 
 ## Evidence Notes
 

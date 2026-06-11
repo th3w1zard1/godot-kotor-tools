@@ -1,10 +1,14 @@
 ## Batch TPC to TGA export via PyKotor texture-convert CLI bridge.
 class_name TpcBatchExporter
 
+const BatchDirectoryScanner := preload("batch_directory_scanner.gd")
 const KotorMediaToolBridge := preload("../resources/scripts/kotor_media_tool_bridge.gd")
 
+const SUPPORTED_EXTENSIONS := ["tpc"]
 
-## Export each `.tpc` in a flat directory to a matching `.tga` via texture-convert.
+
+## Export each `.tpc` in a directory to a matching `.tga` via texture-convert.
+## Options: `skip_existing`, `dry_run`, `pykotor_cli_path`, `texture_format`, `recursive`.
 static func batch_directory(
 		dir_path: String,
 		options: Dictionary = {}
@@ -13,29 +17,21 @@ static func batch_directory(
 	var dry_run := bool(options.get("dry_run", false))
 	var pykotor_cli_path := str(options.get("pykotor_cli_path", "")).strip_edges()
 	var texture_format := str(options.get("texture_format", "")).strip_edges()
+	var recursive := bool(options.get("recursive", false))
 
 	if dir_path.is_empty() or not DirAccess.dir_exists_absolute(dir_path):
 		return {"ok": false, "message": "Directory not found: %s" % dir_path}
 
-	var dir := DirAccess.open(dir_path)
-	if dir == null:
-		return {"ok": false, "message": "Failed to open directory: %s" % dir_path}
-
-	dir.list_dir_begin()
+	var tpc_paths := BatchDirectoryScanner.list_files(
+		dir_path,
+		PackedStringArray(SUPPORTED_EXTENSIONS),
+		recursive
+	)
 	var generated: Array[Dictionary] = []
 	var skipped: Array[Dictionary] = []
 	var failed: Array[Dictionary] = []
 
-	while true:
-		var entry_name := dir.get_next()
-		if entry_name.is_empty():
-			break
-		if dir.current_is_dir():
-			continue
-		if entry_name.get_extension().to_lower() != "tpc":
-			continue
-
-		var tpc_path := dir_path.path_join(entry_name)
+	for tpc_path in tpc_paths:
 		var tga_path := _tga_path_for_tpc(tpc_path)
 		if skip_existing and FileAccess.file_exists(tga_path):
 			skipped.append({"tpc_path": tpc_path, "tga_path": tga_path, "reason": "exists"})
@@ -55,8 +51,6 @@ static func batch_directory(
 			"tga_path": tga_path,
 			"dry_run": dry_run,
 		})
-
-	dir.list_dir_end()
 
 	return {
 		"ok": failed.is_empty() or not generated.is_empty(),
@@ -100,7 +94,7 @@ static func _export_single(
 
 
 static func _tga_path_for_tpc(tpc_path: String) -> String:
-	return "%s.tga" % tpc_path.get_basename()
+	return tpc_path.get_base_dir().path_join("%s.tga" % tpc_path.get_file().get_basename())
 
 
 static func _format_summary(generated_count: int, skipped_count: int, failed_count: int) -> String:
