@@ -147,6 +147,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q128c2 | DLG delete-all-references *(PR #119)* | **Delete References** toolbar + detail panel + tree context menu call `remove_all_references_to_node` with topology undo; headless `test_dlg_workspace_editor.gd` delete-references tests. |
 | Q128c3 | DLG graph port drag-connect *(PR #119)* | `connection_link_requested` on graph view calls `add_node_link` with topology undo; headless `test_dlg_workspace_editor.gd` + `test_dlg_graph_layout.gd` graph-link tests. |
 | Q128c4 | DLG orphan restore UX *(PR #119)* | Double-click orphan restore, tree context **Link Selected Orphan Here**, detail-panel linkable orphans, `find_linkable_orphans_for_owner`; headless orphan-restore tests. |
+| Q133 | MDL write-back phase 0 | `MDLWriter` passthrough + `MdlResource` + pipeline `mdl` serialize; MDL editor export/install via typed resource. | Headless `test_mdl_writer.gd`. | Geometry rebuild deferred to Q134+. |
 
 > **Branch note:** Q124–Q128c4 complete the Q128 child plan on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)). Merge to `main` to drop `*(PR #119)*` qualifiers. `main` @ Q123 remains merge base until landed.
 
@@ -154,7 +155,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q129 | Post-Q128 parity wave planning | Define next Holocron/PyKotor slices after DLG graph depth (MDL write-back, savegame, LTR, NSS IDE). | Q128c4 shipped; PR #119 ready for merge. | See `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` deferred tier. |
+| Q134 | ERF member add foundations | Add-member workflow in Archive Browser (scope per parity matrix). | Q133 shipped. | Deferred tier. |
 
 ## Next Slices (Deferred)
 

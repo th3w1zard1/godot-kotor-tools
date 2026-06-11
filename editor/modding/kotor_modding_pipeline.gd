@@ -22,6 +22,8 @@ const GFFCompare := preload("../../formats/gff_compare.gd")
 const SSFCompare := preload("../../formats/ssf_compare.gd")
 const LIPCompare := preload("../../formats/lip_compare.gd")
 const TPCCompare := preload("../../formats/tpc_compare.gd")
+const MDLWriter := preload("../../formats/mdl_writer.gd")
+const MdlResource := preload("../../resources/mdl_resource.gd")
 const MdlCompare := preload("../../formats/mdl_compare.gd")
 const BwmCompare := preload("../../formats/bwm_compare.gd")
 const WavCompare := preload("../../formats/wav_compare.gd")
@@ -381,6 +383,33 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"type": "bytes",
 					"payload": tpc_bytes,
 					"size": tpc_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+		"mdl":
+			if payload is MdlResource:
+				var mdl_resource := payload as MdlResource
+				var mdl_bytes := MDLWriter.serialize_passthrough(
+					mdl_resource.mdl_bytes,
+					mdl_resource.mdx_bytes
+				)
+				if mdl_bytes.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": mdl_bytes,
+					"size": mdl_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+			if payload is PackedByteArray:
+				var raw_mdl_bytes := MDLWriter.serialize_passthrough(payload as PackedByteArray)
+				if raw_mdl_bytes.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": raw_mdl_bytes,
+					"size": raw_mdl_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
 		"are", "dlg", "gff", "git", "ifo", "jrl", "pth", "utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw":
