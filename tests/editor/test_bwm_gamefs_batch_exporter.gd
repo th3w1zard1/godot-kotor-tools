@@ -37,6 +37,10 @@ func _run_tests() -> void:
 	if not compare_button_ok:
 		push_error("Module Designer compare walkmesh button test failed")
 		quit(1)
+	var export_compare_button_ok := await _test_module_designer_export_compare_report_button()
+	if not export_compare_button_ok:
+		push_error("Module Designer export compare report button test failed")
+		quit(1)
 	print("✓ BWM GameFS batch exporter tests passed")
 	quit()
 
@@ -170,6 +174,21 @@ func _test_module_designer_compare_walkmesh_button() -> bool:
 	holder.queue_free()
 	await process_frame
 	print("✓ Module Designer compare walkmesh button passed")
+	return true
+
+
+func _test_module_designer_export_compare_report_button() -> bool:
+	var editor := KotorModuleDesignerWorkspaceEditor.new()
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(editor)
+	await process_frame
+
+	var button := _find_button(editor, "Export Compare Report...")
+	assert(button != null)
+	holder.queue_free()
+	await process_frame
+	print("✓ Module Designer export compare report button passed")
 	return true
 
 

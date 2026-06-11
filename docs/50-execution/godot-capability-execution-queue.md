@@ -136,12 +136,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q120 | WOK/MDL install batch copy to override | `batch_install_to_override` on WOK/MDL GameFS batch importers; Module Designer + Model Editor one-click install-copy toolbar actions; headless importer tests. |
 | Q121 | Resource browser WOK/MDL install copy to override | Resource browser **Batch Copy Install WOK/MDL to Override...** wired to Q120 importers with GameFS refresh; headless browser button tests. |
 | Q122 | Module/MDL compare with override toolbar parity | Module Designer **Compare Walkmesh with Override...** + Model Editor **Compare MDL with Override...** via `KotorModdingPipeline.compare_gamefs_resource`; headless toolbar tests. |
+| Q123 | Module/MDL compare report export toolbar parity | **Export Compare Report...** in Module Designer + Model Editor after compare; uses `export_compare_result_to_path`; headless toolbar tests. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q122 shipped compare-with-override toolbar parity in Module Designer + Model Editor. | Next: module/area designer parity wave or next matrix backlog item. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q123 shipped compare report export toolbar parity in Module Designer + Model Editor. | Next: module/area designer parity wave or next matrix backlog item. |
 
 ## Next Slices (Deferred)
 

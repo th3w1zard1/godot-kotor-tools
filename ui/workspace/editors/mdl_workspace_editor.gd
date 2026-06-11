@@ -25,6 +25,7 @@ var _mdx_bytes: PackedByteArray = PackedByteArray()
 var _source_path := ""
 var _file_name := "model.mdl"
 var _status_text := ""
+var _last_compare_result: Dictionary = {}
 var _document_key := ""
 
 var _pending_mdl_bytes: PackedByteArray
@@ -196,6 +197,11 @@ func _build_ui() -> void:
 	compare_mdl_btn.text = "Compare MDL with Override..."
 	compare_mdl_btn.pressed.connect(_compare_mdl_with_override)
 	_toolbar.add_child(compare_mdl_btn)
+
+	var export_compare_btn := Button.new()
+	export_compare_btn.text = "Export Compare Report..."
+	export_compare_btn.pressed.connect(_export_compare_report_dialog)
+	_toolbar.add_child(export_compare_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -463,8 +469,44 @@ func _compare_mdl_with_override() -> void:
 	if gamefs.has_method("resource_type_for_extension"):
 		resource_type = int(gamefs.call("resource_type_for_extension", "mdl"))
 	var result := KotorModdingPipeline.compare_gamefs_resource(gamefs, resref, resource_type)
+	_last_compare_result = result
 	_status_text = KotorModdingPipeline.format_compare_result_text(result)
 	_refresh_status()
+
+
+func _export_compare_report_dialog() -> void:
+	if _last_compare_result.is_empty():
+		_status_text = "Run Compare MDL with Override first."
+		_refresh_status()
+		return
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var resref := _file_name.get_basename()
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_SAVE_FILE,
+		PackedStringArray(["*.txt ; Text Report"]),
+		"Export Compare Report",
+		start_dir,
+		"%s-mdl-compare-report.txt" % resref
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		var target_path := _ensure_extension(path, "txt")
+		var export_result := KotorModdingPipeline.export_compare_result_to_path(
+			target_path,
+			_last_compare_result
+		)
+		_status_text = str(export_result.get("message", "Export failed."))
+		_refresh_status()
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	if Engine.is_editor_hint():
+		EditorInterface.get_editor_main_screen().add_child(dialog)
+	else:
+		add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
 
 
 func _show_preflight_dialog(preview: Dictionary) -> void:

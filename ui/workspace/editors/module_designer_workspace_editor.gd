@@ -57,6 +57,7 @@ var _dirty := false
 var _git_dirty := false
 var _pth_dirty := false
 var _status_text := ""
+var _last_compare_result: Dictionary = {}
 var _document_key := ""
 var _module_bundle: Dictionary = {}
 
@@ -439,6 +440,11 @@ func _build_ui() -> void:
 	compare_walkmesh_btn.text = "Compare Walkmesh with Override..."
 	compare_walkmesh_btn.pressed.connect(_compare_walkmesh_with_override)
 	_toolbar.add_child(compare_walkmesh_btn)
+
+	var export_compare_btn := Button.new()
+	export_compare_btn.text = "Export Compare Report..."
+	export_compare_btn.pressed.connect(_export_compare_report_dialog)
+	_toolbar.add_child(export_compare_btn)
 
 	var install_layout_btn := Button.new()
 	install_layout_btn.text = "Install LYT to Override"
@@ -1484,8 +1490,42 @@ func _compare_walkmesh_with_override() -> void:
 		str(wok_entry.get("resref", "")),
 		int(wok_entry.get("resource_type", -1))
 	)
+	_last_compare_result = result
 	_status_text = KotorModdingPipeline.format_compare_result_text(result)
 	_refresh_status()
+
+
+func _export_compare_report_dialog() -> void:
+	if _last_compare_result.is_empty():
+		_status_text = "Run Compare Walkmesh with Override first."
+		_refresh_status()
+		return
+	var start_dir := ""
+	var editor_state := get_editor_state()
+	if editor_state != null:
+		start_dir = str(editor_state.game_path)
+	var resref := str(_last_compare_result.get("resref", _module_bundle.get("wok", {}).get("resref", "walkmesh")))
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_SAVE_FILE
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Export Compare Report"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	dialog.current_file = "%s-wok-compare-report.txt" % resref
+	dialog.add_filter("*.txt ; Text Report")
+	dialog.file_selected.connect(func(path: String) -> void:
+		var target_path := _ensure_extension(path, "txt")
+		var export_result := KotorModdingPipeline.export_compare_result_to_path(
+			target_path,
+			_last_compare_result
+		)
+		_status_text = str(export_result.get("message", "Export failed."))
+		_refresh_status()
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.7)
 
 
 func _export_walkmesh_preview_dialog() -> void:

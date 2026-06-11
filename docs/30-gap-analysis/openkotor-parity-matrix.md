@@ -157,7 +157,8 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 90. **Q120 (shipped 2026-06-10):** WOK/MDL install batch copy to override — `batch_install_to_override` + **Batch Copy Install WOK/MDL to Override...**; see `docs/plans/2026-06-10-052-feat-q120-wok-mdl-install-batch-copy-override-plan.md`.
 91. **Q121 (shipped 2026-06-10):** Resource browser WOK/MDL install copy to override — browser toolbar install-copy actions + GameFS refresh; see `docs/plans/2026-06-10-053-feat-q121-resource-browser-wok-mdl-install-copy-override-plan.md`.
 92. **Q122 (shipped 2026-06-10):** Module/MDL compare with override toolbar parity — Module Designer walkmesh compare + Model Editor MDL compare via `KotorModdingPipeline`; see `docs/plans/2026-06-10-054-feat-q122-module-mdl-compare-override-toolbar-plan.md`.
-93. Module/area designer parity wave (further model/walkmesh tooling).
+93. **Q123 (shipped 2026-06-10):** Module/MDL compare report export toolbar parity — **Export Compare Report...** in Module Designer + Model Editor via `export_compare_result_to_path`; see `docs/plans/2026-06-10-055-feat-q123-module-mdl-compare-report-export-plan.md`.
+94. Module/area designer parity wave (further model/walkmesh tooling).
 
 ## Evidence Notes
 
