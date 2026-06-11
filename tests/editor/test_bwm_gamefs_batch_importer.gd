@@ -18,6 +18,7 @@ func _run_tests() -> void:
 	_test_batch_folder_import_dry_run()
 	_test_batch_folder_import_writes_override()
 	_test_skip_existing()
+	_test_bwm_alias_import_writes_override()
 	var button_ok := await _test_module_designer_batch_import_button()
 	if not button_ok:
 		push_error("BWM GameFS batch importer toolbar test failed")
@@ -64,6 +65,24 @@ func _test_batch_folder_import_writes_override() -> void:
 	_cleanup(install_root)
 	_cleanup(source_root)
 	print("✓ GameFS batch WOK import write passed")
+
+
+func _test_bwm_alias_import_writes_override() -> void:
+	var install_root := _make_install_root()
+	var source_root := _make_source_root()
+	_seed_bwm_walkmeshes(source_root)
+	var gamefs := _build_gamefs(install_root)
+
+	var result := BwmGamefsBatchImporter.batch_folder_to_override(gamefs, source_root, {})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	var override_dir := install_root.path_join("override")
+	assert(FileAccess.file_exists(override_dir.path_join("area_a.wok")))
+	assert(FileAccess.file_exists(override_dir.path_join("area_b.wok")))
+	_cleanup(install_root)
+	_cleanup(source_root)
+	print("✓ GameFS batch BWM alias import write passed")
 
 
 func _test_skip_existing() -> void:
@@ -119,6 +138,22 @@ func _build_gamefs(install_root: String) -> RefCounted:
 	editor_state.game_path = install_root
 	editor_state.refresh_gamefs()
 	return editor_state.gamefs
+
+
+func _seed_bwm_walkmeshes(source_root: String) -> void:
+	DirAccess.make_dir_recursive_absolute(source_root)
+	var wok_a := _build_minimal_wok(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2],
+		[1]
+	)
+	var wok_b := _build_minimal_wok(
+		[Vector3(1.0, 0.0, 0.0), Vector3(3.0, 0.0, 0.0), Vector3(1.0, 2.0, 0.0)],
+		[0, 1, 2],
+		[1]
+	)
+	_write_file(source_root.path_join("area_a.bwm"), wok_a)
+	_write_file(source_root.path_join("area_b.bwm"), wok_b)
 
 
 func _seed_walkmeshes(source_root: String) -> void:

@@ -16,6 +16,9 @@ func _run_tests() -> void:
 	_test_batch_directory_dry_run()
 	_test_batch_directory_writes_wok()
 	_test_skip_existing()
+	_test_bwm_alias_dry_run()
+	_test_bwm_alias_writes_wok()
+	_test_bwm_alias_skip_existing()
 	var button_ok := await _test_module_designer_batch_copy_button()
 	if not button_ok:
 		push_error("BWM batch exporter toolbar test failed")
@@ -60,6 +63,59 @@ func _test_batch_directory_writes_wok() -> void:
 	print("✓ WOK folder batch write passed")
 
 
+func _test_bwm_alias_dry_run() -> void:
+	var source_root := _make_dir("bwm_source")
+	var output_root := _make_dir("bwm_output")
+	_seed_bwm_walkmeshes(source_root)
+
+	var result := BwmBatchExporter.batch_directory(source_root, output_root, {
+		"dry_run": true,
+	})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	var first: Dictionary = generated[0]
+	assert(str(first.get("wok_path", "")).ends_with(".wok"))
+	_cleanup(source_root)
+	_cleanup(output_root)
+	print("✓ BWM alias folder batch dry-run passed")
+
+
+func _test_bwm_alias_writes_wok() -> void:
+	var source_root := _make_dir("bwm_source")
+	var output_root := _make_dir("bwm_output")
+	_seed_bwm_walkmeshes(source_root)
+
+	var result := BwmBatchExporter.batch_directory(source_root, output_root, {})
+	assert(result.get("ok", false))
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 2)
+	assert(FileAccess.file_exists(output_root.path_join("area_a.wok")))
+	assert(FileAccess.file_exists(output_root.path_join("area_b.wok")))
+	assert(not FileAccess.file_exists(output_root.path_join("area_a.bwm")))
+	_cleanup(source_root)
+	_cleanup(output_root)
+	print("✓ BWM alias folder batch write passed")
+
+
+func _test_bwm_alias_skip_existing() -> void:
+	var source_root := _make_dir("bwm_source")
+	var output_root := _make_dir("bwm_output")
+	_seed_bwm_walkmeshes(source_root)
+	_write_file(output_root.path_join("area_a.wok"), PackedByteArray([0x00]))
+
+	var result := BwmBatchExporter.batch_directory(source_root, output_root, {
+		"skip_existing": true,
+	})
+	var skipped: Array = result.get("skipped", [])
+	assert(skipped.size() == 1)
+	var generated: Array = result.get("generated", [])
+	assert(generated.size() == 1)
+	_cleanup(source_root)
+	_cleanup(output_root)
+	print("✓ BWM alias folder batch skip-existing passed")
+
+
 func _test_skip_existing() -> void:
 	var source_root := _make_dir("source")
 	var output_root := _make_dir("output")
@@ -98,6 +154,21 @@ func _make_dir(label: String) -> String:
 	)
 	DirAccess.make_dir_recursive_absolute(path)
 	return path
+
+
+func _seed_bwm_walkmeshes(source_root: String) -> void:
+	var wok_a := _build_minimal_wok(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2],
+		[1]
+	)
+	var wok_b := _build_minimal_wok(
+		[Vector3(1.0, 0.0, 0.0), Vector3(3.0, 0.0, 0.0), Vector3(1.0, 2.0, 0.0)],
+		[0, 1, 2],
+		[1]
+	)
+	_write_file(source_root.path_join("area_a.bwm"), wok_a)
+	_write_file(source_root.path_join("area_b.bwm"), wok_b)
 
 
 func _seed_walkmeshes(source_root: String) -> void:

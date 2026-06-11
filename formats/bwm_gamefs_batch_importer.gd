@@ -4,7 +4,7 @@ class_name BwmGamefsBatchImporter
 const BwmBatchExporter := preload("bwm_batch_exporter.gd")
 
 
-## Copy each `.wok` in `source_dir` into the install override folder.
+## Copy each `.wok` or `.bwm` in `source_dir` into override as `{resref}.wok`.
 static func batch_folder_to_override(
 		gamefs: RefCounted,
 		source_dir: String,

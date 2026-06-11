@@ -4,8 +4,14 @@ class_name BwmBatchExporter
 const BwmGamefsBatchExporter := preload("bwm_gamefs_batch_exporter.gd")
 const BwmMetadataHelper := preload("../editor/tools/bwm_metadata_helper.gd")
 
+const WALKMESH_SOURCE_EXTENSIONS := {
+	"wok": true,
+	"bwm": true,
+}
+const WALKMESH_OUTPUT_EXTENSION := "wok"
 
-## Copy each `.wok` in `source_dir` to `output_dir`.
+
+## Copy each `.wok` or `.bwm` in `source_dir` to `{resref}.wok` in `output_dir`.
 static func batch_directory(
 		source_dir: String,
 		output_dir: String,
@@ -35,12 +41,13 @@ static func batch_directory(
 			break
 		if dir.current_is_dir():
 			continue
-		if entry_name.get_extension().to_lower() != "wok":
+		var extension := entry_name.get_extension().to_lower()
+		if not WALKMESH_SOURCE_EXTENSIONS.get(extension, false):
 			continue
 
 		var resref := entry_name.get_basename()
 		var source_wok := source_dir.path_join(entry_name)
-		var dest_wok := output_dir.path_join(entry_name)
+		var dest_wok := output_dir.path_join("%s.%s" % [resref, WALKMESH_OUTPUT_EXTENSION])
 
 		if skip_existing and FileAccess.file_exists(dest_wok):
 			skipped.append({
