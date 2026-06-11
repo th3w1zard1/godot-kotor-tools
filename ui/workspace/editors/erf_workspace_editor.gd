@@ -111,6 +111,65 @@ func install_selected_entry_to_override() -> Dictionary:
 	return install_entry_to_override(index)
 
 
+func is_document_dirty() -> bool:
+	return _document != null and _document.is_dirty()
+
+
+func add_member_from_file(path: String) -> Dictionary:
+	if _document == null:
+		return {"ok": false, "message": "No archive is loaded."}
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {"ok": false, "message": "Failed to read %s" % path.get_file()}
+	var bytes := file.get_buffer(file.get_length())
+	file.close()
+	var resref := path.get_file().get_basename().to_lower().left(16)
+	var extension := path.get_extension().to_lower()
+	var result := _document.add_member(resref, extension, bytes)
+	if result.get("ok", false):
+		_status_text = result.get("message", "Member added.")
+		_refresh_view()
+		_update_controller_dirty_state()
+	else:
+		_status_text = result.get("message", "Failed to add member.")
+		_refresh_status()
+	return result
+
+
+func save_archive_to_path(path: String) -> Dictionary:
+	if _document == null:
+		return {}
+	var target_path := _ensure_archive_extension(path)
+	var payload: Dictionary = _document.serialize_for_pipeline()
+	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, payload)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Export failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "File is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		var previous_key := _document_key
+		var result: Dictionary = _mutation_service.apply_export_to_path(target_path, payload, true)
+		_status_text = _mutation_message(result)
+		if result.get("applied", false):
+			_source_path = target_path
+			_file_name = target_path.get_file()
+			_document.mark_clean()
+			_register_controller_document()
+			_remove_previous_controller_document(previous_key)
+		_update_controller_dirty_state()
+		_refresh_status()
+		return result
+	_preflight_pending_path = target_path
+	_preflight_pending_preview = preview
+	_preflight_pending_kind = "export"
+	_show_preflight_dialog(preview)
+	return {}
+
+
 func install_entry_to_override(entry_index: int) -> Dictionary:
 	if _document == null or entry_index < 0:
 		return {}
@@ -174,6 +233,16 @@ func _build_ui() -> void:
 	install_btn.text = "Extract to Override"
 	install_btn.pressed.connect(install_selected_entry_to_override)
 	_toolbar.add_child(install_btn)
+
+	var add_member_btn := Button.new()
+	add_member_btn.text = "Add Member..."
+	add_member_btn.pressed.connect(_add_member_dialog)
+	_toolbar.add_child(add_member_btn)
+
+	var save_btn := Button.new()
+	save_btn.text = "Save Archive..."
+	save_btn.pressed.connect(_save_archive_dialog)
+	_toolbar.add_child(save_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -245,6 +314,45 @@ func _open_selected_member() -> void:
 	_refresh_status()
 
 
+func _add_member_dialog() -> void:
+	if _document == null:
+		_status_text = "Open an archive before adding members."
+		_refresh_status()
+		return
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_FILE,
+		PackedStringArray(["*.* ; All Files"]),
+		"Add Archive Member"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		add_member_from_file(path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _save_archive_dialog() -> void:
+	if _document == null:
+		_status_text = "Open an archive before saving."
+		_refresh_status()
+		return
+	var extension := _current_file_name().get_extension().to_lower()
+	if extension.is_empty():
+		extension = "mod"
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_SAVE_FILE,
+		PackedStringArray(["*.%s ; KotOR Archives" % extension]),
+		"Save Archive",
+		"",
+		_current_file_name()
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		save_archive_to_path(path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
 func _open_archive_dialog() -> void:
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
@@ -268,7 +376,22 @@ func _show_preflight_dialog(preview: Dictionary) -> void:
 
 
 func _on_preflight_proceed() -> void:
-	if _preflight_pending_kind == "install_entry" and _preflight_pending_entry_index >= 0 and _document != null:
+	if _preflight_pending_kind == "export" and not _preflight_pending_path.is_empty() and _document != null:
+		var payload: Dictionary = _document.serialize_for_pipeline()
+		var previous_key := _document_key
+		var result: Dictionary = _mutation_service.apply_export_to_path(
+			_preflight_pending_path,
+			payload,
+			true
+		)
+		_status_text = _mutation_message(result)
+		if result.get("applied", false):
+			_source_path = _preflight_pending_path
+			_file_name = _preflight_pending_path.get_file()
+			_document.mark_clean()
+			_register_controller_document()
+			_remove_previous_controller_document(previous_key)
+	elif _preflight_pending_kind == "install_entry" and _preflight_pending_entry_index >= 0 and _document != null:
 		var file_name := _document.entry_file_name(_preflight_pending_entry_index)
 		var payload := _document.get_entry_payload(_preflight_pending_entry_index)
 		var result: Dictionary = _mutation_service.apply_install_to_override(
@@ -331,7 +454,16 @@ func _update_controller_dirty_state() -> void:
 	var controller := get_controller()
 	if controller == null or _document_key.is_empty() or not controller.has_method("update_document_dirty"):
 		return
-	controller.call("update_document_dirty", _document_key, false)
+	controller.call("update_document_dirty", _document_key, is_document_dirty())
+
+
+func _remove_previous_controller_document(previous_key: String) -> void:
+	if previous_key.is_empty() or previous_key == _document_key:
+		return
+	var controller := get_controller()
+	if controller == null or not controller.has_method("unregister_document"):
+		return
+	controller.call("unregister_document", previous_key)
 
 
 func _resolve_mutation_service() -> RefCounted:
@@ -392,8 +524,18 @@ func _refresh_status() -> void:
 	if not _status_text.is_empty():
 		line += " — %s" % _status_text
 	_path_label.text = line
-	_emit_dirty_state(false)
+	_emit_dirty_state(is_document_dirty())
 	_emit_status_text(_status_text)
+
+
+func _ensure_archive_extension(path: String) -> String:
+	var extension := path.get_extension().to_lower()
+	if archive_extension_allowed(extension):
+		return path
+	var fallback := _current_file_name().get_extension().to_lower()
+	if fallback.is_empty():
+		fallback = "mod"
+	return "%s.%s" % [path.get_basename(), fallback]
 
 
 func _mutation_message(result: Dictionary) -> String:

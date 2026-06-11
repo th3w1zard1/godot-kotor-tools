@@ -23,6 +23,7 @@ func _run_tests() -> void:
 	_test_archive_member_listing()
 	await _test_extract_member_to_override()
 	_test_invalid_extract_file_name()
+	await _test_add_member_and_save_archive()
 	_cleanup()
 	print("✓ ERF workspace editor tests passed")
 	quit()
@@ -65,6 +66,38 @@ func _test_extract_member_to_override() -> void:
 	print("✓ ERF extract member to override passed")
 
 
+func _test_add_member_and_save_archive() -> void:
+	var editor := _build_editor()
+	var mod_bytes := _build_test_mod_bytes()
+	editor.open_archive_bytes("test_module.mod", mod_bytes, "")
+	assert(not editor.is_document_dirty())
+
+	var member_path := _install_root.path_join("extra_are.are")
+	var member_file := FileAccess.open(member_path, FileAccess.WRITE)
+	member_file.store_buffer(_build_empty_are_bytes())
+	member_file.close()
+
+	var add_result := editor.add_member_from_file(member_path)
+	assert(add_result.get("ok", false), str(add_result))
+	assert(editor.get_document().get_entry_count() == 2)
+	assert(editor.is_document_dirty())
+
+	var saved_path := _install_root.path_join("saved_module.mod")
+	if FileAccess.file_exists(saved_path):
+		DirAccess.remove_absolute(saved_path)
+	var save_result := editor.save_archive_to_path(saved_path)
+	assert(save_result.get("applied", false), str(save_result))
+	assert(not editor.is_document_dirty())
+	assert(FileAccess.file_exists(saved_path))
+
+	var reopened := _build_editor()
+	reopened.open_archive_file(saved_path)
+	await process_frame
+	assert(reopened.get_document().get_entry_count() == 2)
+	assert(reopened.get_document().find_entry_index("extra_are", "are") >= 0)
+	print("✓ ERF add member and save archive passed")
+
+
 func _test_invalid_extract_file_name() -> void:
 	var editor := _build_editor()
 	var mod_bytes := ERFWriter.build("MOD ", [
@@ -96,6 +129,17 @@ func _build_test_mod_bytes() -> PackedByteArray:
 
 func _build_empty_git_bytes() -> PackedByteArray:
 	return GFFWriter.serialize(GFFResourceFactory.create_from_parser_result(_build_git_parsed()))
+
+
+func _build_empty_are_bytes() -> PackedByteArray:
+	return GFFWriter.serialize(GFFResourceFactory.create_from_parser_result({
+		"file_type": "ARE ",
+		"root": {},
+		"schema": {
+			"struct_type": 0xFFFFFFFF,
+			"fields": [],
+		},
+	}))
 
 
 func _build_git_parsed() -> Dictionary:
