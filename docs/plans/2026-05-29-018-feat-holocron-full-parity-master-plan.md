@@ -56,7 +56,7 @@ Evidence: `gh api repos/OpenKotOR/HolocronToolset/contents/src/toolset/gui/edito
 | `lip.py` | Lip sync | Partial (LIP workspace + batch) | Q29–Q31, Q118 |
 | `ssf.py` | Sound set | Partial (SSF workspace) | Q27 |
 | `ltr.py` | Letter / font | Not started | Q20 |
-| `mdl.py` | Models | Partial (Model Editor + batch/compare) | Q84–Q85, Q91–Q93, Q119–Q123 |
+| `mdl.py` | Models | Partial (Model Editor + batch/compare + write-back phase 0) | Q84–Q85, Q91–Q93, Q119–Q123, Q133 |
 | `bwm.py` | Walkmesh | Partial (overlay + install + Q126 paint) | Q17, Q56, Q94, Q126 |
 | `savegame.py` | Save games | Not started | Q22 |
 | `txt.py` | Plain text | Shipped (text editor path) | Maintain |
@@ -178,4 +178,4 @@ TPC/WAV/LIP/SSF editors, MDL/BWM, savegame tooling.
 
 ## Residual backlog after Q13 (expected)
 
-Module designer, indoor builder, BWM/MDL/LYT, TPC/WAV/LIP/SSF, and compare/batch tooling are **Partial** per the editor inventory above (Q15–Q126). Remaining **Planned/Not started** areas: full DLG graph editor, NCS decompile UI, savegame editor, HoloPatcher/KotorDiff parity, and MDL write-back authoring.
+Module designer, indoor builder, BWM/MDL/LYT, TPC/WAV/LIP/SSF, and compare/batch tooling are **Partial** per the editor inventory above (Q15–Q126). Q133 *(PR #123)* ships MDL write-back phase 0 (passthrough plumbing). Remaining **Planned/Not started** areas: full DLG graph editor, NCS decompile UI, savegame editing, HoloPatcher/KotorDiff parity, and MDL geometry mutation authoring.

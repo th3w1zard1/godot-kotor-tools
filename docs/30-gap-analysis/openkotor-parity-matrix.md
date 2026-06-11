@@ -62,6 +62,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
   - TLK
   - 2DA
   - Archive parity for ERF/RIM/MOD
+  - MDL passthrough write-back (Q133 phase 0 — validated export/install path; geometry rebuild deferred)
 
 ## Next Parity Slices
 
@@ -162,6 +163,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 95. **Q125 (PR #119, 2026-06-10):** UTP typed parity expansion — trap scalar and script hook typed helpers with factory mapping tests; see `docs/plans/2026-06-03-001-feat-utp-typed-parity-expansion-plan.md`.
 96. **Q126 (PR #119, 2026-06-10):** Module Designer BWM walkmesh paint foundations — **Paint Walkmesh** 3D face pick, material toggle with undo/dirty baseline; see `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` U5.
 97. ERF archive workspace UX (Q127, PR #119) and DLG graph depth (Q128a–c per `docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md`).
+98. **Q133 (PR #123, 2026-06-12):** MDL write-back phase 0 — `MDLWriter` passthrough, `MdlResource`, pipeline `mdl` serialize, editor export/install wiring; see `docs/plans/2026-06-12-064-feat-q133-mdl-writeback-phase0-plan.md`.
 
 ## Evidence Notes
 
