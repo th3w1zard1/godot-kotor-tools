@@ -118,6 +118,83 @@ func get_link_target_kind(kind: String) -> String:
 	return get_node_target_kind(kind)
 
 
+const GRAPH_ENTRY_COLUMN_X := 40.0
+const GRAPH_REPLY_COLUMN_X := 420.0
+const GRAPH_ROW_HEIGHT := 120.0
+
+
+func build_graph_node_id(kind: String, index: int) -> String:
+	return "%s:%d" % [kind.to_lower(), index]
+
+
+static func parse_graph_node_id(node_id: String) -> Dictionary:
+	var parts := node_id.split(":")
+	if parts.size() != 2:
+		return {}
+	var kind := str(parts[0]).to_lower()
+	if kind != KIND_ENTRY and kind != KIND_REPLY:
+		return {}
+	var index := int(parts[1])
+	if index < 0:
+		return {}
+	return {
+		"kind": kind,
+		"index": index,
+	}
+
+
+func build_graph_layout_metadata() -> Dictionary:
+	var nodes: Array[Dictionary] = []
+	var edges: Array[Dictionary] = []
+
+	for entry_index in range(get_entry_count()):
+		nodes.append({
+			"id": build_graph_node_id(KIND_ENTRY, entry_index),
+			"kind": KIND_ENTRY,
+			"index": entry_index,
+			"label": build_node_title(KIND_ENTRY, entry_index),
+			"preview": build_node_preview(KIND_ENTRY, entry_index, ""),
+			"pos": Vector2(GRAPH_ENTRY_COLUMN_X, entry_index * GRAPH_ROW_HEIGHT),
+		})
+
+	for reply_index in range(get_reply_count()):
+		nodes.append({
+			"id": build_graph_node_id(KIND_REPLY, reply_index),
+			"kind": KIND_REPLY,
+			"index": reply_index,
+			"label": build_node_title(KIND_REPLY, reply_index),
+			"preview": build_node_preview(KIND_REPLY, reply_index, ""),
+			"pos": Vector2(GRAPH_REPLY_COLUMN_X, reply_index * GRAPH_ROW_HEIGHT),
+		})
+
+	for entry_index in range(get_entry_count()):
+		for link_index in range(get_node_links(KIND_ENTRY, entry_index).size()):
+			var target := get_link_target_metadata(KIND_ENTRY, entry_index, link_index)
+			if target.is_empty():
+				continue
+			edges.append({
+				"from_id": build_graph_node_id(KIND_ENTRY, entry_index),
+				"to_id": build_graph_node_id(str(target.get("kind", "")), int(target.get("index", -1))),
+				"link_index": link_index,
+			})
+
+	for reply_index in range(get_reply_count()):
+		for link_index in range(get_node_links(KIND_REPLY, reply_index).size()):
+			var target := get_link_target_metadata(KIND_REPLY, reply_index, link_index)
+			if target.is_empty():
+				continue
+			edges.append({
+				"from_id": build_graph_node_id(KIND_REPLY, reply_index),
+				"to_id": build_graph_node_id(str(target.get("kind", "")), int(target.get("index", -1))),
+				"link_index": link_index,
+			})
+
+	return {
+		"nodes": nodes,
+		"edges": edges,
+	}
+
+
 func build_node_title(kind: String, index: int) -> String:
 	var label := "Entry" if kind.to_lower() == KIND_ENTRY else "Reply"
 	return "%s %d" % [label, index]
@@ -131,6 +208,189 @@ func build_node_preview(kind: String, index: int, fallback: String = "") -> Stri
 	if text.is_empty():
 		return fallback
 	return _truncate_preview(text)
+
+
+static func create_default_locstring() -> Dictionary:
+	return {
+		"strref": 0xFFFFFFFF,
+		"strings": {},
+	}
+
+
+static func create_default_link_struct(target_index: int = 0) -> Dictionary:
+	return {
+		"Index": target_index,
+		"Comment": "",
+		"Active": "",
+		"IsChild": 0,
+	}
+
+
+static func create_default_entry_struct() -> Dictionary:
+	return {
+		"Text": create_default_locstring(),
+		"RepliesList": [],
+	}
+
+
+static func create_default_reply_struct() -> Dictionary:
+	return {
+		"Text": create_default_locstring(),
+		"EntriesList": [],
+	}
+
+
+static func create_default_start_struct(entry_index: int = 0) -> Dictionary:
+	return {
+		"Index": entry_index,
+	}
+
+
+func add_entry() -> int:
+	var index := get_entry_count()
+	if not insert_struct_at_array("EntryList", index, create_default_entry_struct()):
+		return -1
+	return index
+
+
+func add_reply() -> int:
+	var index := get_reply_count()
+	if not insert_struct_at_array("ReplyList", index, create_default_reply_struct()):
+		return -1
+	return index
+
+
+func add_start(entry_index: int = 0) -> int:
+	var index := get_start_count()
+	if not insert_struct_at_array("StartingList", index, create_default_start_struct(entry_index)):
+		return -1
+	return index
+
+
+func remove_start(start_index: int) -> bool:
+	return remove_struct_from_array("StartingList", start_index)
+
+
+func remove_entry(entry_index: int) -> bool:
+	if entry_index < 0 or entry_index >= get_entry_count():
+		return false
+	_repair_indices_after_node_removal(KIND_ENTRY, entry_index)
+	return remove_struct_from_array("EntryList", entry_index)
+
+
+func remove_reply(reply_index: int) -> bool:
+	if reply_index < 0 or reply_index >= get_reply_count():
+		return false
+	_repair_indices_after_node_removal(KIND_REPLY, reply_index)
+	return remove_struct_from_array("ReplyList", reply_index)
+
+
+func remove_node(kind: String, index: int) -> bool:
+	match kind.to_lower():
+		KIND_ENTRY:
+			return remove_entry(index)
+		KIND_REPLY:
+			return remove_reply(index)
+		_:
+			return false
+
+
+func remove_all_references_to_node(target_kind: String, target_index: int) -> int:
+	var removed_count := 0
+	if target_kind.to_lower() == KIND_ENTRY:
+		var starts := get_start_list()
+		for start_index in range(starts.size() - 1, -1, -1):
+			if int(starts[start_index].get("Index", -1)) == target_index:
+				if remove_struct_from_array("StartingList", start_index):
+					removed_count += 1
+		removed_count += _remove_incoming_links_to_target(KIND_REPLY, "EntriesList", target_index)
+	else:
+		removed_count += _remove_incoming_links_to_target(KIND_ENTRY, "RepliesList", target_index)
+	return removed_count
+
+
+func find_orphaned_nodes() -> Array[Dictionary]:
+	var orphans: Array[Dictionary] = []
+	for entry_index in range(get_entry_count()):
+		if _incoming_link_count(KIND_ENTRY, entry_index) == 0:
+			orphans.append({"kind": KIND_ENTRY, "index": entry_index})
+	for reply_index in range(get_reply_count()):
+		if _incoming_link_count(KIND_REPLY, reply_index) == 0:
+			orphans.append({"kind": KIND_REPLY, "index": reply_index})
+	return orphans
+
+
+func find_linkable_orphans_for_owner(owner_kind: String) -> Array[Dictionary]:
+	var normalized_owner := owner_kind.to_lower()
+	if normalized_owner != KIND_ENTRY and normalized_owner != KIND_REPLY:
+		return []
+	var target_kind := get_link_target_kind(normalized_owner)
+	var linkable: Array[Dictionary] = []
+	for orphan in find_orphaned_nodes():
+		if str(orphan.get("kind", "")) == target_kind:
+			linkable.append(orphan)
+	return linkable
+
+
+func can_link_orphan_to_owner(owner_kind: String, orphan_kind: String) -> bool:
+	var normalized_owner := owner_kind.to_lower()
+	if normalized_owner != KIND_ENTRY and normalized_owner != KIND_REPLY:
+		return false
+	return get_link_target_kind(normalized_owner) == orphan_kind.to_lower()
+
+
+func add_node_link(
+		owner_kind: String,
+		owner_index: int,
+		target_kind: String,
+		target_index: int
+) -> bool:
+	var normalized_owner := owner_kind.to_lower()
+	var normalized_target := target_kind.to_lower()
+	if normalized_owner != KIND_ENTRY and normalized_owner != KIND_REPLY:
+		return false
+	if get_link_target_kind(normalized_owner) != normalized_target:
+		return false
+	var owner := get_node(normalized_owner, owner_index)
+	if owner.is_empty():
+		return false
+	if target_index < 0 or target_index >= get_node_list(normalized_target).size():
+		return false
+	var link_field := "RepliesList" if normalized_owner == KIND_ENTRY else "EntriesList"
+	var links_raw = owner.get(link_field, [])
+	var links: Array = links_raw if typeof(links_raw) == TYPE_ARRAY else []
+	links.append(create_default_link_struct(target_index))
+	owner[link_field] = links
+	mark_changed()
+	return true
+
+
+func restore_link_to_orphan(
+		owner_kind: String,
+		owner_index: int,
+		target_kind: String,
+		target_index: int
+) -> bool:
+	return add_node_link(owner_kind, owner_index, target_kind, target_index)
+
+
+func capture_topology_snapshot() -> Dictionary:
+	return {
+		"EntryList": _duplicate_array_of_dicts(get_struct_list_array("EntryList")),
+		"ReplyList": _duplicate_array_of_dicts(get_struct_list_array("ReplyList")),
+		"StartingList": _duplicate_array_of_dicts(get_struct_list_array("StartingList")),
+	}
+
+
+func restore_topology_snapshot(snapshot: Dictionary) -> bool:
+	if snapshot.is_empty():
+		return false
+	var root := get_root()
+	root["EntryList"] = _duplicate_array_of_dicts(snapshot.get("EntryList", []))
+	root["ReplyList"] = _duplicate_array_of_dicts(snapshot.get("ReplyList", []))
+	root["StartingList"] = _duplicate_array_of_dicts(snapshot.get("StartingList", []))
+	mark_changed()
+	return true
 
 
 func build_link_preview(kind: String, index: int, link_index: int) -> String:
@@ -150,7 +410,8 @@ func build_link_preview(kind: String, index: int, link_index: int) -> String:
 func set_struct_field(struct_value: Dictionary, field_name: String, value: Variant) -> bool:
 	if struct_value.is_empty():
 		return false
-	if struct_value.get(field_name, null) == value:
+	var current: Variant = struct_value.get(field_name, null)
+	if typeof(current) == typeof(value) and current == value:
 		return false
 	struct_value[field_name] = value
 	mark_changed()
@@ -272,6 +533,99 @@ func _validate_script_fields(struct_value: Dictionary, context: String, issues: 
 		var has_binary := not (gamefs.call("resolve_resource", script_name, "ncs") as Dictionary).is_empty()
 		if not has_source and not has_binary:
 			issues.append("%s %s references missing script %s." % [context, field_name, script_name])
+
+
+func _repair_indices_after_node_removal(removed_kind: String, removed_index: int) -> void:
+	if removed_kind.to_lower() == KIND_ENTRY:
+		_repair_start_list_indices(removed_index)
+		_repair_link_lists_for_target(KIND_REPLY, "EntriesList", removed_index)
+	elif removed_kind.to_lower() == KIND_REPLY:
+		_repair_link_lists_for_target(KIND_ENTRY, "RepliesList", removed_index)
+
+
+func _repair_start_list_indices(removed_entry_index: int) -> void:
+	var starts := get_start_list()
+	for start_index in range(starts.size() - 1, -1, -1):
+		var entry_index := int(starts[start_index].get("Index", -1))
+		if entry_index == removed_entry_index:
+			remove_struct_from_array("StartingList", start_index)
+		elif entry_index > removed_entry_index:
+			starts[start_index]["Index"] = entry_index - 1
+			mark_changed()
+
+
+func _repair_link_lists_for_target(owner_kind: String, link_field: String, removed_target_index: int) -> void:
+	var owners := get_node_list(owner_kind)
+	for owner_index in range(owners.size()):
+		var owner := owners[owner_index]
+		var links_raw = owner.get(link_field, [])
+		if typeof(links_raw) != TYPE_ARRAY:
+			continue
+		var links := links_raw as Array
+		var changed := false
+		for link_index in range(links.size() - 1, -1, -1):
+			var link: Variant = links[link_index]
+			if typeof(link) != TYPE_DICTIONARY:
+				continue
+			var target_index := int((link as Dictionary).get("Index", -1))
+			if target_index == removed_target_index:
+				links.remove_at(link_index)
+				changed = true
+			elif target_index > removed_target_index:
+				(link as Dictionary)["Index"] = target_index - 1
+				changed = true
+		if changed:
+			owner[link_field] = links
+			mark_changed()
+
+
+func _remove_incoming_links_to_target(owner_kind: String, link_field: String, target_index: int) -> int:
+	var removed_count := 0
+	var owners := get_node_list(owner_kind)
+	for owner_index in range(owners.size()):
+		var owner := owners[owner_index]
+		var links_raw = owner.get(link_field, [])
+		if typeof(links_raw) != TYPE_ARRAY:
+			continue
+		var links := links_raw as Array
+		for link_index in range(links.size() - 1, -1, -1):
+			var link: Variant = links[link_index]
+			if typeof(link) != TYPE_DICTIONARY:
+				continue
+			if int((link as Dictionary).get("Index", -1)) == target_index:
+				links.remove_at(link_index)
+				removed_count += 1
+				owner[link_field] = links
+				mark_changed()
+	return removed_count
+
+
+func _incoming_link_count(target_kind: String, target_index: int) -> int:
+	var count := 0
+	if target_kind.to_lower() == KIND_ENTRY:
+		for start in get_start_list():
+			if int(start.get("Index", -1)) == target_index:
+				count += 1
+		for reply_index in range(get_reply_count()):
+			for link in get_node_links(KIND_REPLY, reply_index):
+				if int(link.get("Index", -1)) == target_index:
+					count += 1
+	else:
+		for entry_index in range(get_entry_count()):
+			for link in get_node_links(KIND_ENTRY, entry_index):
+				if int(link.get("Index", -1)) == target_index:
+					count += 1
+	return count
+
+
+static func _duplicate_array_of_dicts(source: Array) -> Array:
+	var copy: Array = []
+	for item in source:
+		if typeof(item) == TYPE_DICTIONARY:
+			copy.append((item as Dictionary).duplicate(true))
+		else:
+			copy.append(item)
+	return copy
 
 
 static func _truncate_preview(text: String, max_length: int = 64) -> String:

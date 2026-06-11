@@ -1,7 +1,7 @@
 ---
 title: feat: Expand UTP typed parity for trap and script helpers
 type: feat
-status: active
+status: shipped
 date: 2026-06-03
 origin: docs/brainstorms/2026-06-03-utp-typed-parity-expansion-requirements.md
 ---

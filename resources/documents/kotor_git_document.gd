@@ -110,6 +110,95 @@ func set_instance_bearing(category: String, index: int, bearing: float) -> bool:
 	return _set_instance_field(base_path, "Bearing", bearing)
 
 
+func get_list_field_for_category(category: String) -> String:
+	return String(LIST_FIELDS.get(category, ""))
+
+
+func build_default_instance(
+	template_resref: String,
+	x: float,
+	y: float,
+	z: float = 0.0,
+	bearing: float = 0.0,
+	tag: String = ""
+) -> Dictionary:
+	var normalized_template := template_resref.strip_edges()
+	var normalized_tag := tag.strip_edges()
+	if normalized_tag.is_empty():
+		normalized_tag = normalized_template
+	return {
+		"TemplateResRef": normalized_template,
+		"Tag": normalized_tag,
+		"XPosition": x,
+		"YPosition": y,
+		"ZPosition": z,
+		"Bearing": bearing,
+	}
+
+
+func add_instance(
+	category: String,
+	template_resref: String,
+	x: float,
+	y: float,
+	z: float = 0.0,
+	bearing: float = 0.0,
+	tag: String = ""
+) -> int:
+	var list_field := get_list_field_for_category(category)
+	if list_field.is_empty():
+		return -1
+	var normalized_template := template_resref.strip_edges()
+	if normalized_template.is_empty():
+		return -1
+	var instance := build_default_instance(
+		normalized_template,
+		x,
+		y,
+		z,
+		bearing,
+		tag
+	)
+	var index := get_struct_list_array(list_field).size()
+	if not insert_struct_at_array(list_field, index, instance):
+		return -1
+	return index
+
+
+func remove_instance(category: String, index: int) -> bool:
+	var list_field := get_list_field_for_category(category)
+	if list_field.is_empty():
+		return false
+	return remove_struct_from_array(list_field, index)
+
+
+func capture_instance_snapshot(category: String, index: int) -> Dictionary:
+	var list_field := get_list_field_for_category(category)
+	if list_field.is_empty():
+		return {}
+	var instances := get_struct_list_array(list_field)
+	if index < 0 or index >= instances.size():
+		return {}
+	var instance: Variant = instances[index]
+	if typeof(instance) != TYPE_DICTIONARY:
+		return {}
+	return {
+		"category": category,
+		"list_field": list_field,
+		"index": index,
+		"instance": (instance as Dictionary).duplicate(true),
+	}
+
+
+func restore_instance_snapshot(snapshot: Dictionary) -> bool:
+	var list_field := String(snapshot.get("list_field", ""))
+	var index := int(snapshot.get("index", -1))
+	var instance: Variant = snapshot.get("instance", {})
+	if list_field.is_empty() or typeof(instance) != TYPE_DICTIONARY:
+		return false
+	return insert_struct_at_array(list_field, index, instance as Dictionary)
+
+
 func set_instance_position(
 	category: String,
 	index: int,

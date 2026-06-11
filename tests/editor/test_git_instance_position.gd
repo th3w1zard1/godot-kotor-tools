@@ -14,6 +14,7 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_set_instance_position()
 	_test_set_instance_position_invalid()
+	_test_add_and_remove_instance()
 	print("✓ GIT instance position tests passed")
 	quit()
 
@@ -39,6 +40,25 @@ func _test_set_instance_position_invalid() -> void:
 	var document := _build_git_document()
 	assert(not document.set_instance_position("Creatures", 99, 0.0, 0.0))
 	assert(not document.set_instance_position("Unknown", 0, 0.0, 0.0))
+
+
+func _test_add_and_remove_instance() -> void:
+	var document := _build_empty_git_document()
+	assert(document.add_instance("Creatures", "", 1.0, 2.0) < 0)
+	var index := document.add_instance("Creatures", "n_malak", 3.0, 4.0)
+	assert(index == 0)
+	var record := document.find_instance_record("Creatures", 0)
+	assert(str(record.get("template", "")) == "n_malak")
+	assert(document.remove_instance("Creatures", 0))
+	assert(document.get_total_instance_count() == 0)
+	var snapshot := document.capture_instance_snapshot("Creatures", 0)
+	assert(snapshot.is_empty())
+	document.add_instance("Placeables", "plc_test", 0.0, 0.0)
+	snapshot = document.capture_instance_snapshot("Placeables", 0)
+	assert(not snapshot.is_empty())
+	assert(document.remove_instance("Placeables", 0))
+	assert(document.restore_instance_snapshot(snapshot))
+	assert(document.get_struct_list("Placeable List").size() == 1)
 
 
 func _build_git_document() -> KotorGITDocument:
@@ -73,6 +93,28 @@ func _build_git_document() -> KotorGITDocument:
 					],
 				},
 			],
+		},
+	}
+	var resource := GFFResourceFactory.create_from_parser_result(parsed) as GITResource
+	return resource.create_document() as KotorGITDocument
+
+
+func _build_empty_git_document() -> KotorGITDocument:
+	var parsed := {
+		"file_type": "GIT",
+		"root": {
+			"Creature List": [],
+			"Door List": [],
+			"Encounter List": [],
+			"Placeable List": [],
+			"SoundList": [],
+			"StoreList": [],
+			"TriggerList": [],
+			"WaypointList": [],
+		},
+		"schema": {
+			"struct_type": 0xFFFFFFFF,
+			"fields": [],
 		},
 	}
 	var resource := GFFResourceFactory.create_from_parser_result(parsed) as GITResource

@@ -18,6 +18,7 @@ const KotorLIPWorkspaceEditor := preload("./editors/lip_workspace_editor.gd")
 const KotorGFFWorkspaceEditor := preload("./editors/gff_workspace_editor.gd")
 const KotorModuleDesignerWorkspaceEditor := preload("./editors/module_designer_workspace_editor.gd")
 const KotorIndoorBuilderWorkspaceEditor := preload("./editors/indoor_builder_workspace_editor.gd")
+const KotorErfWorkspaceEditor := preload("./editors/erf_workspace_editor.gd")
 const KotorResourceBrowserPanel := preload("./panels/resource_browser_panel.gd")
 const KotorTransactionHistoryPanel := preload("./panels/transaction_history_panel.gd")
 
@@ -40,6 +41,7 @@ var _lip_editor: Control
 var _gff_editor: Control
 var _module_designer: Control
 var _indoor_builder: Control
+var _erf_editor: Control
 
 
 func _init(controller: RefCounted = null) -> void:
@@ -187,6 +189,14 @@ func _ensure_shell() -> void:
 	_indoor_builder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_indoor_builder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs.add_child(_indoor_builder)
+
+	_erf_editor = KotorErfWorkspaceEditor.new()
+	_erf_editor.name = "Archive Browser"
+	_erf_editor.setup(_resolve_editor_state(), _controller)
+	_erf_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_erf_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_erf_editor.member_open_requested.connect(_open_archive_member_resource)
+	_tabs.add_child(_erf_editor)
 	_restore_workspace_session()
 
 
@@ -264,6 +274,10 @@ func get_indoor_builder_workspace_editor() -> Control:
 	return _indoor_builder
 
 
+func get_erf_workspace_editor() -> Control:
+	return _erf_editor
+
+
 func _restore_workspace_session() -> void:
 	if _controller == null or _dlg_editor == null or not _controller.has_method("restore_workspace_session"):
 		return
@@ -332,6 +346,10 @@ func _restore_workspace_session() -> void:
 				_indoor_builder.call("open_indoor_file", source_path)
 				if str(document_entry.get("key", "")) == active_key:
 					_tabs.current_tab = _indoor_builder.get_index()
+			"erf":
+				_erf_editor.call("open_archive_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _erf_editor.get_index()
 			_:
 				pass
 
@@ -446,6 +464,16 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 		_gff_editor.call("open_gff_bytes", gff_label, gff_bytes, source_path)
 		_tabs.current_tab = _gff_editor.get_index()
 		return
+	if KotorErfWorkspaceEditor.archive_extension_allowed(extension):
+		var archive_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		var archive_file_name := (
+			absolute_path.get_file()
+			if not absolute_path.is_empty()
+			else "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+		)
+		_erf_editor.call("open_archive_bytes", archive_file_name, archive_bytes, source_path)
+		_tabs.current_tab = _erf_editor.get_index()
+		return
 	if KotorIndoorBuilderWorkspaceEditor.indoor_extension_allowed(extension):
 		if not source_path.is_empty() and FileAccess.file_exists(source_path):
 			_indoor_builder.call("open_indoor_file", source_path)
@@ -506,6 +534,90 @@ func _on_resource_browser_compare(entry: Dictionary) -> void:
 	if result.has("details"):
 		detail += "\n" + str(result.get("details", ""))
 	_resource_browser.call("_set_detail_text", detail)
+
+
+func _open_archive_member_resource(resref: String, extension: String, payload: PackedByteArray) -> void:
+	if payload.is_empty():
+		return
+	var parent_label := "archive"
+	if _erf_editor != null and _erf_editor.has_method("get_document"):
+		var document = _erf_editor.call("get_document")
+		if document != null:
+			parent_label = str(_erf_editor.get("_file_name"))
+	var label := "%s.%s [%s]" % [resref, extension, parent_label]
+	if extension == "dlg":
+		_dlg_editor.call("open_dlg_bytes", label, payload, "")
+		_tabs.current_tab = _dlg_editor.get_index()
+		return
+	if extension == "2da":
+		_twoda_editor.call("open_2da_bytes", label, payload, "")
+		_tabs.current_tab = _twoda_editor.get_index()
+		return
+	if extension == "tlk":
+		_tlk_editor.call("open_tlk_bytes", label, payload, "")
+		_tabs.current_tab = _tlk_editor.get_index()
+		return
+	if extension == "ssf":
+		_ssf_editor.call("open_ssf_bytes", label, payload, "")
+		_tabs.current_tab = _ssf_editor.get_index()
+		return
+	if extension == "tpc":
+		_tpc_editor.call("open_tpc_bytes", payload, "", "%s.%s" % [resref, extension])
+		_tabs.current_tab = _tpc_editor.get_index()
+		return
+	if extension == "wav":
+		_wav_editor.call("open_wav_bytes", payload, "", "%s.%s" % [resref, extension])
+		_tabs.current_tab = _wav_editor.get_index()
+		return
+	if extension == "lip":
+		_lip_editor.call("open_lip_bytes", label, payload, "")
+		_tabs.current_tab = _lip_editor.get_index()
+		return
+	if extension == "mdl":
+		var mdx_bytes := _find_archive_member_payload(resref, "mdx")
+		_mdl_editor.call(
+			"open_mdl_bytes",
+			payload,
+			"",
+			"%s.%s" % [resref, extension],
+			mdx_bytes
+		)
+		_tabs.current_tab = _mdl_editor.get_index()
+		return
+	if KotorErfWorkspaceEditor.archive_extension_allowed(extension):
+		_erf_editor.call("open_archive_bytes", "%s.%s" % [resref, extension], payload, "")
+		_tabs.current_tab = _erf_editor.get_index()
+		return
+	if extension == "nss" or extension == "ncs":
+		_script_editor.call("open_script_bytes", label, payload, extension, "")
+		_tabs.current_tab = _script_editor.get_index()
+		return
+	if KotorModuleDesignerWorkspaceEditor.module_designer_extension_allowed(extension):
+		_module_designer.call("open_git_bytes", label, payload, "")
+		_tabs.current_tab = _module_designer.get_index()
+		return
+	if KotorGFFWorkspaceEditor.workspace_gff_extension_allowed(extension):
+		_gff_editor.call("open_gff_bytes", label, payload, "")
+		_tabs.current_tab = _gff_editor.get_index()
+		return
+	_status_text_fallback_for_archive_member(resref, extension)
+
+
+func _find_archive_member_payload(resref: String, extension: String) -> PackedByteArray:
+	if _erf_editor == null or not _erf_editor.has_method("get_document"):
+		return PackedByteArray()
+	var document = _erf_editor.call("get_document")
+	if document == null or not document.has_method("find_entry_index"):
+		return PackedByteArray()
+	var index: int = document.call("find_entry_index", resref, extension)
+	if index < 0:
+		return PackedByteArray()
+	return document.call("get_entry_payload", index) as PackedByteArray
+
+
+func _status_text_fallback_for_archive_member(resref: String, extension: String) -> void:
+	if _erf_editor != null and _erf_editor.has_method("set_status_message"):
+		_erf_editor.call("set_status_message", "No workspace editor for %s.%s" % [resref, extension])
 
 
 func _on_resource_browser_export(entry: Dictionary) -> void:

@@ -12,6 +12,7 @@ signal instance_rotate_finished(
 	old_bearing: float,
 	new_bearing: float
 )
+signal walkmesh_face_paint_requested(face_index: int)
 
 const KotorGITDocument := preload("../../../resources/documents/kotor_git_document.gd")
 const KotorWorldCoordinates := preload("../../../editor/module/kotor_world_coordinates.gd")
@@ -49,6 +50,7 @@ var _rotate_category := ""
 var _rotate_index := -1
 var _rotate_start_bearing := 0.0
 var _rotate_preview_bearing := 0.0
+var _paint_walkmesh_armed := false
 var _rotate_gizmo_root: Node3D
 
 
@@ -128,6 +130,14 @@ func set_walkmesh(parsed: Dictionary) -> void:
 	_walkmesh = parsed if typeof(parsed) == TYPE_DICTIONARY else {}
 	_rebuild_walkmesh()
 	_fit_camera_to_content()
+
+
+func set_paint_walkmesh_armed(armed: bool) -> void:
+	_paint_walkmesh_armed = armed
+
+
+func is_paint_walkmesh_armed() -> bool:
+	return _paint_walkmesh_armed
 
 
 func set_room_meshes(entries: Array) -> void:
@@ -230,6 +240,13 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			if _paint_walkmesh_armed and not _walkmesh.is_empty():
+				var face_index := _pick_walkmesh_face(mouse_event.position)
+				if face_index >= 0:
+					_paint_walkmesh_armed = false
+					walkmesh_face_paint_requested.emit(face_index)
+					accept_event()
+					return
 			var picked := _pick_instance(mouse_event.position)
 			if not picked.is_empty():
 				instance_selected.emit(str(picked.get("category", "")), int(picked.get("index", -1)))
@@ -729,6 +746,73 @@ func _pick_path_point(screen_pos: Vector2) -> Dictionary:
 		best_distance = t
 		best_record = record
 	return best_record
+
+
+func _pick_walkmesh_face(screen_pos: Vector2) -> int:
+	if _camera == null or _viewport == null or size.x <= 0.0 or size.y <= 0.0 or _walkmesh.is_empty():
+		return -1
+	var viewport_pos := Vector2(
+		screen_pos.x / size.x * float(_viewport.size.x),
+		screen_pos.y / size.y * float(_viewport.size.y)
+	)
+	var origin := _camera.project_ray_origin(viewport_pos)
+	var direction := _camera.project_ray_normal(viewport_pos)
+	var vertices: Array = _walkmesh.get("vertices", [])
+	var faces: Array = _walkmesh.get("faces", [])
+	if vertices.is_empty() or faces.is_empty():
+		return -1
+	var offset: Vector3 = _walkmesh.get("position", Vector3.ZERO)
+	var best_face := -1
+	var best_distance := INF
+	for face_index in range(faces.size()):
+		var raw_face: Variant = faces[face_index]
+		if typeof(raw_face) != TYPE_DICTIONARY:
+			continue
+		var face: Dictionary = raw_face
+		var triangle := PackedVector3Array()
+		for key in ["i1", "i2", "i3"]:
+			var vertex_index := int(face.get(key, -1))
+			if vertex_index < 0 or vertex_index >= vertices.size():
+				triangle.clear()
+				break
+			var kotor_vertex: Vector3 = vertices[vertex_index] + offset
+			triangle.append(KotorWorldCoordinates.kotor_to_godot(kotor_vertex))
+		if triangle.size() != 3:
+			continue
+		var hit := _ray_intersects_triangle(origin, direction, triangle[0], triangle[1], triangle[2])
+		if hit < 0.0 or hit >= best_distance:
+			continue
+		best_distance = hit
+		best_face = face_index
+	return best_face
+
+
+static func _ray_intersects_triangle(
+	origin: Vector3,
+	direction: Vector3,
+	a: Vector3,
+	b: Vector3,
+	c: Vector3
+) -> float:
+	var edge1 := b - a
+	var edge2 := c - a
+	var pvec := direction.cross(edge2)
+	var det := edge1.dot(pvec)
+	if absf(det) < 0.00001:
+		return -1.0
+	var inv_det := 1.0 / det
+	var tvec := origin - a
+	var u := tvec.dot(pvec) * inv_det
+	if u < 0.0 or u > 1.0:
+		return -1.0
+	var qvec := tvec.cross(edge1)
+	var v := direction.dot(qvec) * inv_det
+	if v < 0.0 or u + v > 1.0:
+		return -1.0
+	var t := edge2.dot(qvec) * inv_det
+	if t < 0.0:
+		return -1.0
+	return t
 
 
 func _pick_path_connection(screen_pos: Vector2) -> Dictionary:

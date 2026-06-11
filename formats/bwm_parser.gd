@@ -9,6 +9,9 @@ const VERSION := "V1.0"
 const HEADER_SIZE := 136
 
 ## Surface material IDs treated as walkable in Odyssey (PyKotor SurfaceMaterial.walkable).
+const DEFAULT_WALKABLE_MATERIAL := 1
+const DEFAULT_UNWALKABLE_MATERIAL := 0
+
 const WALKABLE_MATERIALS := {
 	1: true,
 	2: true,
@@ -107,6 +110,48 @@ static func parse_bytes(data: PackedByteArray) -> Dictionary:
 
 static func is_walkable_material(material_id: int) -> bool:
 	return WALKABLE_MATERIALS.has(material_id)
+
+
+static func get_face_material(parsed: Dictionary, face_index: int) -> int:
+	var faces: Array = parsed.get("faces", [])
+	if face_index < 0 or face_index >= faces.size():
+		return -1
+	var face: Variant = faces[face_index]
+	if typeof(face) != TYPE_DICTIONARY:
+		return -1
+	return int((face as Dictionary).get("material", DEFAULT_UNWALKABLE_MATERIAL))
+
+
+static func set_face_material(parsed: Dictionary, face_index: int, material_id: int) -> bool:
+	if parsed.is_empty():
+		return false
+	var faces: Array = parsed.get("faces", [])
+	if face_index < 0 or face_index >= faces.size():
+		return false
+	var face: Variant = faces[face_index]
+	if typeof(face) != TYPE_DICTIONARY:
+		return false
+	var face_dict: Dictionary = face
+	if int(face_dict.get("material", DEFAULT_UNWALKABLE_MATERIAL)) == material_id:
+		return false
+	face_dict["material"] = material_id
+	faces[face_index] = face_dict
+	parsed["faces"] = faces
+	return true
+
+
+static func toggle_face_walkable(parsed: Dictionary, face_index: int) -> Dictionary:
+	var current := get_face_material(parsed, face_index)
+	if current < 0:
+		return {"ok": false}
+	var target := (
+		DEFAULT_UNWALKABLE_MATERIAL
+		if is_walkable_material(current)
+		else DEFAULT_WALKABLE_MATERIAL
+	)
+	if not set_face_material(parsed, face_index, target):
+		return {"ok": false, "old_material": current, "new_material": current}
+	return {"ok": true, "old_material": current, "new_material": target}
 
 
 static func compute_bounds(parsed: Dictionary) -> AABB:

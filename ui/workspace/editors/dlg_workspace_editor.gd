@@ -14,14 +14,23 @@ const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 const TypedFieldHelpers := preload("../typed_field_helpers.gd")
 const GFFTreePopulator := preload("../gff_tree_populator.gd")
 const KotorResRefPickerDialog := preload("../dialogs/kotor_resref_picker_dialog.gd")
+const KotorDLGGraphView := preload("../panels/dlg_graph_view.gd")
 
 var _toolbar: HBoxContainer
 var _path_label: Label
 var _dlg_tree: Tree
+var _orphan_list: ItemList
+var _dlg_graph_view: KotorDLGGraphView
+var _tree_column: VBoxContainer
+var _show_graph_view := false
+var _navigation_stack: Array[Dictionary] = []
 var _dlg_details: VBoxContainer
 var _validation_panel: KotorValidationPanel
 var _preflight_dialog: KotorPreflightDialog
 var _array_context_menu: PopupMenu
+var _node_context_menu: PopupMenu
+var _context_node_kind := ""
+var _context_node_index := -1
 
 var _modding_pipeline: RefCounted
 var _dlg_resource: DLGResource
@@ -96,6 +105,7 @@ func open_resource(resource: DLGResource, source_path: String = "", file_name: S
 	_dlg_dirty = false
 	_dlg_status_text = ""
 	_dlg_selection = {"kind": "root"}
+	_clear_navigation_stack()
 	_register_controller_document()
 	_refresh_dlg_tree()
 	_refresh_dlg_detail()
@@ -346,6 +356,42 @@ func _build_ui() -> void:
 	validate_btn.pressed.connect(_refresh_dlg_validation)
 	_toolbar.add_child(validate_btn)
 
+	var add_entry_btn := Button.new()
+	add_entry_btn.text = "Add Entry"
+	add_entry_btn.pressed.connect(_on_add_entry_pressed)
+	_toolbar.add_child(add_entry_btn)
+
+	var add_reply_btn := Button.new()
+	add_reply_btn.text = "Add Reply"
+	add_reply_btn.pressed.connect(_on_add_reply_pressed)
+	_toolbar.add_child(add_reply_btn)
+
+	var add_start_btn := Button.new()
+	add_start_btn.text = "Add Start"
+	add_start_btn.pressed.connect(_on_add_start_pressed)
+	_toolbar.add_child(add_start_btn)
+
+	var remove_node_btn := Button.new()
+	remove_node_btn.text = "Remove Node"
+	remove_node_btn.pressed.connect(_on_remove_node_pressed)
+	_toolbar.add_child(remove_node_btn)
+
+	var delete_refs_btn := Button.new()
+	delete_refs_btn.text = "Delete References"
+	delete_refs_btn.pressed.connect(_on_delete_references_pressed)
+	_toolbar.add_child(delete_refs_btn)
+
+	var graph_view_btn := Button.new()
+	graph_view_btn.text = "Graph View"
+	graph_view_btn.toggle_mode = true
+	graph_view_btn.toggled.connect(_on_graph_view_toggled)
+	_toolbar.add_child(graph_view_btn)
+
+	var back_btn := Button.new()
+	back_btn.text = "Back"
+	back_btn.pressed.connect(_on_navigation_back_pressed)
+	_toolbar.add_child(back_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -366,12 +412,52 @@ func _build_ui() -> void:
 	_dlg_tree.item_selected.connect(_on_dlg_item_selected)
 	_dlg_tree.item_activated.connect(_on_dlg_item_activated)
 	_dlg_tree.item_mouse_selected.connect(_on_dlg_item_mouse_selected)
-	split.add_child(_dlg_tree)
+
+	_tree_column = VBoxContainer.new()
+	_tree_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tree_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.add_child(_tree_column)
+
+	_dlg_graph_view = KotorDLGGraphView.new()
+	_dlg_graph_view.visible = false
+	_dlg_graph_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dlg_graph_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_dlg_graph_view.node_metadata_selected.connect(_on_graph_node_metadata_selected)
+	_dlg_graph_view.connection_link_requested.connect(_on_graph_connection_link_requested)
+	split.add_child(_dlg_graph_view)
+
+	var tree_scroll := ScrollContainer.new()
+	tree_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tree_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tree_column.add_child(tree_scroll)
+	tree_scroll.add_child(_dlg_tree)
+	_dlg_tree.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dlg_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var orphan_label := Label.new()
+	orphan_label.text = "Orphan Nodes"
+	_tree_column.add_child(orphan_label)
+
+	_orphan_list = ItemList.new()
+	_orphan_list.custom_minimum_size = Vector2(0, 72)
+	_orphan_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_orphan_list.item_selected.connect(_on_orphan_item_selected)
+	_orphan_list.item_activated.connect(_on_orphan_item_activated)
+	_tree_column.add_child(_orphan_list)
+
+	var restore_orphan_btn := Button.new()
+	restore_orphan_btn.text = "Restore Orphan Link"
+	restore_orphan_btn.pressed.connect(_on_restore_orphan_pressed)
+	_tree_column.add_child(restore_orphan_btn)
 
 	# Setup context menu for array operations
 	_array_context_menu = PopupMenu.new()
 	_array_context_menu.id_pressed.connect(_on_array_context_menu_selected)
 	_dlg_tree.add_child(_array_context_menu)
+
+	_node_context_menu = PopupMenu.new()
+	_node_context_menu.id_pressed.connect(_on_node_context_menu_selected)
+	_dlg_tree.add_child(_node_context_menu)
 
 	var detail_panel := VBoxContainer.new()
 	detail_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -494,6 +580,7 @@ func _refresh_dlg_tree() -> void:
 			link_item.set_metadata(0, {"kind": "link", "owner": "reply", "index": reply_index, "link_index": link_index})
 
 	_select_first_dlg_item(root_item)
+	_refresh_orphan_list()
 	_refresh_dlg_status()
 
 
@@ -536,9 +623,41 @@ func _jump_to_link_target(owner_kind: String, owner_index: int, link_index: int)
 		_dlg_status_text = "Link target is missing or out of range."
 		_refresh_dlg_status()
 		return
+	_push_navigation_state(_dlg_selection)
 	_select_dlg_metadata(target)
 	_dlg_status_text = ""
 	_refresh_dlg_status()
+
+
+func _on_navigation_back_pressed() -> void:
+	_pop_navigation_state()
+
+
+func _push_navigation_state(metadata: Dictionary) -> void:
+	if metadata.is_empty():
+		return
+	if _navigation_stack.size() > 0 and _metadata_matches(_navigation_stack[_navigation_stack.size() - 1], metadata):
+		return
+	_navigation_stack.append(metadata.duplicate(true))
+
+
+func _pop_navigation_state() -> void:
+	if _navigation_stack.is_empty():
+		_dlg_status_text = "No prior dialogue selection to restore."
+		_refresh_dlg_status()
+		return
+	var metadata: Dictionary = _navigation_stack.pop_back() as Dictionary
+	_select_dlg_metadata(metadata)
+	_dlg_status_text = "Restored prior selection."
+	_refresh_dlg_status()
+
+
+func _clear_navigation_stack() -> void:
+	_navigation_stack.clear()
+
+
+func get_navigation_stack_depth() -> int:
+	return _navigation_stack.size()
 
 
 func _on_dlg_item_mouse_selected(item: TreeItem, column: int, at_position: Vector2) -> void:
@@ -546,13 +665,23 @@ func _on_dlg_item_mouse_selected(item: TreeItem, column: int, at_position: Vecto
 	var button_index = _dlg_tree.get_button_index_at_position(at_position)
 	if button_index != 2:
 		return
-	if item == null or not item.has_meta(GFFTreePopulator.META_IS_DLG_ARRAY_ITEM):
+	if item == null:
 		return
-	
-	_context_array_field = item.get_meta(GFFTreePopulator.META_ARRAY_FIELD)
-	_context_array_index = item.get_meta(GFFTreePopulator.META_ARRAY_INDEX)
-	
-	_show_array_context_menu(_context_array_field, _context_array_index, at_position)
+	if item.has_meta(GFFTreePopulator.META_IS_DLG_ARRAY_ITEM):
+		_context_array_field = item.get_meta(GFFTreePopulator.META_ARRAY_FIELD)
+		_context_array_index = item.get_meta(GFFTreePopulator.META_ARRAY_INDEX)
+		_show_array_context_menu(_context_array_field, _context_array_index, at_position)
+		return
+
+	var metadata = item.get_metadata(0)
+	if typeof(metadata) != TYPE_DICTIONARY:
+		return
+	var kind := str(metadata.get("kind", ""))
+	if kind != KotorDLGDocument.KIND_ENTRY and kind != KotorDLGDocument.KIND_REPLY:
+		return
+	_context_node_kind = kind
+	_context_node_index = int(metadata.get("index", -1))
+	_show_node_context_menu(at_position)
 
 
 func _show_array_context_menu(array_field: String, index: int, position: Vector2) -> void:
@@ -586,6 +715,46 @@ func _show_array_context_menu(array_field: String, index: int, position: Vector2
 		_array_context_menu.set_item_disabled(_array_context_menu.get_item_count() - 1, true)
 	
 	_array_context_menu.popup_rect(Rect2(position, Vector2.ZERO))
+
+
+func _show_node_context_menu(position: Vector2) -> void:
+	if _node_context_menu == null:
+		return
+	_node_context_menu.clear()
+	_node_context_menu.add_item("Delete All References", 0)
+	var orphan_metadata := _get_selected_orphan_metadata()
+	if not orphan_metadata.is_empty() and _dlg_document != null:
+		if _dlg_document.can_link_orphan_to_owner(
+			_context_node_kind,
+			str(orphan_metadata.get("kind", ""))
+		):
+			_node_context_menu.add_item("Link Selected Orphan Here", 1)
+	_node_context_menu.popup_rect(Rect2(position, Vector2.ZERO))
+
+
+func _on_node_context_menu_selected(menu_id: int) -> void:
+	if _context_node_kind.is_empty() or _context_node_index < 0:
+		return
+	match menu_id:
+		0:
+			_apply_remove_all_references(_context_node_kind, _context_node_index)
+		1:
+			var orphan_metadata := _get_selected_orphan_metadata()
+			if not orphan_metadata.is_empty():
+				_try_restore_orphan_link(_context_node_kind, _context_node_index, orphan_metadata)
+	_context_node_kind = ""
+	_context_node_index = -1
+
+
+func _on_delete_references_pressed() -> void:
+	if _dlg_document == null:
+		return
+	var kind := str(_dlg_selection.get("kind", ""))
+	if kind != KotorDLGDocument.KIND_ENTRY and kind != KotorDLGDocument.KIND_REPLY:
+		_dlg_status_text = "Select an entry or reply node to delete references."
+		_refresh_dlg_status()
+		return
+	_apply_remove_all_references(kind, int(_dlg_selection.get("index", -1)))
 
 
 func _on_array_context_menu_selected(menu_id: int) -> void:
@@ -645,6 +814,13 @@ func _refresh_dlg_detail() -> void:
 				"Text", "Speaker", "Listener", "Comment", "AnimList",
 				"Script", "Delay", "Quest", "PlotIndex", "Sound", "VO_ResRef",
 			])
+			var delete_refs_btn := Button.new()
+			delete_refs_btn.text = "Delete All References"
+			delete_refs_btn.pressed.connect(func() -> void:
+				_apply_remove_all_references(kind, index)
+			)
+			_dlg_details.add_child(delete_refs_btn)
+			_add_linkable_orphans_panel(kind, index)
 			_add_dlg_link_summary(kind, index)
 		"start":
 			var start_index := int(_dlg_selection.get("index", -1))
@@ -1209,6 +1385,7 @@ func _clear_document_state(message: String) -> void:
 	_dlg_file_name = "dialogue.dlg"
 	_dlg_dirty = false
 	_dlg_selection = {}
+	_clear_navigation_stack()
 	_dlg_status_text = message
 	_document_key = ""
 	if _dlg_tree != null:
@@ -1521,3 +1698,388 @@ func _exec_array_reorder(array_field_name: String, from_index: int, to_index: in
 	if _dlg_document == null:
 		return
 	_dlg_document.reorder_array_item(array_field_name, from_index, to_index)
+
+
+func _on_graph_view_toggled(pressed: bool) -> void:
+	_show_graph_view = pressed
+	if _tree_column != null:
+		_tree_column.visible = not pressed
+	if _dlg_graph_view != null:
+		_dlg_graph_view.visible = pressed
+	if pressed:
+		_refresh_dlg_graph()
+
+
+func _on_graph_node_metadata_selected(metadata: Dictionary) -> void:
+	if metadata.is_empty():
+		return
+	_select_dlg_metadata(metadata)
+
+
+func _on_graph_connection_link_requested(from_metadata: Dictionary, to_metadata: Dictionary) -> void:
+	if _dlg_document == null or from_metadata.is_empty() or to_metadata.is_empty():
+		return
+	var owner_kind := str(from_metadata.get("kind", ""))
+	var owner_index := int(from_metadata.get("index", -1))
+	var target_kind := str(to_metadata.get("kind", ""))
+	var target_index := int(to_metadata.get("index", -1))
+	if owner_kind.is_empty() or target_kind.is_empty() or owner_index < 0 or target_index < 0:
+		return
+	if _dlg_document.get_link_target_kind(owner_kind) != target_kind:
+		_dlg_status_text = "Graph links must connect entry to reply or reply to entry."
+		_refresh_dlg_status()
+		return
+	_apply_graph_link(owner_kind, owner_index, target_kind, target_index)
+
+
+func _apply_graph_link(
+		owner_kind: String,
+		owner_index: int,
+		target_kind: String,
+		target_index: int
+) -> void:
+	if _dlg_document == null or owner_index < 0 or target_index < 0:
+		return
+	var snapshot := _dlg_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Add DLG graph link", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_add_graph_link", owner_kind, owner_index, target_kind, target_index)
+		ur.add_undo_method(self, "_exec_restore_topology", snapshot)
+		ur.commit_action()
+	else:
+		_exec_add_graph_link(owner_kind, owner_index, target_kind, target_index)
+
+
+func _exec_add_graph_link(
+		owner_kind: String,
+		owner_index: int,
+		target_kind: String,
+		target_index: int
+) -> void:
+	if _dlg_document == null:
+		return
+	if not _dlg_document.add_node_link(owner_kind, owner_index, target_kind, target_index):
+		_dlg_status_text = "Could not add graph link from %s %d to %s %d." % [
+			owner_kind, owner_index, target_kind, target_index
+		]
+		_refresh_dlg_status()
+		return
+	_dlg_status_text = "Added graph link from %s %d to %s %d." % [
+		owner_kind, owner_index, target_kind, target_index
+	]
+	_refresh_after_topology_change({"kind": owner_kind, "index": owner_index})
+
+
+func _refresh_dlg_graph() -> void:
+	if _dlg_graph_view == null or _dlg_document == null or not _show_graph_view:
+		return
+	_dlg_graph_view.build_from_layout(_dlg_document.build_graph_layout_metadata())
+
+
+func _on_add_entry_pressed() -> void:
+	_apply_node_add(KotorDLGDocument.KIND_ENTRY)
+
+
+func _on_add_reply_pressed() -> void:
+	_apply_node_add(KotorDLGDocument.KIND_REPLY)
+
+
+func _on_add_start_pressed() -> void:
+	if _dlg_document == null:
+		return
+	var entry_index := 0
+	if _dlg_document.get_entry_count() == 0:
+		_dlg_status_text = "Add an entry before creating a start node."
+		_refresh_dlg_status()
+		return
+	if str(_dlg_selection.get("kind", "")) == "entry":
+		entry_index = int(_dlg_selection.get("index", 0))
+	_apply_start_add(entry_index)
+
+
+func _apply_remove_all_references(kind: String, index: int) -> void:
+	if _dlg_document == null or index < 0:
+		return
+	var snapshot := _dlg_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Delete DLG references", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_remove_all_references", kind, index)
+		ur.add_undo_method(self, "_exec_restore_topology", snapshot)
+		ur.commit_action()
+	else:
+		_exec_remove_all_references(kind, index)
+
+
+func _exec_remove_all_references(kind: String, index: int) -> void:
+	if _dlg_document == null:
+		return
+	var removed_count := _dlg_document.remove_all_references_to_node(kind, index)
+	if removed_count <= 0:
+		_dlg_status_text = "No incoming references found for %s %d." % [kind, index]
+	else:
+		_dlg_status_text = "Removed %d reference(s) to %s %d." % [removed_count, kind, index]
+	_refresh_after_topology_change({"kind": kind, "index": index})
+
+
+func _on_remove_node_pressed() -> void:
+	if _dlg_document == null:
+		return
+	var kind := str(_dlg_selection.get("kind", ""))
+	if kind != KotorDLGDocument.KIND_ENTRY and kind != KotorDLGDocument.KIND_REPLY:
+		_dlg_status_text = "Select an entry or reply node to remove."
+		_refresh_dlg_status()
+		return
+	_apply_node_remove(kind, int(_dlg_selection.get("index", -1)))
+
+
+func _on_orphan_item_selected(_index: int) -> void:
+	# Keep tree selection on the intended link source; orphan list selection drives restore.
+	pass
+
+
+func _on_orphan_item_activated(index: int) -> void:
+	if _dlg_document == null or _orphan_list == null or index < 0:
+		return
+	var orphan_metadata = _orphan_list.get_item_metadata(index)
+	if typeof(orphan_metadata) != TYPE_DICTIONARY:
+		return
+	var owner_kind := str(_dlg_selection.get("kind", ""))
+	if owner_kind != KotorDLGDocument.KIND_ENTRY and owner_kind != KotorDLGDocument.KIND_REPLY:
+		_dlg_status_text = "Select an entry or reply, then double-click an orphan to link."
+		_refresh_dlg_status()
+		return
+	_try_restore_orphan_link(
+		owner_kind,
+		int(_dlg_selection.get("index", -1)),
+		orphan_metadata
+	)
+
+
+func _on_restore_orphan_pressed() -> void:
+	if _dlg_document == null or _orphan_list == null:
+		return
+	var orphan_metadata := _get_selected_orphan_metadata()
+	if orphan_metadata.is_empty():
+		_dlg_status_text = "Select an orphan node to restore."
+		_refresh_dlg_status()
+		return
+	var owner_kind := str(_dlg_selection.get("kind", ""))
+	if owner_kind != KotorDLGDocument.KIND_ENTRY and owner_kind != KotorDLGDocument.KIND_REPLY:
+		_dlg_status_text = "Select an entry or reply as the link source, then restore."
+		_refresh_dlg_status()
+		return
+	_try_restore_orphan_link(
+		owner_kind,
+		int(_dlg_selection.get("index", -1)),
+		orphan_metadata
+	)
+
+
+func _get_selected_orphan_metadata() -> Dictionary:
+	if _orphan_list == null:
+		return {}
+	var selected := _orphan_list.get_selected_items()
+	if selected.is_empty():
+		return {}
+	var orphan_metadata = _orphan_list.get_item_metadata(selected[0])
+	if typeof(orphan_metadata) != TYPE_DICTIONARY:
+		return {}
+	return orphan_metadata
+
+
+func _try_restore_orphan_link(
+		owner_kind: String,
+		owner_index: int,
+		orphan_metadata: Dictionary
+) -> void:
+	if _dlg_document == null or orphan_metadata.is_empty() or owner_index < 0:
+		return
+	var target_kind := str(orphan_metadata.get("kind", ""))
+	var target_index := int(orphan_metadata.get("index", -1))
+	if not _dlg_document.can_link_orphan_to_owner(owner_kind, target_kind):
+		_dlg_status_text = "Cannot link %s orphan to %s node." % [target_kind, owner_kind]
+		_refresh_dlg_status()
+		return
+	_apply_restore_orphan_link(owner_kind, owner_index, target_kind, target_index)
+
+
+func _add_linkable_orphans_panel(owner_kind: String, owner_index: int) -> void:
+	if _dlg_document == null:
+		return
+	var linkable := _dlg_document.find_linkable_orphans_for_owner(owner_kind)
+	if linkable.is_empty():
+		return
+	_add_dlg_section_title("Linkable Orphans")
+	for orphan in linkable:
+		var target_kind := str(orphan.get("kind", ""))
+		var target_index := int(orphan.get("index", -1))
+		var row := HBoxContainer.new()
+		var summary := Label.new()
+		summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		summary.text = "%s %d — %s" % [
+			target_kind.capitalize(),
+			target_index,
+			_dlg_document.build_node_preview(target_kind, target_index, "No preview"),
+		]
+		row.add_child(summary)
+		var link_btn := Button.new()
+		link_btn.text = "Link"
+		link_btn.pressed.connect(func() -> void:
+			_try_restore_orphan_link(owner_kind, owner_index, orphan)
+		)
+		row.add_child(link_btn)
+		_dlg_details.add_child(row)
+
+
+func _refresh_orphan_list() -> void:
+	if _orphan_list == null:
+		return
+	_orphan_list.clear()
+	if _dlg_document == null:
+		return
+	for orphan in _dlg_document.find_orphaned_nodes():
+		var kind := str(orphan.get("kind", ""))
+		var index := int(orphan.get("index", -1))
+		var label := "%s %d — %s" % [
+			kind.capitalize(),
+			index,
+			_dlg_document.build_node_preview(kind, index, "No preview"),
+		]
+		var row := _orphan_list.add_item(label)
+		_orphan_list.set_item_metadata(row, orphan)
+
+
+func _apply_node_add(kind: String) -> void:
+	if _dlg_document == null:
+		return
+	var snapshot := _dlg_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Add DLG %s" % kind, UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_node_add", kind)
+		ur.add_undo_method(self, "_exec_restore_topology", snapshot)
+		ur.commit_action()
+	else:
+		_exec_node_add(kind)
+
+
+func _apply_start_add(entry_index: int) -> void:
+	if _dlg_document == null:
+		return
+	var snapshot := _dlg_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Add DLG start", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_start_add", entry_index)
+		ur.add_undo_method(self, "_exec_restore_topology", snapshot)
+		ur.commit_action()
+	else:
+		_exec_start_add(entry_index)
+
+
+func _apply_node_remove(kind: String, index: int) -> void:
+	if _dlg_document == null or index < 0:
+		return
+	var snapshot := _dlg_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Remove DLG %s" % kind, UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_node_remove", kind, index)
+		ur.add_undo_method(self, "_exec_restore_topology", snapshot)
+		ur.commit_action()
+	else:
+		_exec_node_remove(kind, index)
+
+
+func _apply_restore_orphan_link(
+		owner_kind: String,
+		owner_index: int,
+		target_kind: String,
+		target_index: int
+) -> void:
+	if _dlg_document == null:
+		return
+	var snapshot := _dlg_document.capture_topology_snapshot()
+	var ur := _get_undo_redo()
+	if ur != null:
+		ur.create_action("Restore DLG orphan link", UndoRedo.MERGE_DISABLE, self)
+		ur.add_do_method(self, "_exec_restore_orphan_link", owner_kind, owner_index, target_kind, target_index)
+		ur.add_undo_method(self, "_exec_restore_topology", snapshot)
+		ur.commit_action()
+	else:
+		_exec_restore_orphan_link(owner_kind, owner_index, target_kind, target_index)
+
+
+func _exec_node_add(kind: String) -> void:
+	if _dlg_document == null:
+		return
+	var new_index := -1
+	match kind.to_lower():
+		KotorDLGDocument.KIND_ENTRY:
+			new_index = _dlg_document.add_entry()
+		KotorDLGDocument.KIND_REPLY:
+			new_index = _dlg_document.add_reply()
+	if new_index < 0:
+		return
+	_refresh_after_topology_change({"kind": kind, "index": new_index})
+
+
+func _exec_start_add(entry_index: int) -> void:
+	if _dlg_document == null:
+		return
+	var start_index := _dlg_document.add_start(entry_index)
+	if start_index < 0:
+		return
+	_refresh_after_topology_change({"kind": "start", "index": start_index})
+
+
+func _exec_node_remove(kind: String, index: int) -> void:
+	if _dlg_document == null:
+		return
+	if not _dlg_document.remove_node(kind, index):
+		return
+	_refresh_after_topology_change({"kind": "root"})
+
+
+func _exec_restore_orphan_link(
+		owner_kind: String,
+		owner_index: int,
+		target_kind: String,
+		target_index: int
+) -> void:
+	if _dlg_document == null:
+		return
+	if not _dlg_document.restore_link_to_orphan(owner_kind, owner_index, target_kind, target_index):
+		_dlg_status_text = "Could not restore orphan link from the selected node."
+		_refresh_dlg_status()
+		return
+	_dlg_status_text = "Restored orphan link."
+	_refresh_after_topology_change(_dlg_selection)
+
+
+func _exec_restore_topology(snapshot: Dictionary) -> void:
+	if _dlg_document == null:
+		return
+	_dlg_document.restore_topology_snapshot(snapshot)
+	_refresh_after_topology_change(_dlg_selection)
+
+
+func _refresh_after_topology_change(selection: Dictionary = {}) -> void:
+	_refresh_dlg_tree()
+	_refresh_dlg_graph()
+	if not selection.is_empty():
+		if str(selection.get("kind", "")) == "root":
+			var root_item := _dlg_tree.get_root()
+			if root_item != null:
+				_select_first_dlg_item(root_item)
+		else:
+			_select_dlg_metadata(selection)
+	_refresh_orphan_list()
+	_refresh_dlg_validation()
+	_dlg_dirty = true
+	_emit_dirty_state(_dlg_dirty)
+	_update_controller_dirty_state()
+	_refresh_dlg_status()

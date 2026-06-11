@@ -32,6 +32,7 @@ const KotorMutationService := preload("../editor/transactions/kotor_mutation_ser
 const KotorPreflightDialog := preload("./workspace/dialogs/kotor_preflight_dialog.gd")
 const KotorGFFWorkspaceEditor := preload("./workspace/editors/gff_workspace_editor.gd")
 const KotorModuleDesignerWorkspaceEditor := preload("./workspace/editors/module_designer_workspace_editor.gd")
+const KotorErfWorkspaceEditor := preload("./workspace/editors/erf_workspace_editor.gd")
 const GAME_TLK_NAME := KotorEditorState.GAME_TLK_NAME
 const GAMEFS_RESULT_LIMIT := 500
 const AREA_RESULT_LIMIT := 256
@@ -3756,6 +3757,8 @@ func _should_delegate_to_workspace_editor(extension: String) -> bool:
 	if normalized == "dlg":
 		return true
 	if normalized == "2da" or normalized == "tlk" or normalized == "ssf" or normalized == "tpc" or normalized == "wav" or normalized == "lip":
+		return true
+	if KotorErfWorkspaceEditor.archive_extension_allowed(normalized):
 		return true
 	if SCRIPT_EXTENSIONS.has(normalized):
 		return true

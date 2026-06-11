@@ -64,6 +64,11 @@ The plugin currently includes the following in-editor functionality:
 - Archive and format support for KEY/BIF index and extraction
 - Archive and format support for TPC import/read pipeline
 - Transaction safety via preflight previews, install/export mutation history, and rollback/restore operations
+- Module Designer workspace: typed GIT editing, PTH point/connection CRUD, LYT/VIS/PTH install paths, walkmesh overlay + install, compare/export batch tooling
+- Module Designer extensions *(pending PR #119 merge)*: GIT instance add/remove (Q124), walkmesh face paint (Q126)
+- Media workspace editors: TPC (import/export/DXT/batch), WAV (playback/compare/batch), LIP (waveform/batch), SSF (sound-set editing)
+- Model Editor workspace: MDL 3D preview, batch export/import, compare-with-override, compare report export
+- Indoor Builder: native indoor mod export/install with module kit loader
 
 ### OpenKotOR parity program
 

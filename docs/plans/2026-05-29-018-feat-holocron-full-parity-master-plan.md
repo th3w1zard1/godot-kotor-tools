@@ -40,7 +40,7 @@ Evidence: `gh api repos/OpenKotOR/HolocronToolset/contents/src/toolset/gui/edito
 | `utt.py` | Trigger blueprint | **Q13 slice** (typed UTT) | Q13 |
 | `utw.py` | Waypoint blueprint | **Q13 slice** (typed UTW) | Q13 |
 | `are.py` | Area metadata | Partial (typed ARE) | Q14 |
-| `git.py` | Area instances | Partial (typed GIT) | Q15 module wave |
+| `git.py` | Area instances | Partial (typed GIT + Q124 instance CRUD) | Q15–Q124 module wave |
 | `ifo.py` | Module info | Partial (typed IFO) | Q15 |
 | `jrl.py` | Journal | Partial (typed JRL) | Q13 shipped Q1–Q12 era |
 | `pth.py` | Path / waypoints list | Partial (typed PTH) | Q13 |
@@ -52,12 +52,12 @@ Evidence: `gh api repos/OpenKotOR/HolocronToolset/contents/src/toolset/gui/edito
 | `nss.py` | NWScript source | Partial | Q17 script wave |
 | `erf.py` | ERF archives | Partial (write-back) | Q18 archive UX |
 | `tpc.py` | Textures | Partial (import/read) | Q19 media |
-| `wav.py` | Audio | Not started | Q19 |
-| `lip.py` | Lip sync | Not started | Q19 |
-| `ssf.py` | Sound set | Not started | Q19 |
+| `wav.py` | Audio | Partial (WAV workspace + batch/compare) | Q27–Q29, Q38, Q104–Q109, Q116 |
+| `lip.py` | Lip sync | Partial (LIP workspace + batch) | Q29–Q31, Q118 |
+| `ssf.py` | Sound set | Partial (SSF workspace) | Q27 |
 | `ltr.py` | Letter / font | Not started | Q20 |
-| `mdl.py` | Models | Not started | Q21 model wave |
-| `bwm.py` | Walkmesh | Not started | Q21 |
+| `mdl.py` | Models | Partial (Model Editor + batch/compare) | Q84–Q85, Q91–Q93, Q119–Q123 |
+| `bwm.py` | Walkmesh | Partial (overlay + install + Q126 paint) | Q17, Q56, Q94, Q126 |
 | `savegame.py` | Save games | Not started | Q22 |
 | `txt.py` | Plain text | Shipped (text editor path) | Maintain |
 
@@ -66,8 +66,8 @@ Evidence: `gh api repos/OpenKotOR/HolocronToolset/contents/src/toolset/gui/edito
 | Holocron window | godot-kotor-tools | Target phase |
 | --- | --- | --- |
 | `main.py` | Partial (dock + workspace shell) | Ongoing UX |
-| `module_designer.py` | Not started | Q15–Q16 |
-| `indoor_builder/` | Not started | Q16 |
+| `module_designer.py` | Partial (GIT/PTH/LYT/VIS/WOK + Q124 CRUD + Q126 paint) | Q15–Q73, Q124–Q126 |
+| `indoor_builder/` | Partial (native indoor mod export/install) | Q47, Q55–Q57 |
 | `kotordiff.py` | Partial (compare flows) | Q18 diff depth |
 
 ## PyKotor format families (library layer)
@@ -81,8 +81,8 @@ Evidence: `Libraries/PyKotor/src/pykotor/resource/formats/*` (2026-05-29).
 | `erf`, `rim` | Partial write-back | Q18 |
 | `bif`, `key` | Partial (index/extract) | Q18 |
 | `ncs` | Partial (NSS editor, no full decompile UI) | Q17 |
-| `tpc`, `wav`, `lip`, `ssf` | Partial / not started | Q19 |
-| `mdl`, `bwm`, `lyt`, `vis` | Not started / minimal | Q21 |
+| `tpc`, `wav`, `lip`, `ssf` | Partial (workspace + batch tooling) | Q27–Q31, Q77–Q82, Q104–Q118 |
+| `mdl`, `bwm`, `lyt`, `vis` | Partial (module designer + model editor) | Q17–Q18, Q56, Q84–Q85, Q91–Q94, Q126 |
 | `ltr` | Not started | Q20 |
 
 ## Architecture principles (non-negotiable)
@@ -178,4 +178,4 @@ TPC/WAV/LIP/SSF editors, MDL/BWM, savegame tooling.
 
 ## Residual backlog after Q13 (expected)
 
-Module designer, indoor builder, BWM/MDL/LYT, full DLG graph editor, NCS decompile UI, TPC/WAV/LIP/SSF editors, savegame editor, HoloPatcher/KotorDiff parity—these remain **Planned/Not started** until their dedicated plan slices land.
+Module designer, indoor builder, BWM/MDL/LYT, TPC/WAV/LIP/SSF, and compare/batch tooling are **Partial** per the editor inventory above (Q15–Q126). Remaining **Planned/Not started** areas: full DLG graph editor, NCS decompile UI, savegame editor, HoloPatcher/KotorDiff parity, and MDL write-back authoring.
