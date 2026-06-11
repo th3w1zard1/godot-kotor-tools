@@ -273,6 +273,16 @@ func _build_ui() -> void:
 	apply_txi_btn.pressed.connect(_apply_txi_from_editor)
 	_toolbar.add_child(apply_txi_btn)
 
+	var import_txi_btn := Button.new()
+	import_txi_btn.text = "Import TXI..."
+	import_txi_btn.pressed.connect(_prompt_import_txi)
+	_toolbar.add_child(import_txi_btn)
+
+	var export_txi_btn := Button.new()
+	export_txi_btn.text = "Export TXI..."
+	export_txi_btn.pressed.connect(_prompt_export_txi)
+	_toolbar.add_child(export_txi_btn)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -464,8 +474,84 @@ func apply_txi_text(text: String) -> bool:
 	return true
 
 
+func import_txi_from_file(path: String) -> bool:
+	if path.is_empty() or not FileAccess.file_exists(path):
+		_status_text = "TXI file not found: %s" % path.get_file()
+		_refresh_status()
+		return false
+
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		_status_text = "Failed to open TXI file: %s" % path.get_file()
+		_refresh_status()
+		return false
+
+	var text := file.get_as_text()
+	file.close()
+	return apply_txi_text(text)
+
+
+func export_txi_to_file(path: String) -> bool:
+	if _bytes.is_empty() or not _metadata.get("ok", false):
+		_status_text = "Load a valid TPC before exporting TXI."
+		_refresh_status()
+		return false
+
+	var target := _ensure_extension(path, "txi")
+	var text := get_txi_text()
+	var file := FileAccess.open(target, FileAccess.WRITE)
+	if file == null:
+		_status_text = "Failed to write TXI file: %s" % target.get_file()
+		_refresh_status()
+		return false
+
+	file.store_string(text)
+	file.close()
+	_status_text = "Exported TXI to %s (%d bytes)." % [target.get_file(), text.to_utf8_buffer().size()]
+	_refresh_status()
+	return true
+
+
 func _apply_txi_from_editor() -> void:
 	apply_txi_text(get_txi_text())
+
+
+func _prompt_import_txi() -> void:
+	if _bytes.is_empty():
+		_status_text = "Load a valid TPC before importing TXI."
+		_refresh_status()
+		return
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_FILE,
+		PackedStringArray(["*.txi ; KotOR Texture Info"]),
+		"Import TXI",
+		_source_path.get_base_dir() if not _source_path.is_empty() else "",
+		_current_file_name().get_basename() + ".txi"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		import_txi_from_file(path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _prompt_export_txi() -> void:
+	if _bytes.is_empty():
+		_status_text = "Load a valid TPC before exporting TXI."
+		_refresh_status()
+		return
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_SAVE_FILE,
+		PackedStringArray(["*.txi ; KotOR Texture Info"]),
+		"Export TXI",
+		_source_path.get_base_dir() if not _source_path.is_empty() else "",
+		_current_file_name().get_basename() + ".txi"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		export_txi_to_file(path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
 
 
 func _refresh_txi_editor() -> void:

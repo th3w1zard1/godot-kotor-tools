@@ -6,15 +6,25 @@ const TPCWriter := preload("../../formats/tpc_writer.gd")
 const KotorTPCWorkspaceEditor := preload("../../ui/workspace/editors/tpc_workspace_editor.gd")
 
 
+var _test_root := ""
+
+
 func _initialize() -> void:
 	call_deferred("_run_tests")
 
 
 func _run_tests() -> void:
+	_test_root = ProjectSettings.globalize_path("user://tpc_txi_editor_test_%d" % Time.get_ticks_usec())
+	DirAccess.make_dir_recursive_absolute(_test_root)
 	await _test_load_populates_txi_editor()
 	await _test_apply_txi_text_updates_metadata()
 	await _test_apply_empty_clears_txi()
+	await _test_import_txi_from_file()
+	await _test_export_txi_to_file()
+	await _test_import_txi_missing_file()
 	await _test_apply_txi_button()
+	await _test_txi_file_buttons()
+	_cleanup()
 	print("✓ TPC TXI editor tests passed")
 	quit()
 
@@ -46,6 +56,41 @@ func _test_apply_empty_clears_txi() -> void:
 	editor.get_parent().queue_free()
 	await process_frame
 	print("✓ TPC TXI apply clear passed")
+
+
+func _test_import_txi_from_file() -> void:
+	var editor := await _make_editor_with_rgba_tpc()
+	var txi_path := _test_root.path_join("imported.txi")
+	_write_file(txi_path, "bumpmap\n".to_utf8_buffer())
+	assert(editor.import_txi_from_file(txi_path))
+	assert(editor.is_document_dirty())
+	assert(editor.get_txi_text().contains("bumpmap"))
+	editor.get_parent().queue_free()
+	await process_frame
+	print("✓ TPC TXI import from file passed")
+
+
+func _test_export_txi_to_file() -> void:
+	var editor := await _make_editor_with_txi_tpc("envmap\nproceduretype cycle\n")
+	var export_path := _test_root.path_join("exported.txi")
+	assert(editor.export_txi_to_file(export_path))
+	assert(FileAccess.file_exists(export_path))
+	var file := FileAccess.open(export_path, FileAccess.READ)
+	var exported := file.get_as_text()
+	file.close()
+	assert(exported.contains("envmap"))
+	assert(exported.contains("proceduretype"))
+	editor.get_parent().queue_free()
+	await process_frame
+	print("✓ TPC TXI export to file passed")
+
+
+func _test_import_txi_missing_file() -> void:
+	var editor := await _make_editor_with_rgba_tpc()
+	assert(not editor.import_txi_from_file(_test_root.path_join("missing.txi")))
+	editor.get_parent().queue_free()
+	await process_frame
+	print("✓ TPC TXI import missing file passed")
 
 
 func _test_apply_txi_button() -> void:
@@ -88,6 +133,50 @@ func _spawn_editor(bytes: PackedByteArray) -> KotorTPCWorkspaceEditor:
 	editor.open_tpc_bytes(bytes, "", "test.tpc")
 	await process_frame
 	return editor
+
+
+func _test_txi_file_buttons() -> void:
+	var editor := KotorTPCWorkspaceEditor.new()
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(editor)
+	await process_frame
+	assert(_find_button(editor, "Import TXI...") != null)
+	assert(_find_button(editor, "Export TXI...") != null)
+	holder.queue_free()
+	await process_frame
+	print("✓ TPC TXI file buttons passed")
+
+
+func _write_file(path: String, bytes: PackedByteArray) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_buffer(bytes)
+	file.close()
+
+
+func _cleanup() -> void:
+	if DirAccess.dir_exists_absolute(_test_root):
+		_remove_dir_recursive(_test_root)
+
+
+func _remove_dir_recursive(path: String) -> void:
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	while true:
+		var entry := dir.get_next()
+		if entry.is_empty():
+			break
+		if entry == "." or entry == "..":
+			continue
+		var full := path.path_join(entry)
+		if dir.current_is_dir():
+			_remove_dir_recursive(full)
+		elif FileAccess.file_exists(full):
+			DirAccess.remove_absolute(full)
+	dir.list_dir_end()
+	DirAccess.remove_absolute(path)
 
 
 func _find_button(node: Node, text: String) -> Button:

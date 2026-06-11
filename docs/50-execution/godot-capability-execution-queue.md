@@ -127,12 +127,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q111 | Preserve TXI on TPC DXT re-encode | `_reencode_loaded_image` re-appends TXI tail after DXT1/DXT5 serialize; headless `test_tpc_dxt_reencode.gd`. |
 | Q112 | Native TPC DXT3 encode | `TpcDxtEncoder.encode_dxt3_image` + `TPCWriter.serialize_dxt3`; TPC editor **Re-encode DXT3...**; headless `test_tpc_dxt_encoder.gd`, `test_tpc_dxt_reencode.gd`. |
 | Q113 | TPC DXT3 batch/import toolbar parity | `TpcBatchConverter` `dxt3` encoding + TPC editor import/batch/install/folder DXT3 toolbar actions; headless batch/importer/re-encode tests. |
+| Q114 | TPC editor TXI file import/export | **Import TXI...** / **Export TXI...** toolbar actions via `import_txi_from_file` / `export_txi_to_file`; headless `test_tpc_txi_editor.gd`. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q113 shipped DXT3 batch/import toolbar parity. | Next: module/area designer wave or recursive subfolder scan. |
+| P1 | OpenKotOR parity program (PyKotor/Holocron) | Drive upstream parity in bounded Godot editor slices with matrix-driven backlog. | Q114 shipped TXI file import/export in TPC editor. | Next: recursive subfolder scan or module/area designer wave. |
 
 ## Next Slices (Deferred)
 
