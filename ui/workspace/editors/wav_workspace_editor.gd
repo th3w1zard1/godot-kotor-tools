@@ -6,6 +6,7 @@ const WavMetadata := preload("../../../formats/wav_metadata.gd")
 const WavBatchConverter := preload("../../../formats/wav_batch_converter.gd")
 const WavGamefsBatchImporter := preload("../../../formats/wav_gamefs_batch_importer.gd")
 const WavGamefsBatchExporter := preload("../../../formats/wav_gamefs_batch_exporter.gd")
+const WavBatchExporter := preload("../../../formats/wav_batch_exporter.gd")
 const KotorMediaToolBridge := preload("../../../resources/scripts/kotor_media_tool_bridge.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
@@ -163,6 +164,11 @@ func _build_ui() -> void:
 	batch_install_export_btn.pressed.connect(_batch_export_install_wav)
 	_toolbar.add_child(batch_install_export_btn)
 
+	var batch_copy_btn := Button.new()
+	batch_copy_btn.text = "Batch Copy WAV Folder..."
+	batch_copy_btn.pressed.connect(_batch_copy_wav_folder)
+	_toolbar.add_child(batch_copy_btn)
+
 	var save_btn := Button.new()
 	save_btn.text = "Save WAV"
 	save_btn.pressed.connect(_save_wav)
@@ -319,6 +325,49 @@ func _run_batch_export_install_wav(gamefs: RefCounted, output_dir: String) -> vo
 		"source_filter": "override",
 	})
 	_apply_batch_wav_status(result, "Install batch WAV export finished.")
+
+
+func _batch_copy_wav_folder() -> void:
+	var start_dir := ""
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		start_dir = _editor_state.call("resolve_dialog_start_dir", "")
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select WAV source folder"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	dialog.dir_selected.connect(func(source_dir: String) -> void:
+		_prompt_batch_copy_wav_output_dir(source_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _prompt_batch_copy_wav_output_dir(source_dir: String) -> void:
+	var start_dir := source_dir
+	if _editor_state != null and _editor_state.has_method("resolve_dialog_start_dir"):
+		start_dir = _editor_state.call("resolve_dialog_start_dir", start_dir)
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Select WAV output folder"
+	if not start_dir.is_empty():
+		dialog.current_dir = start_dir
+	dialog.dir_selected.connect(func(output_dir: String) -> void:
+		_run_batch_copy_wav_folder(source_dir, output_dir)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_copy_wav_folder(source_dir: String, output_dir: String) -> void:
+	var result := WavBatchExporter.batch_directory(source_dir, output_dir)
+	_apply_batch_wav_status(result, "Folder batch WAV export finished.")
 
 
 func _run_batch_convert_install_wav(gamefs: RefCounted) -> void:
