@@ -834,6 +834,7 @@ func _on_map_path_connection_retarget_requested(connection_index: int, target_in
 func _arm_add_path_point() -> void:
 	if _map_view == null or _path_document == null:
 		return
+	_map_view.set_add_path_connection_armed(false)
 	_map_view.set_add_path_point_armed(true)
 	_status_text = "Click the map to place a new path point."
 	_refresh_status()
@@ -860,6 +861,7 @@ func _arm_add_path_connection() -> void:
 		_status_text = "Select a source path point before adding a connection."
 		_refresh_status()
 		return
+	_map_view.set_add_path_point_armed(false)
 	_map_view.set_add_path_connection_armed(true)
 	_status_text = "Click a target path point to connect from the selected source."
 	_refresh_status()
@@ -1055,6 +1057,7 @@ func _select_tree_item(kind: String, category: String, index: int) -> void:
 func _reset_overlay_selection() -> void:
 	if _map_view != null:
 		_map_view.set_add_path_point_armed(false)
+		_map_view.set_add_path_connection_armed(false)
 		_map_view.set_selection("", -1)
 		_map_view.set_path_point_selection(-1)
 		_map_view.set_path_connection_selection(-1)
