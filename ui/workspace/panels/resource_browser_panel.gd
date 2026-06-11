@@ -10,6 +10,7 @@ signal references_requested(entry: Dictionary)
 
 const KotorResourceLocator := preload("../../../editor/navigation/kotor_resource_locator.gd")
 const KotorResRefReferenceScanner := preload("../../../editor/tools/kotor_resref_reference_scanner.gd")
+const MdlGamefsBatchExporter := preload("../../../formats/mdl_gamefs_batch_exporter.gd")
 
 var _target_context: RefCounted
 var _status_label: Label
@@ -96,6 +97,11 @@ func _build_ui() -> void:
 	references_btn.text = "Find References"
 	references_btn.pressed.connect(_find_references_for_selected)
 	actions_row.add_child(references_btn)
+
+	var batch_mdl_btn := Button.new()
+	batch_mdl_btn.text = "Batch Export Install MDL..."
+	batch_mdl_btn.pressed.connect(_batch_export_install_mdl)
+	actions_row.add_child(batch_mdl_btn)
 
 	var search_row := HBoxContainer.new()
 	add_child(search_row)
@@ -217,3 +223,34 @@ func _find_references_for_selected() -> void:
 	var target_resref := str(entry.get("resref", ""))
 	var result := KotorResRefReferenceScanner.scan_install_references(gamefs, target_resref)
 	_set_detail_text(KotorResRefReferenceScanner.format_report(result))
+
+
+func _batch_export_install_mdl() -> void:
+	if _target_context == null or not _target_context.has_method("get_gamefs"):
+		_set_detail_text("Target context is unavailable for batch MDL export.")
+		return
+	var gamefs: RefCounted = _target_context.get_gamefs()
+	if gamefs == null:
+		_set_detail_text("Configure a valid game install before batch MDL export.")
+		return
+
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
+	dialog.title = "Batch Export MDL from install index"
+	if _target_context.has_method("resolve_dialog_start_dir"):
+		dialog.current_dir = _target_context.call("resolve_dialog_start_dir", "")
+	dialog.dir_selected.connect(func(dir_path: String) -> void:
+		_run_batch_install_mdl_export(gamefs, dir_path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _run_batch_install_mdl_export(gamefs: RefCounted, output_dir: String) -> void:
+	var result := MdlGamefsBatchExporter.batch_install(gamefs, output_dir, {
+		"source_filter": "override",
+	})
+	_set_detail_text(MdlGamefsBatchExporter.format_report(result))
