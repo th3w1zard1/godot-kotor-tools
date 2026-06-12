@@ -169,6 +169,53 @@ func extract_all_members_to_override() -> Dictionary:
 	}
 
 
+func extract_all_members_to_folder(dest_dir: String) -> Dictionary:
+	if _document == null:
+		_status_text = "No archive is loaded."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	if _document.is_empty():
+		_status_text = "Archive has no members to extract."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var folder := dest_dir.strip_edges()
+	if folder.is_empty():
+		_status_text = "Choose a destination folder."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	DirAccess.make_dir_recursive_absolute(folder)
+	var written := 0
+	var skipped := 0
+	var failed := 0
+	for index in range(_document.get_entry_count()):
+		var entry := _document.get_entry(index)
+		if entry == null or entry.resref.strip_edges().is_empty():
+			skipped += 1
+			continue
+		var out_path := folder.path_join(_document.entry_file_name(index))
+		var payload := _document.get_entry_payload(index)
+		var file := FileAccess.open(out_path, FileAccess.WRITE)
+		if file == null:
+			failed += 1
+			continue
+		file.store_buffer(payload)
+		file.close()
+		written += 1
+	_status_text = "Extracted %d member(s) to folder (%d skipped, %d failed)." % [
+		written,
+		skipped,
+		failed,
+	]
+	_refresh_status()
+	return {
+		"ok": failed == 0,
+		"written": written,
+		"skipped": skipped,
+		"failed": failed,
+		"message": _status_text,
+	}
+
+
 func is_document_dirty() -> bool:
 	return _document != null and _document.is_dirty()
 
@@ -439,6 +486,11 @@ func _build_ui() -> void:
 	extract_all_btn.pressed.connect(extract_all_members_to_override)
 	_toolbar.add_child(extract_all_btn)
 
+	var extract_folder_btn := Button.new()
+	extract_folder_btn.text = "Extract All to Folder..."
+	extract_folder_btn.pressed.connect(_extract_all_to_folder_dialog)
+	_toolbar.add_child(extract_folder_btn)
+
 	var add_member_btn := Button.new()
 	add_member_btn.text = "Add Member..."
 	add_member_btn.pressed.connect(_add_member_dialog)
@@ -591,6 +643,23 @@ func _replace_member_dialog() -> void:
 	)
 	dialog.file_selected.connect(func(path: String) -> void:
 		replace_member_from_file(path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _extract_all_to_folder_dialog() -> void:
+	if _document == null:
+		_status_text = "Open an archive before extracting members."
+		_refresh_status()
+		return
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_DIR,
+		PackedStringArray(),
+		"Extract All To..."
+	)
+	dialog.dir_selected.connect(func(dir: String) -> void:
+		extract_all_members_to_folder(dir)
 	)
 	EditorInterface.get_editor_main_screen().add_child(dialog)
 	dialog.popup_centered_ratio(0.6)
@@ -793,6 +862,7 @@ func _make_dialog(
 		current_file: String = ""
 ) -> EditorFileDialog:
 	var dialog := EditorFileDialog.new()
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
 	dialog.file_mode = file_mode
 	dialog.title = title
 	dialog.filters = filters

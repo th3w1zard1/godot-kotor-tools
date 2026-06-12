@@ -33,6 +33,8 @@ func _run_tests() -> void:
 	_test_install_sav_to_modules_blocked()
 	await _test_extract_all_members_to_override()
 	await _test_extract_all_skips_invalid_members()
+	await _test_extract_all_members_to_folder()
+	await _test_extract_all_members_to_folder_skips_invalid()
 	_cleanup()
 	print("✓ ERF workspace editor tests passed")
 	quit()
@@ -279,6 +281,53 @@ func _test_extract_all_skips_invalid_members() -> void:
 	assert(int(result.get("failed", 0)) == 0)
 	assert(FileAccess.file_exists(git_override))
 	print("✓ ERF extract all skips invalid members passed")
+
+
+func _test_extract_all_members_to_folder() -> void:
+	var mod_bytes := ERFWriter.build("MOD ", [
+		{"resref": "tar_m02aa", "extension": "git", "bytes": _build_empty_git_bytes()},
+		{"resref": "extra_are", "extension": "are", "bytes": _build_empty_are_bytes()},
+	])
+	var mod_path := _install_root.path_join("folder_module.mod")
+	var mod_file := FileAccess.open(mod_path, FileAccess.WRITE)
+	mod_file.store_buffer(mod_bytes)
+	mod_file.close()
+
+	var dest_dir := _install_root.path_join("extracted_folder")
+	if DirAccess.dir_exists_absolute(dest_dir):
+		_remove_dir_recursive(dest_dir)
+
+	var editor := _build_editor()
+	editor.open_archive_file(mod_path)
+	await process_frame
+
+	var result := editor.extract_all_members_to_folder(dest_dir)
+	assert(result.get("ok", false), str(result))
+	assert(int(result.get("written", 0)) == 2)
+	assert(FileAccess.file_exists(dest_dir.path_join("tar_m02aa.git")))
+	assert(FileAccess.file_exists(dest_dir.path_join("extra_are.are")))
+	print("✓ ERF extract all members to folder passed")
+
+
+func _test_extract_all_members_to_folder_skips_invalid() -> void:
+	var mod_bytes := ERFWriter.build("MOD ", [
+		{"resref": "valid_are", "extension": "are", "bytes": _build_empty_are_bytes()},
+		{"resref": "", "extension": "git", "bytes": _build_empty_git_bytes()},
+	])
+	var dest_dir := _install_root.path_join("extracted_skip_folder")
+	if DirAccess.dir_exists_absolute(dest_dir):
+		_remove_dir_recursive(dest_dir)
+
+	var editor := _build_editor()
+	editor.open_archive_bytes("skip_test.mod", mod_bytes, "")
+	await process_frame
+
+	var result := editor.extract_all_members_to_folder(dest_dir)
+	assert(result.get("ok", false), str(result))
+	assert(int(result.get("written", 0)) == 1)
+	assert(int(result.get("skipped", 0)) == 1)
+	assert(FileAccess.file_exists(dest_dir.path_join("valid_are.are")))
+	print("✓ ERF extract all members to folder skips invalid passed")
 
 
 func _test_invalid_extract_file_name() -> void:
