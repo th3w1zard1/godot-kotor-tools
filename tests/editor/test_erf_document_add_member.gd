@@ -17,6 +17,7 @@ func _run_tests() -> void:
 	_test_add_member_repack_round_trip()
 	_test_duplicate_member_rejected()
 	_test_serialize_for_pipeline()
+	_test_add_member_validation_rejects()
 	print("✓ ERF document add member tests passed")
 	quit()
 
@@ -62,6 +63,21 @@ func _test_serialize_for_pipeline() -> void:
 	var serialized := ERFWriter.repack(str(payload.get("file_type", "")), payload.get("entries", []))
 	assert(serialized.size() > 0)
 	print("✓ ERF document serialize_for_pipeline passed")
+
+
+func _test_add_member_validation_rejects() -> void:
+	var mod_bytes := ERFWriter.build("MOD ", [
+		{"resref": "tar_m02aa", "extension": "git", "bytes": _build_empty_git_bytes()},
+	])
+	var document := KotorErfDocument.from_bytes("", mod_bytes)
+	var empty_result := document.add_member("", "are", _build_empty_are_bytes())
+	assert(not empty_result.get("ok", true))
+	var long_result := document.add_member("a".repeat(17), "are", _build_empty_are_bytes())
+	assert(not long_result.get("ok", true))
+	var unknown_result := document.add_member("test_xyz", "zzz", _build_empty_are_bytes())
+	assert(not unknown_result.get("ok", true))
+	assert(document.get_entry_count() == 1)
+	print("✓ ERF document add member validation rejects passed")
 
 
 func _build_empty_git_bytes() -> PackedByteArray:
