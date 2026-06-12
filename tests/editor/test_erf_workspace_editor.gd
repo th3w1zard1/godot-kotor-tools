@@ -30,6 +30,7 @@ func _run_tests() -> void:
 	await _test_compare_member_toolbar_buttons()
 	await _test_compare_member_with_override()
 	await _test_compare_all_members_with_override()
+	await _test_compare_all_members_skips_invalid()
 	await _test_install_archive_to_modules()
 	_test_install_sav_to_modules_blocked()
 	await _test_extract_all_members_to_override()
@@ -237,6 +238,23 @@ func _test_compare_all_members_with_override() -> void:
 	assert(export_result.get("ok", false), str(export_result))
 	assert(FileAccess.file_exists("%s.txt" % report_path))
 	print("✓ ERF compare all members with override passed")
+
+
+func _test_compare_all_members_skips_invalid() -> void:
+	var mod_bytes := ERFWriter.build("MOD ", [
+		{"resref": "valid_are", "extension": "are", "bytes": _build_empty_are_bytes()},
+		{"resref": "", "extension": "git", "bytes": _build_empty_git_bytes()},
+	])
+	var editor := _build_editor()
+	editor.open_archive_bytes("skip_compare.mod", mod_bytes, "")
+	await process_frame
+
+	var result := editor.compare_all_members_with_override()
+	assert(result.get("ok", false), str(result))
+	var counts: Dictionary = result.get("counts", {})
+	assert(int(counts.get("total", 0)) == 1)
+	assert(int(counts.get("skipped", 0)) == 1)
+	print("✓ ERF compare all members skips invalid passed")
 
 
 func _test_install_archive_to_modules() -> void:
