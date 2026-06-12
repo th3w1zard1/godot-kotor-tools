@@ -157,7 +157,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q141 | Open game archive dialog | **Open Game Archive...** roots the picker at install `modules/`, `lips/`, or `rims/`; headless `test_erf_workspace_editor.gd`. |
 | Q142 | Compare all members with override | **Compare All Members with Override** batch-scans archive members via `compare_member_batch_with_override`; headless `test_erf_workspace_editor.gd`. |
 | Q143 | ERF dirty path label indicator | Archive Browser path label shows `*` when the open archive has unsaved member mutations; headless `test_erf_workspace_editor.gd`. |
-| Q129 | Post-Q128 parity wave planning | ERF workspace wave Q134–Q143 bounded; parallel PRs #120–#123 + stack #124–#133 documented for merge. | Q143 caps ERF wave. | Merge `feat/q138` chain (#124–#133) then parallel tracks. |
+| Q129 | Post-Q128 parity wave planning | ERF workspace wave Q134–Q143 bounded; parallel PRs #120–#123 + stack #124–#133 documented for merge. | Q143 caps ERF wave *(PR #133)*. | Merge `feat/q138` chain (#124–#133) then parallel tracks. |
 
 > **Branch note:** Q124–Q128c4 complete the Q128 child plan on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)). Merge to `main` to drop `*(PR #119)*` qualifiers. `main` @ Q123 remains merge base until landed.
 
