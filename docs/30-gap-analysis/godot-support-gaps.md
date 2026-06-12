@@ -19,7 +19,7 @@ Project target: **Godot 4.6**.
 | Save/write-back for editable formats | **Partial** | Shipped (Q4) | 2DA/TLK/GFF-family write-back supported; archive write-back complete via Q4. |
 | Install-aware browsing and precedence | **Supported** | Shipped (Q1–Q5) | `KotorGameFS` indexes install sources and applies override precedence. |
 | Workspace editors (DLG, 2DA, TLK, NSS, area tools) | **Supported** | Shipped (Q1–Q5) | Core workspace surfaces are shipped and routable. |
-| Module Designer (GIT/PTH/LYT/VIS/WOK, instance CRUD, walkmesh paint) | **Partial** | Shipped on `main` (Q15–Q73); Q124–Q126 on PR #119 | Full Holocron module designer depth still deferred (DLG graph, advanced BWM tools). |
+| Module Designer (GIT/PTH/LYT/VIS/WOK, instance CRUD, walkmesh paint) | **Partial** | Shipped on `main` (Q15–Q73; Q124–Q128c4 via PR #119) | Full Holocron module designer depth still deferred (DLG graph, advanced BWM tools). |
 | Media editors (TPC/WAV/LIP/SSF) + batch/compare tooling | **Partial** | Shipped (Q27–Q31, Q77–Q118) | Workspace + install-scoped batch flows; not full Holocron media suite parity. |
 | Model Editor + MDL/BWM batch/compare | **Partial** | Shipped (Q84–Q85, Q91–Q123) | Preview, batch, compare, install-copy; MDL write-back authoring deferred. |
 | Browser-like visual verification for UI surfaces | **Missing** | Deferred | Repo has no web surface; UI validation relies on Godot script tests and editor flows. |
@@ -60,7 +60,7 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 
 For Phase 2 and beyond, use these reference documents in order:
 
-1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices (Q1–Q123 on `main`; Q124–Q126 on PR #119) and active/deferred next slices with readiness criteria and dependencies.
+1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices (Q1–Q123 on `main`; Q124–Q128c4 via PR #119; Q134–Q143 via PRs #124–#133) and active/deferred next slices with readiness criteria and dependencies.
 2. **Requirement source:** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md) — Detailed requirement grounding for the next implementation wave (when Q6+ readiness criteria are met).
 3. **This document:** Gap inventory and Godot capability opportunities for strategic context.
 
