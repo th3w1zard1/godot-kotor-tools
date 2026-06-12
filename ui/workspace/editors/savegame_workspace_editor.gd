@@ -188,12 +188,15 @@ func _refresh_tree() -> void:
 	if _resource == null or not _resource.is_valid():
 		return
 	var root_item := _tree.create_item()
-	for index in range(_resource.get_entry_summaries().size()):
-		var entry: Dictionary = _resource.get_entry_summaries()[index]
+	var entries: Array = _parsed_archive.get("entries", [])
+	for index in range(entries.size()):
+		var entry := entries[index] as ERFParser.ERFEntry
+		if entry == null:
+			continue
 		var item := _tree.create_item(root_item)
-		item.set_text(0, str(entry.get("resref", "")))
-		item.set_text(1, str(entry.get("extension", "")))
-		item.set_text(2, "%d B" % int(entry.get("size", 0)))
+		item.set_text(0, entry.resref)
+		item.set_text(1, entry.extension)
+		item.set_text(2, "%d B" % entry.size)
 		item.set_metadata(0, index)
 
 
