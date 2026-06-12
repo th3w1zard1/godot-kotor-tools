@@ -60,7 +60,7 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 
 For Phase 2 and beyond, use these reference documents in order:
 
-1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices (Q1–Q123 on `main`; Q124–Q128c4 via PR #119; Q134–Q143 via PRs #124–#133) and active/deferred next slices with readiness criteria and dependencies.
+1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices (Q1–Q123 on `main`; Q124–Q128c4 via PR #119; Q134–Q143 via PRs #124–#133) and active/deferred next slices (Q131+) with readiness criteria and dependencies.
 2. **Requirement source:** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md) — Detailed requirement grounding for the next implementation wave (when Q6+ readiness criteria are met).
 3. **This document:** Gap inventory and Godot capability opportunities for strategic context.
 

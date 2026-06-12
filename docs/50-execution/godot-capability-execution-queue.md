@@ -158,19 +158,22 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q142 | Compare all members with override | **Compare All with Override...** batch-scans archive members against override via `compare_member_batch_with_override`; headless `test_erf_workspace_editor.gd`. |
 | Q143 | Dirty path indicator | Archive Browser path label appends ` *` when document dirty; headless `test_erf_workspace_editor.gd`. |
 | Q129 | Post-Q128 parity wave planning | **Shipped** — consolidation plan landed #124–#133 on `main` (2026-06-12). |
+| Q130 | NSS compile-to-override UX | Dock + workspace script editors install compiled `.ncs` to override with mutation preflight; auto-offer after successful compile; headless `test_script_compile_install.gd`. |
 
-> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
+> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130 lands via PR #120. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q144+ | Next capability wave (TBD) | Plan next slices now that ERF archive wave Q134–Q143 is on `main`. | Q129 hygiene complete; #124–#133 merged. | PRs #120–#123 remain open (NSS/LTR/savegame/MDL) and unblocked by this pass. |
+| Q131 | LTR parser + workspace editor | Read/write letter tables; route `.ltr` in workspace shell. | Q130 shipped *(PR #120)*. | Holocron `ltr.py`; see PR #121. |
 
 ## Next Slices (Deferred)
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
+| Q132 | Savegame inspector foundations | Read-only save metadata workspace surface. | Q131 or parallel green `main`. | Holocron `savegame.py`; see PR #122. |
+| Q133 | MDL write-back phase 0 | Trimesh metadata mutation boundaries + writer scaffold. | Model editor read path stable. | Holocron `mdl.py`; see PR #123. |
 | Q10 | GFF inventory array editing | Add/remove/reorder `Inventory`, `EquippedInventory`, and proper `itemList` defaults. | Q9 item picker shipped. | **Shipped** — inventory arrays editable with shared item struct defaults. |
 | Q11 | GFF skill/feat array editing | Add/remove/reorder `SkillList` and `FeatList` with Rank/Feat defaults. | Q7 array machinery shipped. | **Shipped** — creature skill/feat lists editable in GFF tree. |
 | Q12 | Install-aware feat/skill 2DA labels | Feat values and SkillList indices show install 2DA labels in GFF tree. | Q9 enum registry + Q11 arrays shipped. | **Shipped** — feat.2da and skills.2da labels in creature editing. |
