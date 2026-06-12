@@ -164,7 +164,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 96. **Q126 (PR #119, 2026-06-10):** Module Designer BWM walkmesh paint foundations — **Paint Walkmesh** 3D face pick, material toggle with undo/dirty baseline; see `docs/plans/2026-06-10-056-feat-pr-stack-merge-holocron-parity-roadmap-plan.md` U5.
 97. ERF archive workspace UX (Q127, PR #119) and DLG graph depth (Q128a–c per `docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md`).
 98. **Q134–Q137 (PR #124–#127, 2026-06-12):** ERF archive authoring/deploy wave — add/save, remove/replace, compare/export, install to `modules/`; see `docs/plans/2026-06-12-065-feat-q134-erf-member-add-plan.md` through `068-feat-q137-erf-install-archive-to-modules-plan.md`.
-99. **Q138 (PR #128, 2026-06-12):** Archive Browser **Extract All to Override** batch member install; see `docs/plans/2026-06-12-069-feat-q138-erf-extract-all-override-plan.md`.
+99. **Q138 (PR #128, 2026-06-12):** Archive Browser **Extract All to Override** batch member install with summary counts; see `docs/plans/2026-06-12-069-feat-q138-erf-extract-all-override-plan.md`.
 100. **Q139 (PR #129, 2026-06-12):** Archive Browser **Extract All to Folder** filesystem batch export; see `docs/plans/2026-06-12-070-feat-q139-erf-extract-all-folder-plan.md`.
 
 ## Evidence Notes

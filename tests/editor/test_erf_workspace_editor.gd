@@ -32,6 +32,7 @@ func _run_tests() -> void:
 	await _test_install_archive_to_modules()
 	_test_install_sav_to_modules_blocked()
 	await _test_extract_all_members_to_override()
+	await _test_extract_all_skips_invalid_members()
 	await _test_extract_all_members_to_folder()
 	await _test_extract_all_members_to_folder_skips_invalid()
 	_cleanup()
@@ -253,6 +254,33 @@ func _test_extract_all_members_to_override() -> void:
 	assert(FileAccess.file_exists(git_override))
 	assert(FileAccess.file_exists(are_override))
 	print("✓ ERF extract all members to override passed")
+
+
+func _test_extract_all_skips_invalid_members() -> void:
+	var mod_bytes := ERFWriter.build("MOD ", [
+		{"resref": "tar_m02aa", "extension": "git", "bytes": _build_empty_git_bytes()},
+		{"resref": "", "extension": "git", "bytes": _build_empty_git_bytes()},
+	])
+	var mod_path := _install_root.path_join("batch_skip_module.mod")
+	var mod_file := FileAccess.open(mod_path, FileAccess.WRITE)
+	mod_file.store_buffer(mod_bytes)
+	mod_file.close()
+
+	var git_override := _install_root.path_join("override").path_join("tar_m02aa.git")
+	if FileAccess.file_exists(git_override):
+		DirAccess.remove_absolute(git_override)
+
+	var editor := _build_editor()
+	editor.open_archive_file(mod_path)
+	await process_frame
+
+	var result := editor.extract_all_members_to_override()
+	assert(result.get("ok", false), str(result))
+	assert(int(result.get("applied", 0)) == 1)
+	assert(int(result.get("skipped", 0)) == 1)
+	assert(int(result.get("failed", 0)) == 0)
+	assert(FileAccess.file_exists(git_override))
+	print("✓ ERF extract all skips invalid members passed")
 
 
 func _test_extract_all_members_to_folder() -> void:
