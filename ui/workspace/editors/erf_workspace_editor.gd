@@ -207,7 +207,8 @@ func extract_all_members_to_override() -> Dictionary:
 			skipped += 1
 			continue
 		if not result.get("ok", false):
-			if _document.get_entry(index) != null and _document.get_entry(index).resref.strip_edges().is_empty():
+			var failed_entry := _document.get_entry(index)
+			if failed_entry == null or failed_entry.resref.strip_edges().is_empty():
 				skipped += 1
 			else:
 				failed += 1
@@ -251,7 +252,11 @@ func extract_all_members_to_folder(dest_dir: String) -> Dictionary:
 		_status_text = "Choose a destination folder."
 		_refresh_status()
 		return {"ok": false, "message": _status_text}
-	DirAccess.make_dir_recursive_absolute(folder)
+	var mkdir_err := DirAccess.make_dir_recursive_absolute(folder)
+	if mkdir_err != OK and not DirAccess.dir_exists_absolute(folder):
+		_status_text = "Could not create destination folder: %s" % folder
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
 	var written := 0
 	var skipped := 0
 	var failed := 0
@@ -260,14 +265,22 @@ func extract_all_members_to_folder(dest_dir: String) -> Dictionary:
 		if entry == null or entry.resref.strip_edges().is_empty():
 			skipped += 1
 			continue
-		var out_path := folder.path_join(_document.entry_file_name(index))
+		var file_name := _document.entry_file_name(index).get_file()
+		if file_name.is_empty() or file_name.find("..") != -1:
+			skipped += 1
+			continue
+		var out_path := folder.path_join(file_name)
 		var payload := _document.get_entry_payload(index)
 		var file := FileAccess.open(out_path, FileAccess.WRITE)
 		if file == null:
 			failed += 1
 			continue
 		file.store_buffer(payload)
+		var write_err := file.get_error()
 		file.close()
+		if write_err != OK:
+			failed += 1
+			continue
 		written += 1
 	_status_text = "Extracted %d member(s) to folder (%d skipped, %d failed)." % [
 		written,
@@ -711,7 +724,7 @@ func _open_selected_member() -> void:
 
 func _export_compare_report_dialog() -> void:
 	if _last_compare_result.is_empty():
-		_status_text = "Run Compare Member with Override first."
+		_status_text = "Run a compare action first."
 		_refresh_status()
 		return
 	var resref := str(_last_compare_result.get("resref", "member")).strip_edges()
@@ -1058,6 +1071,8 @@ func _refresh_status() -> void:
 		_emit_status_text(_status_text)
 		return
 	var line := _current_file_name()
+	if is_document_dirty():
+		line += " *"
 	if not _status_text.is_empty():
 		line += " — %s" % _status_text
 	_path_label.text = line

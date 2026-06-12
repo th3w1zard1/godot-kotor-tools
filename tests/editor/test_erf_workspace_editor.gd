@@ -98,6 +98,7 @@ func _test_add_member_and_save_archive() -> void:
 	assert(add_result.get("ok", false), str(add_result))
 	assert(editor.get_document().get_entry_count() == 2)
 	assert(editor.is_document_dirty())
+	assert(editor._path_label.text.contains(" *"), editor._path_label.text)
 
 	var saved_path := _install_root.path_join("saved_module.mod")
 	if FileAccess.file_exists(saved_path):
@@ -105,6 +106,7 @@ func _test_add_member_and_save_archive() -> void:
 	var save_result := editor.save_archive_to_path(saved_path)
 	assert(save_result.get("applied", false), str(save_result))
 	assert(not editor.is_document_dirty())
+	assert(not editor._path_label.text.contains(" *"), editor._path_label.text)
 	assert(FileAccess.file_exists(saved_path))
 
 	var reopened := _build_editor()
