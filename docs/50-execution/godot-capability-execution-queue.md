@@ -162,7 +162,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q134–Q143 PR wave; rebase stacked branches onto integrated Q139 tip. | Q138–Q141 rebased; Q142–Q143 stack MERGEABLE *(PRs #132–#133)*. | Consolidation plan `docs/plans/2026-06-12-071-feat-q140-q143-erf-stack-consolidation-plan.md`. |
+| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q134–Q143 PR wave; land stack #131–#133 onto `main`. | Q134–Q140 on `main`; Q141–Q143 stack MERGEABLE *(PRs #131–#133)*. | Consolidation plan `docs/plans/2026-06-12-071-feat-q140-q143-erf-stack-consolidation-plan.md`. |
 
 ## Next Slices (Deferred)
 
