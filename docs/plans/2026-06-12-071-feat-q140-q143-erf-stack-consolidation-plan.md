@@ -69,115 +69,50 @@ At planning time, the ERF archive wave spanned ten PRs. Five based on `main` and
 
 ## Implementation Units
 
-### U1. Wave 1 — merge Q134–Q138 to main
+### U1. Wave 1 — Q134–Q138 on `main`
 
-**Goal:** Land #124, #125, #126, #127, #128 sequentially on `main`.
+**Outcome:** #124–#128 merged sequentially to `main` (2026-06-10). Wave 1 landed member add/remove/replace, override batch extract, and related document/pipeline tests. Doc conflicts between parallel `main`-based PRs were resolved with cumulative Q134–Q138 queue/matrix wording.
 
-**Steps (per PR):**
-1. Confirm `gh pr checks <n>` / local headless test on PR head if checks absent.
-2. Merge via GitHub (squash or merge commit per repo convention).
-3. Pull `main` locally before next merge.
+**Files landed:** `erf_workspace_editor.gd`, `kotor_erf_document.gd`, `test_erf_workspace_editor.gd`, `test_erf_document_add_member.gd`, `test_erf_document_remove_replace.gd`, `kotor_modding_pipeline.gd`.
 
-**Files touched by merges (already in PRs):**
-- `ui/workspace/editors/erf_workspace_editor.gd`
-- `resources/documents/kotor_erf_document.gd`
-- `tests/editor/test_erf_workspace_editor.gd`
-- `tests/editor/test_erf_document_add_member.gd`
-- `tests/editor/test_erf_document_remove_replace.gd`
-- `editor/modding/kotor_modding_pipeline.gd`
+**Verification:** `test_erf_workspace_editor.gd` green on `main` after #128.
 
-**Test scenarios:**
-- After #128 lands: `test_erf_workspace_editor.gd` passes on `main` including override batch extract tests.
-- `gh pr view 124..128 --json mergeable` all were `MERGEABLE` at planning time — re-check before each merge.
+### U2. Q139 unblock (PR #129)
 
-**Risks:** Doc-only conflicts between parallel `main`-based PRs if queue/matrix rows edited differently — resolve by keeping cumulative Q134–Q138 wording.
+**Outcome:** Local Q138 integration merge (`ca47a51`) pushed; #129 conflicts resolved with full four-batch test union and superset doc rows through Q139. #129 merged to `main` (2026-06-12).
 
-### U2. Unblock Q139 (PR #129)
-
-**Goal:** Push local merge commit and restore `MERGEABLE` on #129.
-
-**Steps:**
-1. On `feat/q139-erf-extract-all-folder`: `git push origin HEAD` (includes `ca47a51`).
-2. If GitHub still reports conflict: merge or rebase `origin/feat/q138-erf-extract-all-override` into Q139 branch.
-3. Resolve conflicts in:
-   - `tests/editor/test_erf_workspace_editor.gd` — keep all four batch tests (override happy, override skip, folder happy, folder skip).
-   - `docs/50-execution/godot-capability-execution-queue.md` — Q139 active slice wording.
-   - `docs/30-gap-analysis/openkotor-parity-matrix.md` — superset through Q139.
-4. Run `test_erf_workspace_editor.gd`; push; confirm `gh pr view 129 --json mergeable` is `MERGEABLE`.
-
-**Test scenarios:**
-- 15 tests pass (current count after Q139 merge resolution).
-- PR #129 diff vs Q138 contains only Q139 slice files (6 files, ~182 LOC delta at planning time).
+**Verification:** 15 headless ERF workspace checks passed at merge time.
 
 ### U3. Bottom-up stack hygiene (Q140–Q143)
 
-**Goal:** Each stacked branch rebased/merged onto updated parent until #133 is mergeable.
+**Outcome:** Q140–Q143 branches rebased/merged onto updated parents in order. Each slice preserved prior toolbar/tests; Q143 capstone included review hardening (`89871f0` — folder path sanitization, mkdir fail-fast).
 
-**Order:** Q140 branch ← Q139 tip, then Q141 ← Q140, Q142 ← Q141, Q143 ← Q142.
+**Verification:** Full test union green on `feat/q143-erf-dirty-path-indicator` before Wave 2.
 
-**Per-branch conflict playbook:**
-| Branch | Typical conflict files | Resolution rule |
-| --- | --- | --- |
-| `feat/q140-erf-export-selected-member` | tests, erf_workspace_editor.gd, parity matrix | Add export-selected tests/API; keep all Q139 batch tests |
-| `feat/q141-erf-open-game-archive` | erf_workspace_editor.gd, tests | Add open-game-archive dialog; preserve Q140 export |
-| `feat/q142-erf-compare-all-members` | erf_workspace_editor.gd, kotor_modding_pipeline.gd, tests | Add batch compare; keep `_test_compare_all_members_skips_invalid` |
-| `feat/q143-erf-dirty-path-indicator` | erf_workspace_editor.gd, tests, docs | Add dirty path label; full test union |
+### U4. Wave 2 — stacked PRs on `main`
 
-**Test scenarios (run on each branch after resolution):**
-- Q140: export selected member test passes; all prior batch tests pass.
-- Q141: open game archive test passes (if present); export + batch tests pass.
-- Q142: batch compare + skip-invalid tests pass.
-- Q143: dirty path indicator test passes; full suite green (target: all Q134–Q143 behaviors).
+**Outcome:** #129–#133 retargeted to `main` and merged sequentially after Wave 1. Chose retarget-over-intermediate-branch-merge to reduce stack debt.
 
-### U4. Wave 2 — merge stacked PRs
-
-**Goal:** Land #129, #130, #131, #132, #133 in order.
-
-**Steps:**
-1. Merge #129 into `feat/q138-erf-extract-all-override` OR onto updated base per GitHub stack (if Q138 already on `main`, retarget #129 base to `main` first).
-2. After Q138/Q139 on `main`: update #130 base to `main` (or merge Q139 then merge #130).
-3. Repeat for #131–#133, verifying `mergeable=MERGEABLE` before each merge.
-4. Final merge #133 to `main`.
-
-**Note:** Once Wave 1 completes, consider retargeting entire stack to `main` sequentially rather than merging into feature branches — reduces intermediate branch debt. Choose whichever yields green tests faster; do not duplicate work.
-
-**Test scenarios:**
-- Capstone branch: full `test_erf_workspace_editor.gd` pass.
-- `gh pr view 129..133 --json mergeable` all `MERGEABLE` before merge clicks.
+**Verification:** Capstone #133 merged with full `test_erf_workspace_editor.gd` pass on `main`.
 
 ### U5. Doc authority sync and queue closure
 
-**Goal:** Execution docs match merged reality.
+**Outcome:** Queue, STRATEGY, parity matrix, and `godot-support-gaps.md` synced via PR #134 (`feat/erf-u5-doc-closure`). Q129 active slice advanced; Q134–Q143 marked shipped.
 
-**Files:**
-- `docs/50-execution/godot-capability-execution-queue.md` — mark Q134–Q143 shipped; advance active slice past Q129; note PR numbers merged.
-- `STRATEGY.md` — ERF wave status on `main`.
-- `docs/30-gap-analysis/openkotor-parity-matrix.md` — archive row lists Q134–Q143 as shipped.
-
-**Test scenarios:**
-- Grep queue for stale "open PR" qualifiers on landed slices — none remain for #124–#133.
-- Q129 active slice row removed or marked completed.
+**Verification:** No stale "open PR" qualifiers for #124–#133 in authority docs.
 
 ## Verification
 
 ```bash
-# After each wave and at capstone
 godot --headless --path . --script tests/editor/test_erf_workspace_editor.gd
-
-# Merge readiness
-gh pr view 124 --json mergeable
-gh pr view 129 --json mergeable
-gh pr view 133 --json mergeable
 ```
+
+Capstone check: full ERF workspace headless suite green on `main` after #133.
 
 ## Dependencies and Sequencing
 
 ```
-U1 (Q134–Q138 → main)
-  → U2 (push/fix Q139)
-    → U3 (bottom-up Q140–Q143 hygiene)
-      → U4 (merge #129–#133)
-        → U5 (doc sync)
+U1 → U2 → U3 → U4 → U5 (completed 2026-06-10 through 2026-06-12)
 ```
 
 ## Out of Scope
@@ -186,7 +121,27 @@ U1 (Q134–Q138 → main)
 - New ERF feature work beyond Q143
 - GitHub Actions CI setup
 
-## Execution-Time Unknowns
+## Execution Record (historical)
 
-- Whether GitHub allows direct merge of #129 while Q138 still open vs retargeting bases after Wave 1 — decide at U4 based on `gh pr view` base refs after `main` updates.
-- Exact conflict hunks on Q141–Q143 branches until U3 rebases run — playbook above covers file categories.
+_Archive of the operator runbook used during consolidation. Not actionable post-merge._
+
+### Wave 1 sequence
+
+Merged #124, #125, #126, #127, #128 to `main` in order. #128 required a local `main` merge on `feat/q138-erf-extract-all-override` (STRATEGY.md + execution queue conflicts).
+
+### Q139 unblock
+
+Pushed `ca47a51` on `feat/q139-erf-extract-all-folder`. Conflict resolution kept all four batch tests and superset doc rows in `test_erf_workspace_editor.gd`, `godot-capability-execution-queue.md`, `openkotor-parity-matrix.md`.
+
+### Bottom-up hygiene playbook
+
+| Branch | Typical conflict files | Resolution rule |
+| --- | --- | --- |
+| `feat/q140-erf-export-selected-member` | tests, erf_workspace_editor.gd, parity matrix | Add export-selected tests/API; keep all Q139 batch tests |
+| `feat/q141-erf-open-game-archive` | erf_workspace_editor.gd, tests | Add open-game-archive dialog; preserve Q140 export |
+| `feat/q142-erf-compare-all-members` | erf_workspace_editor.gd, kotor_modding_pipeline.gd, tests | Add batch compare; keep `_test_compare_all_members_skips_invalid` |
+| `feat/q143-erf-dirty-path-indicator` | erf_workspace_editor.gd, tests, docs | Add dirty path label; full test union |
+
+### Wave 2 sequence
+
+Retargeted #129–#133 bases to `main` after Wave 1. Merged each PR sequentially; queue doc conflicts were the dominant hunks on #130–#132.
