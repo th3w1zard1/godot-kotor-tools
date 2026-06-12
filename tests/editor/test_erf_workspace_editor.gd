@@ -35,6 +35,8 @@ func _run_tests() -> void:
 	await _test_extract_all_skips_invalid_members()
 	await _test_extract_all_members_to_folder()
 	await _test_extract_all_members_to_folder_skips_invalid()
+	await _test_export_selected_member_to_path()
+	_test_export_selected_member_requires_selection()
 	_cleanup()
 	print("✓ ERF workspace editor tests passed")
 	quit()
@@ -328,6 +330,44 @@ func _test_extract_all_members_to_folder_skips_invalid() -> void:
 	assert(int(result.get("skipped", 0)) == 1)
 	assert(FileAccess.file_exists(dest_dir.path_join("valid_are.are")))
 	print("✓ ERF extract all members to folder skips invalid passed")
+
+
+func _test_export_selected_member_to_path() -> void:
+	var mod_path := _install_root.path_join("export_member_module.mod")
+	var mod_file := FileAccess.open(mod_path, FileAccess.WRITE)
+	mod_file.store_buffer(_build_test_mod_bytes())
+	mod_file.close()
+
+	var editor := _build_editor()
+	editor.open_archive_file(mod_path)
+	await process_frame
+	editor._tree.get_root().get_first_child().select(0)
+	await process_frame
+	assert(editor.get_selected_entry_index() == 0)
+
+	var export_btn := _find_button(editor, "Export Selected...")
+	assert(export_btn != null, "Export Selected toolbar button missing")
+
+	var target_path := _install_root.path_join("exported_tar_m02aa.git")
+	if FileAccess.file_exists(target_path):
+		DirAccess.remove_absolute(target_path)
+
+	var result := editor.export_selected_member_to_path(target_path)
+	assert(result.get("applied", false), "Export failed: %s" % str(result))
+	assert(FileAccess.file_exists(target_path))
+	var file := FileAccess.open(target_path, FileAccess.READ)
+	var parsed := GFFParser.parse_bytes(file.get_buffer(file.get_length()))
+	file.close()
+	assert(not parsed.is_empty())
+	print("✓ ERF export selected member to path passed")
+
+
+func _test_export_selected_member_requires_selection() -> void:
+	var editor := _build_editor()
+	editor.open_archive_bytes("no_sel.mod", _build_test_mod_bytes(), "")
+	var result := editor.export_selected_member_to_path("/tmp/unused.git")
+	assert(not result.get("ok", true))
+	print("✓ ERF export selected member requires selection passed")
 
 
 func _test_invalid_extract_file_name() -> void:
