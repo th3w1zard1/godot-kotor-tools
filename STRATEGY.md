@@ -1,6 +1,6 @@
 ---
 name: KotOR Tools
-last_updated: 2026-06-10
+last_updated: 2026-06-12
 ---
 
 # KotOR Tools Strategy
