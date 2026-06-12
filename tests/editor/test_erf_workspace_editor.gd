@@ -16,6 +16,7 @@ var _install_root := ""
 func _initialize() -> void:
 	_install_root = ProjectSettings.globalize_path("user://erf_workspace_editor_test")
 	DirAccess.make_dir_recursive_absolute(_install_root.path_join("override"))
+	DirAccess.make_dir_recursive_absolute(_install_root.path_join("modules"))
 	call_deferred("_run_tests")
 
 
@@ -23,6 +24,13 @@ func _run_tests() -> void:
 	_test_archive_member_listing()
 	await _test_extract_member_to_override()
 	_test_invalid_extract_file_name()
+	await _test_add_member_and_save_archive()
+	await _test_remove_member_and_save_archive()
+	await _test_replace_member()
+	await _test_compare_member_toolbar_buttons()
+	await _test_compare_member_with_override()
+	await _test_install_archive_to_modules()
+	_test_install_sav_to_modules_blocked()
 	_cleanup()
 	print("✓ ERF workspace editor tests passed")
 	quit()
@@ -65,6 +73,157 @@ func _test_extract_member_to_override() -> void:
 	print("✓ ERF extract member to override passed")
 
 
+func _test_add_member_and_save_archive() -> void:
+	var editor := _build_editor()
+	var mod_bytes := _build_test_mod_bytes()
+	editor.open_archive_bytes("test_module.mod", mod_bytes, "")
+	assert(not editor.is_document_dirty())
+
+	var member_path := _install_root.path_join("extra_are.are")
+	var member_file := FileAccess.open(member_path, FileAccess.WRITE)
+	member_file.store_buffer(_build_empty_are_bytes())
+	member_file.close()
+
+	var add_result := editor.add_member_from_file(member_path)
+	assert(add_result.get("ok", false), str(add_result))
+	assert(editor.get_document().get_entry_count() == 2)
+	assert(editor.is_document_dirty())
+
+	var saved_path := _install_root.path_join("saved_module.mod")
+	if FileAccess.file_exists(saved_path):
+		DirAccess.remove_absolute(saved_path)
+	var save_result := editor.save_archive_to_path(saved_path)
+	assert(save_result.get("applied", false), str(save_result))
+	assert(not editor.is_document_dirty())
+	assert(FileAccess.file_exists(saved_path))
+
+	var reopened := _build_editor()
+	reopened.open_archive_file(saved_path)
+	await process_frame
+	assert(reopened.get_document().get_entry_count() == 2)
+	assert(reopened.get_document().find_entry_index("extra_are", "are") >= 0)
+	print("✓ ERF add member and save archive passed")
+
+
+func _test_remove_member_and_save_archive() -> void:
+	var editor := _build_editor()
+	editor.open_archive_bytes("test_module.mod", _build_test_mod_bytes(), "")
+	await process_frame
+	editor._tree.get_root().get_first_child().select(0)
+	await process_frame
+
+	var remove_result := editor.remove_selected_member()
+	assert(remove_result.get("ok", false), str(remove_result))
+	assert(editor.get_document().get_entry_count() == 0)
+	assert(editor.is_document_dirty())
+
+	var saved_path := _install_root.path_join("removed_module.mod")
+	if FileAccess.file_exists(saved_path):
+		DirAccess.remove_absolute(saved_path)
+	var save_result := editor.save_archive_to_path(saved_path)
+	assert(save_result.get("applied", false), str(save_result))
+	assert(FileAccess.file_exists(saved_path))
+
+	var reopened := _build_editor()
+	reopened.open_archive_file(saved_path)
+	await process_frame
+	assert(reopened.get_document().get_entry_count() == 0)
+	print("✓ ERF remove member and save archive passed")
+
+
+func _test_replace_member() -> void:
+	var editor := _build_editor()
+	editor.open_archive_bytes("test_module.mod", _build_test_mod_bytes(), "")
+	await process_frame
+	editor._tree.get_root().get_first_child().select(0)
+	await process_frame
+
+	var replacement_path := _install_root.path_join("replacement_are.are")
+	var replacement_file := FileAccess.open(replacement_path, FileAccess.WRITE)
+	replacement_file.store_buffer(_build_empty_are_bytes())
+	replacement_file.close()
+
+	var replace_result := editor.replace_member_from_file(replacement_path)
+	assert(replace_result.get("ok", false), str(replace_result))
+	assert(editor.get_document().entry_file_name(0) == "tar_m02aa.git")
+	assert(editor.get_document().get_entry_payload(0) == _build_empty_are_bytes())
+	print("✓ ERF replace member passed")
+
+
+func _test_compare_member_toolbar_buttons() -> void:
+	var editor := _build_editor()
+	assert(_find_button(editor, "Compare Member with Override...") != null)
+	assert(_find_button(editor, "Export Compare Report...") != null)
+	print("✓ ERF compare toolbar buttons passed")
+
+
+func _test_compare_member_with_override() -> void:
+	var modules_dir := _install_root.path_join("modules")
+	DirAccess.make_dir_recursive_absolute(modules_dir)
+	var core_git := _build_empty_git_bytes()
+	var mod_bytes := ERFWriter.build("MOD ", [
+		{"resref": "tar_m02aa", "extension": "git", "bytes": core_git},
+	])
+	var mod_path := modules_dir.path_join("test_area.mod")
+	var mod_file := FileAccess.open(mod_path, FileAccess.WRITE)
+	mod_file.store_buffer(mod_bytes)
+	mod_file.close()
+
+	var override_path := _install_root.path_join("override").path_join("tar_m02aa.git")
+	var override_file := FileAccess.open(override_path, FileAccess.WRITE)
+	override_file.store_buffer(_build_empty_are_bytes())
+	override_file.close()
+
+	var editor := _build_editor()
+	editor._editor_state.refresh_gamefs()
+	editor.open_archive_file(mod_path)
+	await process_frame
+	editor._tree.get_root().get_first_child().select(0)
+	await process_frame
+
+	var compare_result := editor.compare_selected_member_with_override()
+	assert(compare_result.get("ok", false), str(compare_result))
+	assert(str(compare_result.get("status", "")) == "different")
+
+	var report_path := _install_root.path_join("tar_m02aa-compare-report")
+	if FileAccess.file_exists("%s.txt" % report_path):
+		DirAccess.remove_absolute("%s.txt" % report_path)
+	var export_result := editor.export_compare_report_to_path(report_path)
+	assert(export_result.get("ok", false), str(export_result))
+	assert(FileAccess.file_exists("%s.txt" % report_path))
+	print("✓ ERF compare member with override passed")
+
+
+func _test_install_archive_to_modules() -> void:
+	var editor := _build_editor()
+	editor.open_archive_bytes("deploy_module.mod", _build_test_mod_bytes(), "")
+	await process_frame
+
+	var target_path := _install_root.path_join("modules").path_join("deploy_module.mod")
+	if FileAccess.file_exists(target_path):
+		DirAccess.remove_absolute(target_path)
+
+	var result := editor.install_archive_to_modules()
+	assert(result.get("applied", false), str(result))
+	assert(FileAccess.file_exists(target_path))
+	var file := FileAccess.open(target_path, FileAccess.READ)
+	var bytes := file.get_buffer(file.get_length())
+	file.close()
+	assert(bytes.size() > 0)
+	print("✓ ERF install archive to modules passed")
+
+
+func _test_install_sav_to_modules_blocked() -> void:
+	var editor := _build_editor()
+	var sav_bytes := ERFWriter.build("SAV ", [
+		{"resref": "save", "extension": "ifo", "bytes": PackedByteArray([0x01, 0x02])},
+	])
+	editor.open_archive_bytes("quicksave.sav", sav_bytes, "")
+	var result := editor.install_archive_to_modules()
+	assert(not result.get("ok", true))
+	print("✓ ERF install SAV to modules blocked passed")
+
+
 func _test_invalid_extract_file_name() -> void:
 	var editor := _build_editor()
 	var mod_bytes := ERFWriter.build("MOD ", [
@@ -74,6 +233,16 @@ func _test_invalid_extract_file_name() -> void:
 	var result := editor.install_entry_to_override(0)
 	assert(not result.get("ok", true))
 	print("✓ ERF invalid extract file name blocked passed")
+
+
+func _find_button(node: Node, text: String) -> Button:
+	if node is Button and (node as Button).text == text:
+		return node as Button
+	for child in node.get_children():
+		var found := _find_button(child, text)
+		if found != null:
+			return found
+	return null
 
 
 func _build_editor() -> KotorErfWorkspaceEditor:
@@ -96,6 +265,17 @@ func _build_test_mod_bytes() -> PackedByteArray:
 
 func _build_empty_git_bytes() -> PackedByteArray:
 	return GFFWriter.serialize(GFFResourceFactory.create_from_parser_result(_build_git_parsed()))
+
+
+func _build_empty_are_bytes() -> PackedByteArray:
+	return GFFWriter.serialize(GFFResourceFactory.create_from_parser_result({
+		"file_type": "ARE ",
+		"root": {},
+		"schema": {
+			"struct_type": 0xFFFFFFFF,
+			"fields": [],
+		},
+	}))
 
 
 func _build_git_parsed() -> Dictionary:
