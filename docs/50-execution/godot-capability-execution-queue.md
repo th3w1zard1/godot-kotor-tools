@@ -163,18 +163,18 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 > **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130 lands via PR #120. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
 
 | Q131 | LTR parser + workspace editor | `LTRParser`/`LTRWriter`, Letter Table workspace tab, `.ltr` routing, install/export. | `test_ltr_parser.gd`, `test_ltr_workspace_editor.gd`. | See `docs/plans/2026-06-12-062-feat-q131-ltr-parser-workspace-plan.md`. |
+| Q132 | Savegame inspector foundations | Read-only `.sav` metadata workspace tab extracting savenfo/partytable/globalvars summaries; member browse + open routing. | Headless `test_savegame_inspector.gd` + `test_savegame_workspace_editor.gd`. | Holocron `savegame.py` parity foundations. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q132 | Savegame inspector foundations | Read-only save metadata workspace surface. | Q131 shipped *(PR #121)*. | Holocron `savegame.py`; see PR #122. |
+| Q133 | MDL write-back phase 0 | Trimesh metadata mutation boundaries + writer scaffold. | Q132 shipped *(PR #122)*. | Holocron `mdl.py`; see PR #123. |
 
 ## Next Slices (Deferred)
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q133 | MDL write-back phase 0 | Trimesh metadata mutation boundaries + writer scaffold. | Model editor read path stable. | Holocron `mdl.py`; see PR #123. |
 | Q10 | GFF inventory array editing | Add/remove/reorder `Inventory`, `EquippedInventory`, and proper `itemList` defaults. | Q9 item picker shipped. | **Shipped** — inventory arrays editable with shared item struct defaults. |
 | Q11 | GFF skill/feat array editing | Add/remove/reorder `SkillList` and `FeatList` with Rank/Feat defaults. | Q7 array machinery shipped. | **Shipped** — creature skill/feat lists editable in GFF tree. |
 | Q12 | Install-aware feat/skill 2DA labels | Feat values and SkillList indices show install 2DA labels in GFF tree. | Q9 enum registry + Q11 arrays shipped. | **Shipped** — feat.2da and skills.2da labels in creature editing. |

@@ -867,7 +867,7 @@ func _save_archive_dialog() -> void:
 func _open_archive_dialog() -> void:
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
-		PackedStringArray(["*.erf,*.rim,*.mod,*.sav ; KotOR Archives"]),
+		PackedStringArray(["*.erf,*.rim,*.mod ; KotOR Archives"]),
 		"Open Archive"
 	)
 	dialog.file_selected.connect(func(path: String) -> void:

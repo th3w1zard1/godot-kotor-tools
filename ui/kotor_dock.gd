@@ -50,7 +50,10 @@ const SCRIPT_EXTENSIONS := {
 	"ncs": true,
 }
 const ARCHIVE_EXTENSIONS := {
-	"erf": true, "rim": true, "mod": true, "sav": true,
+	"erf": true, "rim": true, "mod": true,
+}
+const SAVEGAME_EXTENSIONS := {
+	"sav": true,
 }
 
 var _editor_state: RefCounted
@@ -1405,6 +1408,12 @@ func _open_gamefs_entry(entry: Dictionary) -> void:
 	elif extension == "tlk":
 		_load_tlk_bytes(label, bytes)
 		_tabs.current_tab = _tlk_tab.get_index()
+	elif SAVEGAME_EXTENSIONS.has(extension):
+		_append_activity(
+			"Savegame Inspector requires the workspace shell; open %s from Workspace → Savegame Inspector."
+			% label
+		)
+		return
 	elif ARCHIVE_EXTENSIONS.has(extension):
 		_load_erf_bytes(label, bytes)
 		_tabs.current_tab = _erf_tab.get_index()
@@ -1785,7 +1794,7 @@ func _add_area_related_item(parent: TreeItem, entry: Dictionary, kind: String, d
 func _open_erf() -> void:
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
-		PackedStringArray(["*.erf,*.rim,*.mod,*.sav ; KotOR ERF/RIM"]),
+		PackedStringArray(["*.erf,*.rim,*.mod ; KotOR ERF/RIM"]),
 		"Open KotOR ERF/RIM"
 	)
 	dialog.file_selected.connect(func(path: String) -> void:
@@ -1809,7 +1818,7 @@ func _open_game_erf() -> void:
 	])
 	var dialog := _make_dialog(
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
-		PackedStringArray(["*.erf,*.rim,*.mod,*.sav ; KotOR ERF/RIM"]),
+		PackedStringArray(["*.erf,*.rim,*.mod ; KotOR ERF/RIM"]),
 		"Open Game Archive",
 		archive_dir
 	)
@@ -1822,6 +1831,11 @@ func _open_game_erf() -> void:
 
 
 func _load_erf(path: String) -> void:
+	if path.get_extension().to_lower() == "sav":
+		_append_activity(
+			"Use Workspace → Savegame Inspector to open .sav files (%s)." % path.get_file()
+		)
+		return
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return
@@ -3781,6 +3795,8 @@ func _should_delegate_to_workspace_editor(extension: String) -> bool:
 		return true
 	if normalized == "2da" or normalized == "tlk" or normalized == "ssf" or normalized == "tpc" or normalized == "wav" or normalized == "lip" or normalized == "ltr":
 		return true
+	if SAVEGAME_EXTENSIONS.has(normalized):
+		return true
 	if KotorErfWorkspaceEditor.archive_extension_allowed(normalized):
 		return true
 	if SCRIPT_EXTENSIONS.has(normalized):
@@ -3813,6 +3829,8 @@ func _viewer_for_extension(extension: String) -> String:
 		return "Sound Editor"
 	if extension == "lip":
 		return "LIP Sync Editor"
+	if SAVEGAME_EXTENSIONS.has(extension):
+		return "Savegame Inspector"
 	if extension == "ltr":
 		return "Letter Table Editor"
 	if ARCHIVE_EXTENSIONS.has(extension):

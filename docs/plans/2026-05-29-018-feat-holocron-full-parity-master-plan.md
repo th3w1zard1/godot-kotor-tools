@@ -58,7 +58,7 @@ Evidence: `gh api repos/OpenKotOR/HolocronToolset/contents/src/toolset/gui/edito
 | `ltr.py` | Letter / font | Partial (parser + workspace editor) | Q131 |
 | `mdl.py` | Models | Partial (Model Editor + batch/compare) | Q84–Q85, Q91–Q93, Q119–Q123 |
 | `bwm.py` | Walkmesh | Partial (overlay + install + Q126 paint) | Q17, Q56, Q94, Q126 |
-| `savegame.py` | Save games | Not started | Q22 |
+| `savegame.py` | Save games | Partial (read-only inspector) | Q132 |
 | `txt.py` | Plain text | Shipped (text editor path) | Maintain |
 
 ## Upstream windows (not editor tabs)
@@ -178,4 +178,4 @@ TPC/WAV/LIP/SSF editors, MDL/BWM, savegame tooling.
 
 ## Residual backlog after Q13 (expected)
 
-Module designer, indoor builder, BWM/MDL/LYT, TPC/WAV/LIP/SSF, and compare/batch tooling are **Partial** per the editor inventory above (Q15–Q126). Remaining **Planned/Not started** areas: full DLG graph editor, NCS decompile UI, savegame editor, HoloPatcher/KotorDiff parity, and MDL write-back authoring.
+Module designer, indoor builder, BWM/MDL/LYT, TPC/WAV/LIP/SSF, and compare/batch tooling are **Partial** per the editor inventory above (Q15–Q126). Q132 *(PR #122)* ships read-only savegame inspector foundations. Remaining **Planned/Not started** areas: full DLG graph editor, NCS decompile UI, savegame editing/write-back, HoloPatcher/KotorDiff parity, and MDL write-back authoring.
