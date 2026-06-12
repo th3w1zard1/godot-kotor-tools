@@ -155,14 +155,17 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q139 | Extract all members to folder | **Extract All to Folder...** writes every archive member to a chosen directory (`{resref}.{ext}`); headless `test_erf_workspace_editor.gd`. |
 | Q140 | Export selected member to file | **Export Selected...** saves the selected archive member to a chosen path via mutation export preflight; headless `test_erf_workspace_editor.gd`. |
 | Q141 | Open game archive dialog | **Open Game Archive...** roots the picker at install `modules/`, `lips/`, or `rims/`; headless `test_erf_workspace_editor.gd`. |
+| Q142 | Compare all members with override | **Compare All with Override...** batch-scans archive members against override via `compare_member_batch_with_override`; headless `test_erf_workspace_editor.gd`. |
+| Q143 | Dirty path indicator | Archive Browser path label appends ` *` when document dirty; headless `test_erf_workspace_editor.gd`. |
+| Q129 | Post-Q128 parity wave planning | **Shipped** — consolidation plan landed #124–#133 on `main` (2026-06-12). |
 
-> **Branch note:** Q124–Q128c4 complete the Q128 child plan on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)). Merge to `main` to drop `*(PR #119)*` qualifiers. `main` @ Q123 remains merge base until landed.
+> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q134–Q143 PR wave; land stack #131–#133 onto `main`. | Q134–Q140 on `main`; Q141–Q143 stack MERGEABLE *(PRs #131–#133)*. | Consolidation plan `docs/plans/2026-06-12-071-feat-q140-q143-erf-stack-consolidation-plan.md`. |
+| Q144+ | Next capability wave (TBD) | Plan next slices now that ERF archive wave Q134–Q143 is on `main`. | Q129 hygiene complete; #124–#133 merged. | PRs #120–#123 remain open (NSS/LTR/savegame/MDL) and unblocked by this pass. |
 
 ## Next Slices (Deferred)
 

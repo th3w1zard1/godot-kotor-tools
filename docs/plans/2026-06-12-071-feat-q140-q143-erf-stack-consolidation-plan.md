@@ -1,10 +1,10 @@
 ---
 title: "chore: Q140–Q143 ERF stack consolidation"
 type: chore
-status: active
+status: completed
 date: 2026-06-12
 origin: docs/brainstorms/2026-06-10-q140-q143-erf-stack-consolidation-requirements.md
-phase: Q129
+phase: Q140–Q143
 track: Execution Readiness
 related:
   - docs/50-execution/godot-capability-execution-queue.md
@@ -17,11 +17,25 @@ related:
 
 ## Summary
 
-Land PRs #124–#133 through a two-wave merge: Q134–Q138 onto `main` first, then bottom-up hygiene on the Q139–Q143 stack until the capstone (#133) merges cleanly. Each wave ends with `test_erf_workspace_editor.gd` green and doc authority synced.
+Landed PRs #124–#133 through a two-wave merge: Q134–Q138 onto `main`, then bottom-up hygiene and sequential retarget-to-`main` for #129–#133. Capstone #133 merged with full `test_erf_workspace_editor.gd` green; doc authority synced via U5.
 
-## Problem Frame
+## Outcome
 
-The ERF archive wave spans ten open PRs. Five base `main` and are mergeable; five stack and cascade `CONFLICTING` because Q139's Q138 integration merge (`ca47a51`) is local-only and doc/test rows drift additively up the stack. Q129 active slice is blocked on this hygiene.
+Q129 merge/stack hygiene closed. Q134–Q143 ERF archive behaviors are on `main`. Active execution queue advanced to Q144+ planning. PRs #120–#123 remain open and unblocked.
+
+## Execution progress
+
+| Unit | Status | Notes |
+| --- | --- | --- |
+| U1 | Done | #124–#128 merged to `main` (2026-06-10) |
+| U2 | Done | #129 pushed and merged to `main` (2026-06-12) |
+| U3 | Done | Bottom-up hygiene; full test union on capstone |
+| U4 | Done | #129–#133 retargeted to `main` and merged sequentially |
+| U5 | Done | Queue, STRATEGY, parity matrix synced |
+
+## Problem Frame (historical)
+
+At planning time, the ERF archive wave spanned ten PRs. Five based on `main` and five stacked with cascading conflicts because Q139's Q138 integration merge (`ca47a51`) was local-only and doc/test rows drifted additively up the stack. Q129 active slice was blocked on this hygiene until consolidation completed.
 
 ## Requirements Trace
 
@@ -29,13 +43,13 @@ The ERF archive wave spans ten open PRs. Five base `main` and are mergeable; fiv
 | --- | --- | --- |
 | R1 | Merge #124–#128 in slice order | U1 |
 | R2 | ERF tests pass on `main` after Wave 1 | U1 verification |
-| R3 | Doc sync for Q134–Q138 landed state | U5 |
+| R3 | Doc sync for Q134–Q138 landed state | U1 exit + U5 |
 | R4 | Push Q139 merge commit before stack work | U2 |
 | R5 | Bottom-up conflict resolution Q139–Q143 | U3 |
 | R6 | Each stacked PR `MERGEABLE` before merge | U3, U4 |
 | R7 | Land #129–#133 in order | U4 |
 | R8 | Full ERF test suite on capstone | U4 verification |
-| R9 | Close Q129 slice; mark Q140–Q143 shipped | U5 |
+| R9 | Close Q129 slice; mark Q134–Q143 shipped | U5 |
 | R10 | #120–#123 out of scope | Scope boundary |
 
 ## Key Decisions
