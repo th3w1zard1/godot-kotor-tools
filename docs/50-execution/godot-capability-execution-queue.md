@@ -158,7 +158,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q130–Q137 PR wave; define next Holocron slices after archive deploy parity. | Q137 modules install shipped. | PRs #120–#126 open; consolidate merge order in roadmap plan. |
+| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q134–Q143 PR wave; rebase Wave 1 remainder onto `main`. | Q137 modules install on `main`; Q134–Q136 rebasing. | PRs #120–#133 open; consolidation plan `docs/plans/2026-06-12-071-feat-q140-q143-erf-stack-consolidation-plan.md`. |
 
 ## Next Slices (Deferred)
 
