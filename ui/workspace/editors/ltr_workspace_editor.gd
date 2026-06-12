@@ -12,6 +12,10 @@ var _toolbar: HBoxContainer
 var _path_label: Label
 var _summary_label: Label
 var _tree: Tree
+var _triple_row_option: OptionButton
+var _triple_col_option: OptionButton
+var _triple_row_index := 0
+var _triple_col_index := 0
 var _preflight_dialog: KotorPreflightDialog
 
 var _mutation_service: RefCounted
@@ -190,6 +194,20 @@ func _build_ui() -> void:
 	install_btn.pressed.connect(_install_ltr_to_override)
 	_toolbar.add_child(install_btn)
 
+	var triple_row_label := Label.new()
+	triple_row_label.text = "Triple row"
+	_toolbar.add_child(triple_row_label)
+	_triple_row_option = OptionButton.new()
+	_triple_row_option.item_selected.connect(_on_triple_context_changed)
+	_toolbar.add_child(_triple_row_option)
+
+	var triple_col_label := Label.new()
+	triple_col_label.text = "col"
+	_toolbar.add_child(triple_col_label)
+	_triple_col_option = OptionButton.new()
+	_triple_col_option.item_selected.connect(_on_triple_context_changed)
+	_toolbar.add_child(_triple_col_option)
+
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_path_label.clip_text = true
@@ -209,6 +227,31 @@ func _build_ui() -> void:
 
 
 func _refresh_view() -> void:
+	_refresh_triple_selectors()
+	_refresh_tree()
+	_refresh_status()
+
+
+func _refresh_triple_selectors() -> void:
+	if _triple_row_option == null or _triple_col_option == null or _resource == null:
+		return
+	_triple_row_option.clear()
+	_triple_col_option.clear()
+	for letter_index in _resource.letter_count:
+		var label := LTRParser.letter_label(_resource.letter_count, letter_index)
+		_triple_row_option.add_item(label, letter_index)
+		_triple_col_option.add_item(label, letter_index)
+	_triple_row_index = clampi(_triple_row_index, 0, maxi(_resource.letter_count - 1, 0))
+	_triple_col_index = clampi(_triple_col_index, 0, maxi(_resource.letter_count - 1, 0))
+	_triple_row_option.select(_triple_row_index)
+	_triple_col_option.select(_triple_col_index)
+
+
+func _on_triple_context_changed(_index: int) -> void:
+	if _triple_row_option != null:
+		_triple_row_index = _triple_row_option.get_selected_id()
+	if _triple_col_option != null:
+		_triple_col_index = _triple_col_option.get_selected_id()
 	_refresh_tree()
 	_refresh_status()
 
@@ -225,19 +268,83 @@ func _refresh_tree() -> void:
 	_tree.column_titles_visible = true
 	var root_item := _tree.create_item()
 	root_item.set_text(0, "Single-letter probabilities")
+	_append_probability_block(root_item, "single", -1, -1)
+
+	var doubles_root := _tree.create_item()
+	doubles_root.set_text(0, "Double-letter probabilities")
+	doubles_root.set_selectable(0, false)
+	for context_index in _resource.letter_count:
+		var context_item := _tree.create_item(doubles_root)
+		var context_label := LTRParser.letter_label(_resource.letter_count, context_index)
+		context_item.set_text(0, "After '%s'" % context_label)
+		context_item.set_selectable(0, false)
+		_append_probability_block(context_item, "double", context_index, -1)
+
+	var triples_root := _tree.create_item()
+	triples_root.set_text(0, "Triple-letter probabilities")
+	triples_root.set_selectable(0, false)
+	var triple_context := _tree.create_item(triples_root)
+	var row_label := LTRParser.letter_label(_resource.letter_count, _triple_row_index)
+	var col_label := LTRParser.letter_label(_resource.letter_count, _triple_col_index)
+	triple_context.set_text(0, "After '%s' + '%s'" % [row_label, col_label])
+	triple_context.set_selectable(0, false)
+	_append_probability_block(triple_context, "triple", _triple_row_index, _triple_col_index)
+
+	if _summary_label != null:
+		_summary_label.text = "%s Edit doubles in tree; pick triple row/col in toolbar." % _resource.summary_text()
+
+
+func _append_probability_block(
+	parent_item: TreeItem,
+	kind: String,
+	context_index: int,
+	column_index: int
+) -> void:
 	for position in ["start", "middle", "end"]:
-		var section := _tree.create_item(root_item)
+		var section := _tree.create_item(parent_item)
 		section.set_text(0, position.capitalize())
 		section.set_selectable(0, false)
 		for letter_index in _resource.letter_count:
 			var item := _tree.create_item(section)
 			var label := LTRParser.letter_label(_resource.letter_count, letter_index)
 			item.set_text(0, label)
-			item.set_metadata(0, {"kind": "single", "position": position, "letter_index": letter_index})
-			item.set_text(1, "%.6f" % _resource.get_single_probability(position, letter_index))
+			var metadata := {
+				"kind": kind,
+				"position": position,
+				"letter_index": letter_index,
+			}
+			if kind == "double":
+				metadata["context_index"] = context_index
+			elif kind == "triple":
+				metadata["row_index"] = context_index
+				metadata["column_index"] = column_index
+			item.set_metadata(0, metadata)
+			var probability := _probability_for_metadata(metadata)
+			item.set_text(1, "%.6f" % probability)
 			item.set_editable(1, true)
-	if _summary_label != null:
-		_summary_label.text = "%s Double/triple blocks are preserved on save." % _resource.summary_text()
+
+
+func _probability_for_metadata(metadata: Dictionary) -> float:
+	var kind := str(metadata.get("kind", ""))
+	var position := str(metadata.get("position", ""))
+	var letter_index := int(metadata.get("letter_index", -1))
+	match kind:
+		"single":
+			return _resource.get_single_probability(position, letter_index)
+		"double":
+			return _resource.get_double_probability(
+				int(metadata.get("context_index", -1)),
+				position,
+				letter_index
+			)
+		"triple":
+			return _resource.get_triple_probability(
+				int(metadata.get("row_index", -1)),
+				int(metadata.get("column_index", -1)),
+				position,
+				letter_index
+			)
+	return 0.0
 
 
 func _on_tree_item_edited() -> void:
@@ -247,7 +354,8 @@ func _on_tree_item_edited() -> void:
 	if item == null or _tree.get_edited_column() != 1:
 		return
 	var metadata: Dictionary = item.get_metadata(0)
-	if str(metadata.get("kind", "")) != "single":
+	var kind := str(metadata.get("kind", ""))
+	if kind != "single" and kind != "double" and kind != "triple":
 		return
 	var text := item.get_text(1).strip_edges()
 	if not text.is_valid_float():
@@ -255,11 +363,30 @@ func _on_tree_item_edited() -> void:
 		_refresh_tree()
 		_refresh_status()
 		return
-	if _resource.set_single_probability(
-		str(metadata.get("position", "")),
-		int(metadata.get("letter_index", -1)),
-		float(text)
-	):
+	var changed := false
+	match kind:
+		"single":
+			changed = _resource.set_single_probability(
+				str(metadata.get("position", "")),
+				int(metadata.get("letter_index", -1)),
+				float(text)
+			)
+		"double":
+			changed = _resource.set_double_probability(
+				int(metadata.get("context_index", -1)),
+				str(metadata.get("position", "")),
+				int(metadata.get("letter_index", -1)),
+				float(text)
+			)
+		"triple":
+			changed = _resource.set_triple_probability(
+				int(metadata.get("row_index", -1)),
+				int(metadata.get("column_index", -1)),
+				str(metadata.get("position", "")),
+				int(metadata.get("letter_index", -1)),
+				float(text)
+			)
+	if changed:
 		_dirty = true
 		_update_controller_dirty_state()
 	_refresh_tree()

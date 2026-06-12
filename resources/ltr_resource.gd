@@ -73,6 +73,52 @@ func set_single_probability(position: String, letter_index: int, value: float) -
 	return true
 
 
+func get_double_probability(context_index: int, position: String, letter_index: int) -> float:
+	return _get_block_probability(doubles, context_index, position, letter_index)
+
+
+func set_double_probability(context_index: int, position: String, letter_index: int, value: float) -> bool:
+	return _set_block_probability("doubles", context_index, position, letter_index, value)
+
+
+func get_triple_probability(row_index: int, column_index: int, position: String, letter_index: int) -> float:
+	if row_index < 0 or row_index >= letter_count:
+		return 0.0
+	if column_index < 0 or column_index >= letter_count:
+		return 0.0
+	var rows := _copy_triple_blocks(triples, letter_count)
+	var row: Array = rows[row_index]
+	var block := _copy_block(row[column_index], letter_count)
+	return _probability_from_block(block, position, letter_index)
+
+
+func set_triple_probability(row_index: int, column_index: int, position: String, letter_index: int, value: float) -> bool:
+	if row_index < 0 or row_index >= letter_count:
+		return false
+	if column_index < 0 or column_index >= letter_count:
+		return false
+	if position != "start" and position != "middle" and position != "end":
+		return false
+	if letter_index < 0 or letter_index >= letter_count:
+		return false
+	var rows := _copy_triple_blocks(triples, letter_count)
+	var row: Array = rows[row_index]
+	var block := _copy_block(row[column_index], letter_count)
+	var array: Array = block.get(position, [])
+	if typeof(array) != TYPE_ARRAY:
+		array = _default_float_array(letter_count)
+	var normalized := float(value)
+	if float(array[letter_index]) == normalized:
+		return false
+	array[letter_index] = normalized
+	block[position] = array
+	row[column_index] = block
+	rows[row_index] = row
+	triples = rows
+	emit_changed()
+	return true
+
+
 func summary_text() -> String:
 	return "LTR %d-letter alphabet; %d double contexts; %d triple contexts." % [
 		letter_count,
@@ -153,3 +199,49 @@ static func _copy_triple_blocks(rows: Variant, letter_count: int) -> Array:
 			row[column_index] = _copy_block(block, letter_count)
 		copy[row_index] = row
 	return copy
+
+
+func _get_block_probability(blocks: Variant, context_index: int, position: String, letter_index: int) -> float:
+	if context_index < 0 or context_index >= letter_count:
+		return 0.0
+	var copied := _copy_blocks(blocks, letter_count)
+	var block := _copy_block(copied[context_index], letter_count)
+	return _probability_from_block(block, position, letter_index)
+
+
+func _set_block_probability(
+	property_name: String,
+	context_index: int,
+	position: String,
+	letter_index: int,
+	value: float
+) -> bool:
+	if context_index < 0 or context_index >= letter_count:
+		return false
+	if position != "start" and position != "middle" and position != "end":
+		return false
+	if letter_index < 0 or letter_index >= letter_count:
+		return false
+	var copied := _copy_blocks(get(property_name), letter_count)
+	var block := _copy_block(copied[context_index], letter_count)
+	var array: Array = block.get(position, [])
+	if typeof(array) != TYPE_ARRAY:
+		array = _default_float_array(letter_count)
+	var normalized := float(value)
+	if float(array[letter_index]) == normalized:
+		return false
+	array[letter_index] = normalized
+	block[position] = array
+	copied[context_index] = block
+	set(property_name, copied)
+	emit_changed()
+	return true
+
+
+static func _probability_from_block(block: Dictionary, position: String, letter_index: int) -> float:
+	if letter_index < 0:
+		return 0.0
+	var values: Array = block.get(position, [])
+	if typeof(values) != TYPE_ARRAY or letter_index >= values.size():
+		return 0.0
+	return float(values[letter_index])

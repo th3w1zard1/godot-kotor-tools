@@ -28,7 +28,7 @@ We commit to a Godot-native, install-aware workspace where parser/importer/edito
 
 ### Phase 2 Capability Expansion
 
-**Status:** Active (Q1–Q133 shipped on `main` after #120–#123 merge; Q124–Q128c4 via PR #119; Q134–Q143 ERF wave via PRs #124–#133; active slice Q144+ TBD)
+**Status:** Active (Q1–Q144 shipped on `main`; Q124–Q128c4 via PR #119; Q134–Q143 ERF wave via PRs #124–#133; Q130–Q133 via #120–#123; active slice Q145+ TBD)
 
 Deliver vertical capability slices that combine editor ergonomics, mutation safety, and native Godot integration. Each slice lands parser/importer/editor/write-back parity for a format family or major editing surface.
 

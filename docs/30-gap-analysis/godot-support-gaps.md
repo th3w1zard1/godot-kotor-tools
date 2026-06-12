@@ -73,7 +73,7 @@ For Phase 2 and beyond, use these reference documents in order:
 | **P1** | MDX sidecar on single-file MDL install | **Fixed** | Model Editor `Install MDL to Override` now installs paired `.mdx` when loaded. |
 | **P1** | BIF/KEY archive browsing | Open | Parity matrix: archive family still Partial beyond ERF/RIM/MOD. |
 | **P1** | DLG graph depth (Holocron-only fields, animations) | Open | Q128a–c shipped; interactive graph polish + TSL fields deferred (`docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md`). |
-| **P2** | LTR doubles/triples grid editing | Open | Q131 ships singles edit; full table editor deferred. |
+| **P2** | LTR doubles/triples grid editing | **Fixed** | Q144 — edit double contexts + selected triple context in LTR workspace editor. |
 | **P2** | Savegame write-back | Open | Q132 read-only inspector; `.sav` mutation deferred. |
 | **P2** | MDL geometry mutation / rebuild | Open | Q133 phase 0 passthrough only. |
 | **P2** | Plan authority drift | **Fixed** | Q119–Q123 module-tool plans + Q128/Q131–Q133 marked `completed` (plan 079). |

@@ -42,6 +42,8 @@ func _run_tests() -> void:
 	assert(is_equal_approx(resource.get_single_probability("middle", 5), 0.42))
 
 	resource.set_single_probability("start", 1, 0.11)
+	resource.set_double_probability(2, "middle", 4, 0.77)
+	resource.set_triple_probability(1, 3, "end", 6, 0.88)
 	editor._dirty = true
 	assert(editor.install_document_to_override().get("applied", false))
 
@@ -52,6 +54,14 @@ func _run_tests() -> void:
 	var installed_parsed := LTRParser.parse_bytes(installed.get_buffer(installed.get_length()))
 	installed.close()
 	assert(is_equal_approx(float(installed_parsed.get("singles", {}).get("start", [])[1]), 0.11))
+	var doubles: Array = installed_parsed.get("doubles", [])
+	assert(doubles.size() > 2)
+	assert(is_equal_approx(float(doubles[2].get("middle", [])[4]), 0.77))
+	var triples: Array = installed_parsed.get("triples", [])
+	assert(triples.size() > 1)
+	var triple_row: Array = triples[1]
+	assert(triple_row.size() > 3)
+	assert(is_equal_approx(float(triple_row[3].get("end", [])[6]), 0.88))
 
 	_cleanup()
 	print("✓ LTR workspace editor tests passed")
