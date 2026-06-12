@@ -364,8 +364,8 @@ func _test_export_selected_member_to_path() -> void:
 
 func _test_export_selected_member_requires_selection() -> void:
 	var editor := _build_editor()
-	editor.open_archive_bytes("test_module.mod", _build_test_mod_bytes(), "")
-	var result := editor.export_selected_member_to_path("/tmp/should_not_write.git")
+	editor.open_archive_bytes("no_sel.mod", _build_test_mod_bytes(), "")
+	var result := editor.export_selected_member_to_path("/tmp/unused.git")
 	assert(not result.get("ok", true))
 	print("✓ ERF export selected member requires selection passed")
 

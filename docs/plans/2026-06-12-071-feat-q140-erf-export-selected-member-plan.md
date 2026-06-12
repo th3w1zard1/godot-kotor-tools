@@ -1,7 +1,7 @@
 ---
 title: "feat: Q140 ERF export selected member to file"
 type: feat
-status: active
+status: completed
 date: 2026-06-12
 origin: docs/50-execution/godot-capability-execution-queue.md
 phase: Q140
