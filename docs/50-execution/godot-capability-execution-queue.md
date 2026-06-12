@@ -151,6 +151,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q135 | ERF member remove/replace | **Remove Member** / **Replace Member...** with `remove_member_at`, `replace_member_at`, `restore_members` undo snapshots, and save integration; headless `test_erf_document_remove_replace.gd` + `test_erf_workspace_editor.gd`. |
 | Q136 | ERF member compare with override | **Compare Member with Override...** + **Export Compare Report...** for selected archive members via `compare_gamefs_resource`; headless `test_erf_workspace_editor.gd`. |
 | Q137 | Install archive to modules | **Install Archive to Modules** deploys open MOD/ERF/RIM via mutation preflight to game `modules/`; rejects `.sav`; headless `test_erf_workspace_editor.gd`. |
+| Q138 | Extract all members to override | **Extract All to Override** batch-installs every archive member with per-member mutation apply and summary counts; headless `test_erf_workspace_editor.gd`. |
 
 > **Branch note:** Q124–Q128c4 complete the Q128 child plan on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)). Merge to `main` to drop `*(PR #119)*` qualifiers. `main` @ Q123 remains merge base until landed.
 
@@ -158,7 +159,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q134–Q143 PR wave; rebase Wave 1 remainder onto `main`. | Q137 modules install on `main`; Q134–Q136 rebasing. | PRs #120–#133 open; consolidation plan `docs/plans/2026-06-12-071-feat-q140-q143-erf-stack-consolidation-plan.md`. |
+| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q134–Q143 PR wave; land #128 then stack #129–#133. | Q134–Q137 on `main`; Q138 pending #128 merge. | PRs #120–#128, #129–#133 open; consolidation plan `docs/plans/2026-06-12-071-feat-q140-q143-erf-stack-consolidation-plan.md`. |
 
 ## Next Slices (Deferred)
 
