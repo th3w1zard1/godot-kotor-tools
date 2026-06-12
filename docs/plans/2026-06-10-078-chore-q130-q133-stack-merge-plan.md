@@ -1,7 +1,7 @@
 ---
 title: "chore: Q130–Q133 stack merge (#120–#123)"
 type: chore
-status: active
+status: completed
 date: 2026-06-10
 origin: docs/50-execution/godot-capability-execution-queue.md
 phase: Q130–Q133

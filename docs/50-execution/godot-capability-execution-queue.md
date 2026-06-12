@@ -159,18 +159,17 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q143 | Dirty path indicator | Archive Browser path label appends ` *` when document dirty; headless `test_erf_workspace_editor.gd`. |
 | Q129 | Post-Q128 parity wave planning | **Shipped** — consolidation plan landed #124–#133 on `main` (2026-06-12). |
 | Q130 | NSS compile-to-override UX | Dock + workspace script editors install compiled `.ncs` to override with mutation preflight; auto-offer after successful compile; headless `test_script_compile_install.gd`. |
+| Q131 | LTR parser + workspace editor | `LTRParser`/`LTRWriter`, Letter Table workspace tab, `.ltr` routing, install/export; headless `test_ltr_parser.gd` + `test_ltr_workspace_editor.gd`. |
+| Q132 | Savegame inspector foundations | Read-only `.sav` metadata workspace tab (`savenfo`/`partytable`/`globalvars`), member browse + GFF inspect routing; headless `test_savegame_inspector.gd` + `test_savegame_workspace_editor.gd`. |
+| Q133 | MDL write-back phase 0 | `MDLWriter` passthrough + `MdlResource` + pipeline `mdl` serialize; MDL editor export/install via typed resource; headless `test_mdl_writer.gd`. Geometry rebuild deferred. |
 
-> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130 lands via PR #120. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
-
-| Q131 | LTR parser + workspace editor | `LTRParser`/`LTRWriter`, Letter Table workspace tab, `.ltr` routing, install/export. | `test_ltr_parser.gd`, `test_ltr_workspace_editor.gd`. | See `docs/plans/2026-06-12-062-feat-q131-ltr-parser-workspace-plan.md`. |
-| Q132 | Savegame inspector foundations | Read-only `.sav` metadata workspace tab extracting savenfo/partytable/globalvars summaries; member browse + open routing. | Headless `test_savegame_inspector.gd` + `test_savegame_workspace_editor.gd`. | Holocron `savegame.py` parity foundations. |
-| Q133 | MDL write-back phase 0 | `MDLWriter` passthrough + `MdlResource` + pipeline `mdl` serialize; MDL editor export/install via typed resource. | Headless `test_mdl_writer.gd`. | Geometry rebuild deferred. |
+> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q144+ | Next capability wave (TBD) | Plan next slices after Q130–Q133 stack lands on `main`. | #120–#123 merged. | Holocron parity roadmap / BIF-KEY / DLG depth TBD. |
+| Q144+ | Next capability wave (TBD) | Select and plan next vertical slices on `main`. | Q130–Q133 stack landed (#120–#123 merged 2026-06-12). | Holocron parity roadmap / BIF-KEY / DLG depth TBD. |
 
 ## Next Slices (Deferred)
 

@@ -536,18 +536,6 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"size": mdl_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
-		"tpc":
-			if payload is PackedByteArray:
-				var tpc_bytes := TPCWriter.serialize_passthrough(payload as PackedByteArray)
-				if tpc_bytes.is_empty():
-					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
-				return {
-					"ok": true,
-					"type": "bytes",
-					"payload": tpc_bytes,
-					"size": tpc_bytes.size(),
-					"file_name": file_name.get_file(),
-				}
 		"are", "dlg", "gff", "git", "ifo", "jrl", "pth", "utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw":
 			if payload is GFFResource:
 				var gff_bytes := GFFWriter.serialize(payload as GFFResource)
