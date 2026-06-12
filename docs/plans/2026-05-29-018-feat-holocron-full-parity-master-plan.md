@@ -55,10 +55,10 @@ Evidence: `gh api repos/OpenKotOR/HolocronToolset/contents/src/toolset/gui/edito
 | `wav.py` | Audio | Partial (WAV workspace + batch/compare) | Q27–Q29, Q38, Q104–Q109, Q116 |
 | `lip.py` | Lip sync | Partial (LIP workspace + batch) | Q29–Q31, Q118 |
 | `ssf.py` | Sound set | Partial (SSF workspace) | Q27 |
-| `ltr.py` | Letter / font | Not started | Q20 |
+| `ltr.py` | Letter / font | Partial (parser + workspace editor) | Q131 |
 | `mdl.py` | Models | Partial (Model Editor + batch/compare + write-back phase 0) | Q84–Q85, Q91–Q93, Q119–Q123, Q133 |
 | `bwm.py` | Walkmesh | Partial (overlay + install + Q126 paint) | Q17, Q56, Q94, Q126 |
-| `savegame.py` | Save games | Not started | Q22 |
+| `savegame.py` | Save games | Partial (read-only inspector) | Q132 |
 | `txt.py` | Plain text | Shipped (text editor path) | Maintain |
 
 ## Upstream windows (not editor tabs)
@@ -83,7 +83,7 @@ Evidence: `Libraries/PyKotor/src/pykotor/resource/formats/*` (2026-05-29).
 | `ncs` | Partial (NSS editor, no full decompile UI) | Q17 |
 | `tpc`, `wav`, `lip`, `ssf` | Partial (workspace + batch tooling) | Q27–Q31, Q77–Q82, Q104–Q118 |
 | `mdl`, `bwm`, `lyt`, `vis` | Partial (module designer + model editor) | Q17–Q18, Q56, Q84–Q85, Q91–Q94, Q126 |
-| `ltr` | Not started | Q20 |
+| `ltr` | Partial (parser + workspace editor) | Q131 |
 
 ## Architecture principles (non-negotiable)
 
@@ -178,4 +178,4 @@ TPC/WAV/LIP/SSF editors, MDL/BWM, savegame tooling.
 
 ## Residual backlog after Q13 (expected)
 
-Module designer, indoor builder, BWM/MDL/LYT, TPC/WAV/LIP/SSF, and compare/batch tooling are **Partial** per the editor inventory above (Q15–Q126). Q133 *(PR #123)* ships MDL write-back phase 0 (passthrough plumbing). Remaining **Planned/Not started** areas: full DLG graph editor, NCS decompile UI, savegame editing, HoloPatcher/KotorDiff parity, and MDL geometry mutation authoring.
+Module designer, indoor builder, BWM/MDL/LYT, TPC/WAV/LIP/SSF, and compare/batch tooling are **Partial** per the editor inventory above (Q15–Q126). Q132 *(PR #122)* ships read-only savegame inspector foundations. Q133 *(PR #123)* ships MDL write-back phase 0 (passthrough plumbing). Remaining **Planned/Not started** areas: full DLG graph editor, NCS decompile UI, savegame editing/write-back, HoloPatcher/KotorDiff parity, and MDL geometry mutation authoring.
