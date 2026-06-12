@@ -863,6 +863,7 @@ func _make_dialog(
 		current_file: String = ""
 ) -> EditorFileDialog:
 	var dialog := EditorFileDialog.new()
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
 	dialog.file_mode = file_mode
 	dialog.title = title
 	dialog.filters = filters
