@@ -154,7 +154,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q131 | LTR parser + workspace editor | Read/write letter tables; route `.ltr` in workspace shell. | Q130 shipped. | Holocron `ltr.py`. |
+| Q131 | LTR parser + workspace editor | Read/write letter tables; route `.ltr` in workspace shell. | Q130 shipped *(PR #120)*. | Holocron `ltr.py`; see PR #121. |
 
 ## Next Slices (Deferred)
 
