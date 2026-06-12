@@ -309,14 +309,6 @@ static func _entry_file_name(entry: Dictionary) -> String:
 
 
 static func _serialize_payload(file_name: String, payload: Variant) -> Dictionary:
-	if payload is PackedByteArray:
-		return {
-			"ok": true,
-			"type": "bytes",
-			"payload": payload,
-			"size": (payload as PackedByteArray).size(),
-			"file_name": file_name.get_file(),
-		}
 	if payload is String:
 		var text_bytes := String(payload).to_ascii_buffer()
 		return {
@@ -328,6 +320,39 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 		}
 
 	var extension := file_name.get_extension().to_lower()
+	if payload is PackedByteArray:
+		var bytes := payload as PackedByteArray
+		match extension:
+			"mdl":
+				var validated_mdl := MDLWriter.serialize_passthrough(bytes)
+				if validated_mdl.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": validated_mdl,
+					"size": validated_mdl.size(),
+					"file_name": file_name.get_file(),
+				}
+			"tpc":
+				var validated_tpc := TPCWriter.serialize_passthrough(bytes)
+				if validated_tpc.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": validated_tpc,
+					"size": validated_tpc.size(),
+					"file_name": file_name.get_file(),
+				}
+			_:
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": bytes,
+					"size": bytes.size(),
+					"file_name": file_name.get_file(),
+				}
 	match extension:
 		"2da":
 			if payload is TwoDaResource:
@@ -373,18 +398,6 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"size": lip_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
-		"tpc":
-			if payload is PackedByteArray:
-				var tpc_bytes := TPCWriter.serialize_passthrough(payload as PackedByteArray)
-				if tpc_bytes.is_empty():
-					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
-				return {
-					"ok": true,
-					"type": "bytes",
-					"payload": tpc_bytes,
-					"size": tpc_bytes.size(),
-					"file_name": file_name.get_file(),
-				}
 		"mdl":
 			if payload is MdlResource:
 				var mdl_resource := payload as MdlResource
@@ -399,17 +412,6 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"type": "bytes",
 					"payload": mdl_bytes,
 					"size": mdl_bytes.size(),
-					"file_name": file_name.get_file(),
-				}
-			if payload is PackedByteArray:
-				var raw_mdl_bytes := MDLWriter.serialize_passthrough(payload as PackedByteArray)
-				if raw_mdl_bytes.is_empty():
-					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
-				return {
-					"ok": true,
-					"type": "bytes",
-					"payload": raw_mdl_bytes,
-					"size": raw_mdl_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
 		"are", "dlg", "gff", "git", "ifo", "jrl", "pth", "utc", "utd", "ute", "uti", "utm", "utp", "uts", "utt", "utw":

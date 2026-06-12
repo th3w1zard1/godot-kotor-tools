@@ -18,6 +18,7 @@ func _run_tests() -> void:
 	_test_mdl_resource_setup()
 	_test_pipeline_serialize_mdl_resource()
 	_test_pipeline_serialize_raw_mdl_bytes()
+	_test_pipeline_reject_invalid_raw_mdl_bytes()
 	print("✓ MDL writer tests passed")
 	quit()
 
@@ -86,6 +87,12 @@ func _test_pipeline_serialize_raw_mdl_bytes() -> void:
 	var payload: PackedByteArray = serialized.get("payload", PackedByteArray())
 	assert(payload.size() == mdl.size())
 	print("✓ Pipeline raw MDL bytes serialize passed")
+
+
+func _test_pipeline_reject_invalid_raw_mdl_bytes() -> void:
+	var serialized := KotorModdingPipeline.serialize_payload("room_b.mdl", "bad".to_utf8_buffer())
+	assert(not serialized.get("ok", true))
+	print("✓ Pipeline invalid raw MDL bytes rejection passed")
 
 
 static func _build_minimal_mdl(vertices: Array, face_indices: Array) -> PackedByteArray:
