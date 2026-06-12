@@ -91,6 +91,7 @@ func open_archive_bytes(label: String, data: PackedByteArray, source_path: Strin
 		return
 	_source_path = source_path if source_path.is_absolute_path() else ""
 	_file_name = _guess_loaded_file_name(label, "archive.mod")
+	_last_compare_result = {}
 	_status_text = "Loaded %s (%d members)" % [_current_file_name(), _document.get_entry_count()]
 	_register_controller_document()
 	_refresh_view()
@@ -652,12 +653,9 @@ func _export_compare_report_dialog() -> void:
 		_status_text = "Run Compare Member with Override first."
 		_refresh_status()
 		return
-	var index := get_selected_entry_index()
-	var resref := "member"
-	if index >= 0 and _document != null:
-		var entry := _document.get_entry(index)
-		if entry != null:
-			resref = entry.resref
+	var resref := str(_last_compare_result.get("resref", "member")).strip_edges()
+	if resref.is_empty():
+		resref = "member"
 	var start_dir := ""
 	var editor_state := get_editor_state()
 	if editor_state != null:
@@ -882,6 +880,7 @@ func _clear_document_state(message: String) -> void:
 	_document = null
 	_source_path = ""
 	_file_name = "archive.mod"
+	_last_compare_result = {}
 	_status_text = message
 	_document_key = ""
 	if _tree != null:
