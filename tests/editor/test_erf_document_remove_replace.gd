@@ -17,6 +17,7 @@ func _run_tests() -> void:
 	_test_remove_member_at()
 	_test_replace_member_at()
 	_test_restore_members_snapshot()
+	_test_invalid_index_rejected()
 	print("✓ ERF document remove/replace tests passed")
 	quit()
 
@@ -65,6 +66,18 @@ func _test_restore_members_snapshot() -> void:
 	var repacked := document.get_repacked_bytes()
 	assert(not ERFParser.parse_bytes(repacked).is_empty())
 	print("✓ ERF document restore_members snapshot passed")
+
+
+func _test_invalid_index_rejected() -> void:
+	var mod_bytes := ERFWriter.build("MOD ", [
+		{"resref": "tar_m02aa", "extension": "git", "bytes": _build_empty_git_bytes()},
+	])
+	var document := KotorErfDocument.from_bytes("", mod_bytes)
+	assert(not document.remove_member_at(-1).get("ok", true))
+	assert(not document.remove_member_at(99).get("ok", true))
+	assert(not document.replace_member_at(99, _build_empty_are_bytes()).get("ok", true))
+	assert(document.get_entry_count() == 1)
+	print("✓ ERF document invalid index rejected passed")
 
 
 func _build_empty_git_bytes() -> PackedByteArray:
