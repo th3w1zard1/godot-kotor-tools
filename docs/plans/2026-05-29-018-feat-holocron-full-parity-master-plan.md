@@ -55,7 +55,7 @@ Evidence: `gh api repos/OpenKotOR/HolocronToolset/contents/src/toolset/gui/edito
 | `wav.py` | Audio | Partial (WAV workspace + batch/compare) | Q27–Q29, Q38, Q104–Q109, Q116 |
 | `lip.py` | Lip sync | Partial (LIP workspace + batch) | Q29–Q31, Q118 |
 | `ssf.py` | Sound set | Partial (SSF workspace) | Q27 |
-| `ltr.py` | Letter / font | Not started | Q20 |
+| `ltr.py` | Letter / font | Partial (parser + workspace editor) | Q131 |
 | `mdl.py` | Models | Partial (Model Editor + batch/compare) | Q84–Q85, Q91–Q93, Q119–Q123 |
 | `bwm.py` | Walkmesh | Partial (overlay + install + Q126 paint) | Q17, Q56, Q94, Q126 |
 | `savegame.py` | Save games | Not started | Q22 |
@@ -83,7 +83,7 @@ Evidence: `Libraries/PyKotor/src/pykotor/resource/formats/*` (2026-05-29).
 | `ncs` | Partial (NSS editor, no full decompile UI) | Q17 |
 | `tpc`, `wav`, `lip`, `ssf` | Partial (workspace + batch tooling) | Q27–Q31, Q77–Q82, Q104–Q118 |
 | `mdl`, `bwm`, `lyt`, `vis` | Partial (module designer + model editor) | Q17–Q18, Q56, Q84–Q85, Q91–Q94, Q126 |
-| `ltr` | Not started | Q20 |
+| `ltr` | Partial (parser + workspace editor) | Q131 |
 
 ## Architecture principles (non-negotiable)
 

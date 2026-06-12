@@ -15,6 +15,7 @@ const KotorTPCWorkspaceEditor := preload("./editors/tpc_workspace_editor.gd")
 const KotorWAVWorkspaceEditor := preload("./editors/wav_workspace_editor.gd")
 const KotorMDLWorkspaceEditor := preload("./editors/mdl_workspace_editor.gd")
 const KotorLIPWorkspaceEditor := preload("./editors/lip_workspace_editor.gd")
+const KotorLTRWorkspaceEditor := preload("./editors/ltr_workspace_editor.gd")
 const KotorGFFWorkspaceEditor := preload("./editors/gff_workspace_editor.gd")
 const KotorModuleDesignerWorkspaceEditor := preload("./editors/module_designer_workspace_editor.gd")
 const KotorIndoorBuilderWorkspaceEditor := preload("./editors/indoor_builder_workspace_editor.gd")
@@ -38,6 +39,7 @@ var _tpc_editor: Control
 var _wav_editor: Control
 var _mdl_editor: Control
 var _lip_editor: Control
+var _ltr_editor: Control
 var _gff_editor: Control
 var _module_designer: Control
 var _indoor_builder: Control
@@ -168,6 +170,13 @@ func _ensure_shell() -> void:
 	_lip_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tabs.add_child(_lip_editor)
 
+	_ltr_editor = KotorLTRWorkspaceEditor.new()
+	_ltr_editor.name = "Letter Table Editor"
+	_ltr_editor.setup(_resolve_editor_state(), _controller)
+	_ltr_editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ltr_editor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.add_child(_ltr_editor)
+
 	_gff_editor = KotorGFFWorkspaceEditor.new()
 	_gff_editor.name = "GFF Entity Editor"
 	_gff_editor.setup(_resolve_editor_state(), _controller)
@@ -262,6 +271,10 @@ func get_lip_workspace_editor() -> Control:
 	return _lip_editor
 
 
+func get_ltr_workspace_editor() -> Control:
+	return _ltr_editor
+
+
 func get_gff_workspace_editor() -> Control:
 	return _gff_editor
 
@@ -334,6 +347,10 @@ func _restore_workspace_session() -> void:
 				_lip_editor.call("open_lip_file", source_path)
 				if str(document_entry.get("key", "")) == active_key:
 					_tabs.current_tab = _lip_editor.get_index()
+			"ltr":
+				_ltr_editor.call("open_ltr_file", source_path)
+				if str(document_entry.get("key", "")) == active_key:
+					_tabs.current_tab = _ltr_editor.get_index()
 			"gff":
 				_gff_editor.call("open_gff_file", source_path)
 				if str(document_entry.get("key", "")) == active_key:
@@ -436,6 +453,15 @@ func _open_workspace_entry(entry: Dictionary) -> void:
 		]
 		_lip_editor.call("open_lip_bytes", lip_label, lip_bytes, source_path)
 		_tabs.current_tab = _lip_editor.get_index()
+		return
+	if extension == "ltr":
+		var ltr_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
+		var ltr_label := "%s [%s]" % [
+			"%s.%s" % [entry.get("resref", ""), entry.get("extension", "")],
+			entry.get("source", ""),
+		]
+		_ltr_editor.call("open_ltr_bytes", ltr_label, ltr_bytes, source_path)
+		_tabs.current_tab = _ltr_editor.get_index()
 		return
 	if extension == "nss" or extension == "ncs":
 		var script_bytes: PackedByteArray = _target_context.call("load_entry_bytes", entry)
@@ -572,6 +598,10 @@ func _open_archive_member_resource(resref: String, extension: String, payload: P
 	if extension == "lip":
 		_lip_editor.call("open_lip_bytes", label, payload, "")
 		_tabs.current_tab = _lip_editor.get_index()
+		return
+	if extension == "ltr":
+		_ltr_editor.call("open_ltr_bytes", label, payload, "")
+		_tabs.current_tab = _ltr_editor.get_index()
 		return
 	if extension == "mdl":
 		var mdx_bytes := _find_archive_member_payload(resref, "mdx")

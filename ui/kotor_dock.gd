@@ -3779,7 +3779,7 @@ func _should_delegate_to_workspace_editor(extension: String) -> bool:
 	var normalized := extension.strip_edges().to_lower()
 	if normalized == "dlg":
 		return true
-	if normalized == "2da" or normalized == "tlk" or normalized == "ssf" or normalized == "tpc" or normalized == "wav" or normalized == "lip":
+	if normalized == "2da" or normalized == "tlk" or normalized == "ssf" or normalized == "tpc" or normalized == "wav" or normalized == "lip" or normalized == "ltr":
 		return true
 	if KotorErfWorkspaceEditor.archive_extension_allowed(normalized):
 		return true
@@ -3813,6 +3813,8 @@ func _viewer_for_extension(extension: String) -> String:
 		return "Sound Editor"
 	if extension == "lip":
 		return "LIP Sync Editor"
+	if extension == "ltr":
+		return "Letter Table Editor"
 	if ARCHIVE_EXTENSIONS.has(extension):
 		return "ERF Browser"
 	return "No viewer yet"
