@@ -147,6 +147,8 @@ func extract_all_members_to_override() -> Dictionary:
 			applied += 1
 		elif result.get("action", "") == "noop":
 			unchanged += 1
+		else:
+			failed += 1
 	if applied > 0:
 		_refresh_gamefs()
 	_status_text = "Extracted %d member(s) to override (%d unchanged, %d skipped, %d failed)." % [
