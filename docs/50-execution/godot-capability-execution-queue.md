@@ -165,7 +165,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q130 | NSS compile-to-override UX | **Compile to Override** for script workspace; headless script workspace tests. | Q130 branch open as PR #120. | Stack on `main`; parallel to ERF wave. |
+| Q129 | Post-Q128 parity wave planning | Merge/stack hygiene for Q134–Q143 PR wave; bottom-up rebase stacked branches onto Q141 tip. | Q139–Q141 integrated on stack; Q142 batch compare *(PR #132)* and Q143 dirty path *(PR #133)* rebased onto Q141 tip. | Consolidation plan `docs/plans/2026-06-12-071-feat-q140-q143-erf-stack-consolidation-plan.md`; bottom-up rebase in progress. PRs #120–#133 open. Parallel tracks (#120 NSS) stack on `main`. |
 
 ## Next Slices (Deferred)
 
