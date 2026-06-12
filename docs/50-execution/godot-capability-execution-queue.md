@@ -147,8 +147,20 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q128c2 | DLG delete-all-references *(PR #119)* | **Delete References** toolbar + detail panel + tree context menu call `remove_all_references_to_node` with topology undo; headless `test_dlg_workspace_editor.gd` delete-references tests. |
 | Q128c3 | DLG graph port drag-connect *(PR #119)* | `connection_link_requested` on graph view calls `add_node_link` with topology undo; headless `test_dlg_workspace_editor.gd` + `test_dlg_graph_layout.gd` graph-link tests. |
 | Q128c4 | DLG orphan restore UX *(PR #119)* | Double-click orphan restore, tree context **Link Selected Orphan Here**, detail-panel linkable orphans, `find_linkable_orphans_for_owner`; headless orphan-restore tests. |
+| Q134 | ERF member add foundations | Archive Browser **Add Member...** + **Save Archive...** with `KotorErfDocument.add_member`, duplicate rejection, dirty tracking, and pipeline repack export; headless `test_erf_document_add_member.gd` + `test_erf_workspace_editor.gd`. |
+| Q135 | ERF member remove/replace | **Remove Member** / **Replace Member...** with `remove_member_at`, `replace_member_at`, `restore_members` undo snapshots, and save integration; headless `test_erf_document_remove_replace.gd` + `test_erf_workspace_editor.gd`. |
+| Q136 | ERF member compare with override | **Compare Member with Override...** + **Export Compare Report...** for selected archive members via `compare_gamefs_resource`; headless `test_erf_workspace_editor.gd`. |
+| Q137 | Install archive to modules | **Install Archive to Modules** deploys open MOD/ERF/RIM via mutation preflight to game `modules/`; rejects `.sav`; headless `test_erf_workspace_editor.gd`. |
+| Q138 | Extract all members to override | **Extract All to Override** batch-installs every archive member with per-member mutation apply and summary counts; headless `test_erf_workspace_editor.gd`. |
+| Q139 | Extract all members to folder | **Extract All to Folder...** writes every archive member to a chosen directory (`{resref}.{ext}`); headless `test_erf_workspace_editor.gd`. |
+| Q140 | Export selected member to file | **Export Selected...** saves the selected archive member to a chosen path via mutation export preflight; headless `test_erf_workspace_editor.gd`. |
+| Q141 | Open game archive dialog | **Open Game Archive...** roots the picker at install `modules/`, `lips/`, or `rims/`; headless `test_erf_workspace_editor.gd`. |
+| Q142 | Compare all members with override | **Compare All with Override...** batch-scans archive members against override via `compare_member_batch_with_override`; headless `test_erf_workspace_editor.gd`. |
+| Q143 | Dirty path indicator | Archive Browser path label appends ` *` when document dirty; headless `test_erf_workspace_editor.gd`. |
+| Q129 | Post-Q128 parity wave planning | **Shipped** — consolidation plan landed #124–#133 on `main` (2026-06-12). |
+| Q130 | NSS compile-to-override UX | Dock + workspace script editors install compiled `.ncs` to override with mutation preflight; auto-offer after successful compile; headless `test_script_compile_install.gd`. |
 
-> **Branch note:** Q124–Q128c4 complete the Q128 child plan on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)). Merge to `main` to drop `*(PR #119)*` qualifiers. `main` @ Q123 remains merge base until landed.
+> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130 lands via PR #120. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
 
 | Q131 | LTR parser + workspace editor | `LTRParser`/`LTRWriter`, Letter Table workspace tab, `.ltr` routing, install/export. | `test_ltr_parser.gd`, `test_ltr_workspace_editor.gd`. | See `docs/plans/2026-06-12-062-feat-q131-ltr-parser-workspace-plan.md`. |
 
@@ -156,13 +168,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q132 | Savegame inspector foundations | Read-only save metadata workspace surface. | Q131 shipped. | Holocron `savegame.py`. |
+| Q132 | Savegame inspector foundations | Read-only save metadata workspace surface. | Q131 shipped *(PR #121)*. | Holocron `savegame.py`; see PR #122. |
 
 ## Next Slices (Deferred)
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q130 | NSS compile-to-override UX | After PyKotor assemble, install `.ncs` to override with preflight. | PR #120 open on `feat/q130-nss-compile-install`. | Stacks after Q128 merge wave. |
+| Q133 | MDL write-back phase 0 | Trimesh metadata mutation boundaries + writer scaffold. | Model editor read path stable. | Holocron `mdl.py`; see PR #123. |
 | Q10 | GFF inventory array editing | Add/remove/reorder `Inventory`, `EquippedInventory`, and proper `itemList` defaults. | Q9 item picker shipped. | **Shipped** — inventory arrays editable with shared item struct defaults. |
 | Q11 | GFF skill/feat array editing | Add/remove/reorder `SkillList` and `FeatList` with Rank/Feat defaults. | Q7 array machinery shipped. | **Shipped** — creature skill/feat lists editable in GFF tree. |
 | Q12 | Install-aware feat/skill 2DA labels | Feat values and SkillList indices show install 2DA labels in GFF tree. | Q9 enum registry + Q11 arrays shipped. | **Shipped** — feat.2da and skills.2da labels in creature editing. |

@@ -155,6 +155,7 @@ var _script_dirty := false
 var _script_status_text := ""
 var _script_bytes := PackedByteArray()
 var _script_loading := false
+var _script_install_btn: Button
 var _script_compile_btn: Button
 var _script_decompile_btn: Button
 var _script_disassemble_btn: Button
@@ -1010,10 +1011,10 @@ func _build_script_tab() -> void:
 	save_as_btn.pressed.connect(_save_script_as)
 	toolbar.add_child(save_as_btn)
 
-	var install_btn := Button.new()
-	install_btn.text = "Install to Override"
-	install_btn.pressed.connect(_install_script_to_override)
-	toolbar.add_child(install_btn)
+	_script_install_btn = Button.new()
+	_script_install_btn.text = "Install to Override"
+	_script_install_btn.pressed.connect(_install_script_to_override)
+	toolbar.add_child(_script_install_btn)
 
 	var validate_btn := Button.new()
 	validate_btn.text = "Validate"
@@ -2980,13 +2981,21 @@ func _save_script_to(path: String) -> void:
 
 
 func _install_script_to_override() -> void:
-	if _script_extension != "nss":
-		_script_status_text = "NCS binaries are view-only until compile support lands."
-		_refresh_script_summary()
-		_validate_script()
+	var file_name := ""
+	var payload: Variant = null
+	if _script_extension == "nss":
+		file_name = _current_script_file_name()
+		payload = _script_text_edit.text
+	elif _script_extension == "ncs":
+		if _script_bytes.is_empty():
+			_script_status_text = "No compiled NCS bytes are loaded."
+			_refresh_script_summary()
+			_validate_script()
+			return
+		file_name = _current_ncs_override_file_name()
+		payload = _script_bytes
+	else:
 		return
-	var file_name := _current_script_file_name()
-	var payload := _script_text_edit.text
 	var service := _resolve_mutation_service()
 	var preview: Dictionary = service.preview_install_to_override(_editor_state.gamefs, file_name, payload)
 	_run_mutation_preflight(
@@ -2996,7 +3005,8 @@ func _install_script_to_override() -> void:
 		func(result: Dictionary) -> void:
 			_script_status_text = _mutation_status_text(result)
 			if _mutation_applied_ok(result):
-				_script_dirty = false
+				if _script_extension == "nss":
+					_script_dirty = false
 				_editor_state.refresh_gamefs()
 				_refresh_game_path_status()
 				_refresh_gamefs_view()
@@ -3049,9 +3059,12 @@ func _compile_script() -> void:
 			var bytes := file.get_buffer(file.get_length())
 			file.close()
 			_load_script_bytes(output_path, bytes, "ncs")
-			_script_status_text = "Compiled to %s" % output_path.get_file()
+			_script_file_name = _ensure_extension(resref, "ncs")
+			_script_status_text = "Compiled to %s" % _script_file_name
 			_refresh_script_summary()
-			_append_activity("Compiled %s to %s" % [_current_script_file_name(), output_path.get_file()])
+			_refresh_script_tool_buttons()
+			_append_activity("Compiled %s to %s" % [resref, _script_file_name])
+			_install_script_to_override()
 	)
 
 
@@ -3234,6 +3247,11 @@ func _write_script_tool_report(success: bool, body: String, warnings: Variant) -
 
 func _refresh_script_tool_buttons() -> void:
 	var has_script := not _script_file_name.is_empty()
+	if _script_install_btn != null:
+		var can_install_nss := has_script and _script_extension == "nss"
+		var can_install_ncs := has_script and _script_extension == "ncs" and not _script_bytes.is_empty()
+		_script_install_btn.disabled = not (can_install_nss or can_install_ncs)
+		_script_install_btn.text = "Install NCS to Override" if _script_extension == "ncs" else "Install NSS to Override"
 	if _script_compile_btn != null:
 		_script_compile_btn.disabled = not has_script or _script_extension != "nss"
 	if _script_decompile_btn != null:
@@ -3249,6 +3267,7 @@ func _validate_script() -> void:
 		var lines: Array[String] = [
 			"Compiled NWScript binary loaded.",
 			"Matching source: %s" % _script_counterpart_label(),
+			"Use Install NCS to Override to write bytecode to the game install.",
 			"Use Decompile to recover NSS source or Disassemble for bytecode listing.",
 		]
 		_script_report.text = "\n".join(lines)
@@ -3354,6 +3373,10 @@ func _current_dlg_file_name() -> String:
 
 func _current_script_file_name() -> String:
 	return _ensure_extension(_script_file_name, _script_extension if not _script_extension.is_empty() else "nss")
+
+
+func _current_ncs_override_file_name() -> String:
+	return _ensure_extension(_current_script_file_name().get_basename(), "ncs")
 
 
 func _refresh_script_summary() -> void:
