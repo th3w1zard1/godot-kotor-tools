@@ -147,15 +147,29 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q128c2 | DLG delete-all-references *(PR #119)* | **Delete References** toolbar + detail panel + tree context menu call `remove_all_references_to_node` with topology undo; headless `test_dlg_workspace_editor.gd` delete-references tests. |
 | Q128c3 | DLG graph port drag-connect *(PR #119)* | `connection_link_requested` on graph view calls `add_node_link` with topology undo; headless `test_dlg_workspace_editor.gd` + `test_dlg_graph_layout.gd` graph-link tests. |
 | Q128c4 | DLG orphan restore UX *(PR #119)* | Double-click orphan restore, tree context **Link Selected Orphan Here**, detail-panel linkable orphans, `find_linkable_orphans_for_owner`; headless orphan-restore tests. |
-| Q132 | Savegame inspector foundations | Read-only `.sav` metadata workspace tab extracting savenfo/partytable/globalvars summaries; member browse + open routing. | Headless `test_savegame_inspector.gd` + `test_savegame_workspace_editor.gd`. | Holocron `savegame.py` parity foundations. |
+| Q134 | ERF member add foundations | Archive Browser **Add Member...** + **Save Archive...** with `KotorErfDocument.add_member`, duplicate rejection, dirty tracking, and pipeline repack export; headless `test_erf_document_add_member.gd` + `test_erf_workspace_editor.gd`. |
+| Q135 | ERF member remove/replace | **Remove Member** / **Replace Member...** with `remove_member_at`, `replace_member_at`, `restore_members` undo snapshots, and save integration; headless `test_erf_document_remove_replace.gd` + `test_erf_workspace_editor.gd`. |
+| Q136 | ERF member compare with override | **Compare Member with Override...** + **Export Compare Report...** for selected archive members via `compare_gamefs_resource`; headless `test_erf_workspace_editor.gd`. |
+| Q137 | Install archive to modules | **Install Archive to Modules** deploys open MOD/ERF/RIM via mutation preflight to game `modules/`; rejects `.sav`; headless `test_erf_workspace_editor.gd`. |
+| Q138 | Extract all members to override | **Extract All to Override** batch-installs every archive member with per-member mutation apply and summary counts; headless `test_erf_workspace_editor.gd`. |
+| Q139 | Extract all members to folder | **Extract All to Folder...** writes every archive member to a chosen directory (`{resref}.{ext}`); headless `test_erf_workspace_editor.gd`. |
+| Q140 | Export selected member to file | **Export Selected...** saves the selected archive member to a chosen path via mutation export preflight; headless `test_erf_workspace_editor.gd`. |
+| Q141 | Open game archive dialog | **Open Game Archive...** roots the picker at install `modules/`, `lips/`, or `rims/`; headless `test_erf_workspace_editor.gd`. |
+| Q142 | Compare all members with override | **Compare All with Override...** batch-scans archive members against override via `compare_member_batch_with_override`; headless `test_erf_workspace_editor.gd`. |
+| Q143 | Dirty path indicator | Archive Browser path label appends ` *` when document dirty; headless `test_erf_workspace_editor.gd`. |
+| Q129 | Post-Q128 parity wave planning | **Shipped** — consolidation plan landed #124–#133 on `main` (2026-06-12). |
+| Q130 | NSS compile-to-override UX | Dock + workspace script editors install compiled `.ncs` to override with mutation preflight; auto-offer after successful compile; headless `test_script_compile_install.gd`. |
 
-> **Branch note:** Q124–Q128c4 complete the Q128 child plan on `feat/parity-roadmap-q124-wave` ([PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119)). Merge to `main` to drop `*(PR #119)*` qualifiers. `main` @ Q123 remains merge base until landed.
+> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130 lands via PR #120. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
+
+| Q131 | LTR parser + workspace editor | `LTRParser`/`LTRWriter`, Letter Table workspace tab, `.ltr` routing, install/export. | `test_ltr_parser.gd`, `test_ltr_workspace_editor.gd`. | See `docs/plans/2026-06-12-062-feat-q131-ltr-parser-workspace-plan.md`. |
+| Q132 | Savegame inspector foundations | Read-only `.sav` metadata workspace tab extracting savenfo/partytable/globalvars summaries; member browse + open routing. | Headless `test_savegame_inspector.gd` + `test_savegame_workspace_editor.gd`. | Holocron `savegame.py` parity foundations. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q133 | MDL write-back phase 0 | Foundations for MDL authoring write-back (scope TBD from parity matrix). | Q132 shipped. | Deferred tier; see master parity plan. |
+| Q133 | MDL write-back phase 0 | Trimesh metadata mutation boundaries + writer scaffold. | Q132 shipped *(PR #122)*. | Holocron `mdl.py`; see PR #123. |
 
 ## Next Slices (Deferred)
 

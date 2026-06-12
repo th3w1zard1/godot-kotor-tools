@@ -98,7 +98,7 @@ func validate() -> Array[String]:
 
 func build_validation_report() -> String:
 	if _extension == "ncs":
-		return "NCS binaries are view-only in this slice.\nMatching source: %s\nCompile/decompile support is not implemented yet." % counterpart_label()
+		return "Compiled NWScript binary loaded.\nMatching source: %s\nUse Install NCS to Override to write bytecode to the game install." % counterpart_label()
 	var issues := validate()
 	if issues.is_empty():
 		return "Source validation passed.\nMatching compiled script: %s" % counterpart_label()

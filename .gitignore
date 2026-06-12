@@ -1,5 +1,8 @@
 agentdecompile_projects/
 
+# Compound Engineering machine-local config (example template is committed)
+.compound-engineering/*.local.yaml
+
 # Godot 4.2+ specific ignores
 ~*.dll
 

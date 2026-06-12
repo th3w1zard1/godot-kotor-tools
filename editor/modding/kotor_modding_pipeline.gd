@@ -17,6 +17,8 @@ const SSFWriter := preload("../../formats/ssf_writer.gd")
 const SSFResource := preload("../../resources/ssf_resource.gd")
 const LIPWriter := preload("../../formats/lip_writer.gd")
 const LIPResource := preload("../../resources/lip_resource.gd")
+const LTRWriter := preload("../../formats/ltr_writer.gd")
+const LTRResource := preload("../../resources/ltr_resource.gd")
 const TPCWriter := preload("../../formats/tpc_writer.gd")
 const GFFCompare := preload("../../formats/gff_compare.gd")
 const SSFCompare := preload("../../formats/ssf_compare.gd")
@@ -229,6 +231,114 @@ static func compare_all_overrides(gamefs: RefCounted) -> Dictionary:
 	})
 
 
+static func compare_member_batch_with_override(gamefs: RefCounted, members: Array) -> Dictionary:
+	if gamefs == null:
+		return _result(false, "invalid", "Game install is not available")
+	if members.is_empty():
+		return _result(false, "empty", "No archive members to compare.")
+
+	var counts := {
+		"total": 0,
+		"identical": 0,
+		"different": 0,
+		"override_only": 0,
+		"no_override": 0,
+		"missing": 0,
+		"skipped": 0,
+	}
+	var entry_results: Array = []
+	for raw_member in members:
+		if typeof(raw_member) != TYPE_DICTIONARY:
+			counts["skipped"] = int(counts.get("skipped", 0)) + 1
+			continue
+		var member: Dictionary = raw_member
+		var resref := str(member.get("resref", "")).strip_edges()
+		var extension := str(member.get("extension", "")).strip_edges().to_lower()
+		if resref.is_empty():
+			counts["skipped"] = int(counts.get("skipped", 0)) + 1
+			continue
+		counts["total"] = int(counts.get("total", 0)) + 1
+		var resource_type := -1
+		if gamefs.has_method("resource_type_for_extension"):
+			resource_type = int(gamefs.call("resource_type_for_extension", extension))
+		var compare := compare_gamefs_resource(gamefs, resref, resource_type)
+		var status := str(compare.get("status", "unknown"))
+		match status:
+			"identical":
+				counts["identical"] = int(counts.get("identical", 0)) + 1
+			"different":
+				counts["different"] = int(counts.get("different", 0)) + 1
+			"override_only":
+				counts["override_only"] = int(counts.get("override_only", 0)) + 1
+			"no_override":
+				counts["no_override"] = int(counts.get("no_override", 0)) + 1
+			"missing":
+				counts["missing"] = int(counts.get("missing", 0)) + 1
+			_:
+				counts["skipped"] = int(counts.get("skipped", 0)) + 1
+		entry_results.append({
+			"label": "%s.%s" % [resref, extension],
+			"status": status,
+			"message": str(compare.get("message", "")),
+			"details": str(compare.get("details", "")),
+			"core_entry": compare.get("core_entry", {}),
+			"override_entry": compare.get("override_entry", {}),
+		})
+
+	var report := build_archive_member_compare_report(counts, entry_results)
+	var summary := (
+		"Archive compare: %d compared, %d different, %d identical, %d no override, %d missing, %d skipped."
+		% [
+			int(counts.get("total", 0)),
+			int(counts.get("different", 0)),
+			int(counts.get("identical", 0)),
+			int(counts.get("no_override", 0)),
+			int(counts.get("missing", 0)),
+			int(counts.get("skipped", 0)),
+		]
+	)
+	return _result(true, "scanned", summary, {
+		"counts": counts,
+		"entries": entry_results,
+		"details": report,
+	})
+
+
+static func build_archive_member_compare_report(counts: Dictionary, entry_results: Array) -> String:
+	var lines: Array[String] = []
+	lines.append("Archive member compare (%d members)" % int(counts.get("total", 0)))
+	lines.append(
+		"  Identical: %d | Different: %d | No override: %d | Missing: %d | Override-only: %d | Skipped: %d"
+		% [
+			int(counts.get("identical", 0)),
+			int(counts.get("different", 0)),
+			int(counts.get("no_override", 0)),
+			int(counts.get("missing", 0)),
+			int(counts.get("override_only", 0)),
+			int(counts.get("skipped", 0)),
+		]
+	)
+	lines.append("")
+
+	for raw_entry in entry_results:
+		if typeof(raw_entry) != TYPE_DICTIONARY:
+			continue
+		var item: Dictionary = raw_entry
+		var status := str(item.get("status", ""))
+		if status == "identical":
+			continue
+		lines.append("[%s] %s" % [status.to_upper(), str(item.get("label", ""))])
+		var message := str(item.get("message", "")).strip_edges()
+		if not message.is_empty():
+			lines.append(message)
+		var details := str(item.get("details", "")).strip_edges()
+		if status == "different" and not details.is_empty():
+			lines.append(details)
+		lines.append("")
+
+	return "\n".join(lines).strip_edges()
+
+
 static func build_override_compare_report(counts: Dictionary, entry_results: Array) -> String:
 	var lines: Array[String] = []
 	lines.append("Override compare scan (%d resources)" % int(counts.get("total", 0)))
@@ -369,6 +479,18 @@ static func _serialize_payload(file_name: String, payload: Variant) -> Dictionar
 					"type": "bytes",
 					"payload": lip_bytes,
 					"size": lip_bytes.size(),
+					"file_name": file_name.get_file(),
+				}
+		"ltr":
+			if payload is LTRResource:
+				var ltr_bytes := LTRWriter.serialize(payload as LTRResource)
+				if ltr_bytes.is_empty():
+					return _result(false, "invalid", "Failed to serialize %s" % file_name.get_file())
+				return {
+					"ok": true,
+					"type": "bytes",
+					"payload": ltr_bytes,
+					"size": ltr_bytes.size(),
 					"file_name": file_name.get_file(),
 				}
 		"tpc":
