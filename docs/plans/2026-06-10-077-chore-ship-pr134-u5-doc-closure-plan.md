@@ -1,7 +1,7 @@
 ---
 title: "chore: ship PR #134 U5 doc closure to main"
 type: chore
-status: active
+status: completed
 date: 2026-06-10
 origin: docs/plans/2026-06-10-076-chore-erf-u5-f2-compound-docs-plan.md
 phase: Q144+
