@@ -215,6 +215,8 @@ func extract_all_members_to_override() -> Dictionary:
 			applied += 1
 		elif result.get("action", "") == "noop":
 			unchanged += 1
+		else:
+			failed += 1
 	if applied > 0:
 		_refresh_gamefs()
 	_status_text = "Extracted %d member(s) to override (%d unchanged, %d skipped, %d failed)." % [
@@ -1000,6 +1002,7 @@ func _make_dialog(
 		current_file: String = ""
 ) -> EditorFileDialog:
 	var dialog := EditorFileDialog.new()
+	dialog.access = EditorFileDialog.ACCESS_FILESYSTEM
 	dialog.file_mode = file_mode
 	dialog.title = title
 	dialog.filters = filters
