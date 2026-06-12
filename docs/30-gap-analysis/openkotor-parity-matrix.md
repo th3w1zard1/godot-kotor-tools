@@ -68,6 +68,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
   - 2DA
   - Archive parity for ERF/RIM/MOD
   - LTR (letter / name-generation tables)
+  - MDL passthrough write-back (Q133 phase 0 — validated export/install path; geometry rebuild deferred)
 
 ## Next Parity Slices
 
@@ -170,14 +171,15 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 97. ERF archive workspace UX (Q127, PR #119) and DLG graph depth (Q128a–c per `docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md`).
 98. **Q130 (shipped via PR #120):** NSS compile-to-override — dock + workspace **Install NCS to Override** with mutation preflight and post-compile auto-offer; see `docs/plans/2026-06-11-061-feat-q130-nss-compile-to-override-plan.md`.
 99. **Q131 (shipped via PR #121):** LTR parser + Letter Table workspace editor — `LTRParser`/`LTRWriter`, singles probability edit, save/install, `.ltr` routing; see `docs/plans/2026-06-12-062-feat-q131-ltr-parser-workspace-plan.md`.
-100. **Q132 (PR #122):** Savegame inspector foundations — read-only `.sav` metadata (`savenfo`/`partytable`/`globalvars`), member browse + GFF inspect routing; see `docs/plans/2026-06-12-063-feat-q132-savegame-inspector-plan.md`.
-101. **Q134–Q137 (PR #124–#127, 2026-06-12):** ERF archive authoring/deploy wave — add/save, remove/replace, compare/export, install to `modules/`; see `docs/plans/2026-06-12-065-feat-q134-erf-member-add-plan.md` through `068-feat-q137-erf-install-archive-to-modules-plan.md`.
-102. **Q138 (PR #128, 2026-06-12):** Archive Browser **Extract All to Override** batch member install with summary counts; see `docs/plans/2026-06-12-069-feat-q138-erf-extract-all-override-plan.md`.
-103. **Q139 (PR #129, 2026-06-12):** Archive Browser **Extract All to Folder** filesystem batch export; see `docs/plans/2026-06-12-070-feat-q139-erf-extract-all-folder-plan.md`.
-104. **Q140 (PR #130, 2026-06-12):** Archive Browser **Export Selected...** single-member file export with mutation preflight; see `docs/plans/2026-06-12-073-feat-q140-erf-export-selected-member-plan.md`.
-105. **Q141 (PR #131, 2026-06-12):** Archive Browser **Open Game Archive...** install-rooted picker (`modules/`, `lips/`, `rims/`); see `docs/plans/2026-06-12-072-feat-q141-erf-open-game-archive-plan.md`.
-106. **Q142 (PR #132, 2026-06-12):** Archive Browser **Compare All with Override...** batch compare via `compare_member_batch_with_override`; see `docs/plans/2026-06-12-073-feat-q142-erf-compare-all-members-plan.md`.
-107. **Q143 (PR #133, 2026-06-12):** Archive Browser dirty path `*` indicator when document unsaved; see `docs/plans/2026-06-12-074-feat-q143-erf-dirty-path-indicator-plan.md`.
+100. **Q132 (shipped via PR #122):** Savegame inspector foundations — read-only `.sav` metadata (`savenfo`/`partytable`/`globalvars`), member browse + GFF inspect routing; see `docs/plans/2026-06-12-063-feat-q132-savegame-inspector-plan.md`.
+101. **Q133 (PR #123):** MDL write-back phase 0 — `MDLWriter` passthrough, `MdlResource`, pipeline `mdl` serialize, editor export/install wiring; see `docs/plans/2026-06-12-064-feat-q133-mdl-writeback-phase0-plan.md`.
+102. **Q134–Q137 (PR #124–#127, 2026-06-12):** ERF archive authoring/deploy wave — add/save, remove/replace, compare/export, install to `modules/`; see `docs/plans/2026-06-12-065-feat-q134-erf-member-add-plan.md` through `068-feat-q137-erf-install-archive-to-modules-plan.md`.
+103. **Q138 (PR #128, 2026-06-12):** Archive Browser **Extract All to Override** batch member install with summary counts; see `docs/plans/2026-06-12-069-feat-q138-erf-extract-all-override-plan.md`.
+104. **Q139 (PR #129, 2026-06-12):** Archive Browser **Extract All to Folder** filesystem batch export; see `docs/plans/2026-06-12-070-feat-q139-erf-extract-all-folder-plan.md`.
+105. **Q140 (PR #130, 2026-06-12):** Archive Browser **Export Selected...** single-member file export with mutation preflight; see `docs/plans/2026-06-12-073-feat-q140-erf-export-selected-member-plan.md`.
+106. **Q141 (PR #131, 2026-06-12):** Archive Browser **Open Game Archive...** install-rooted picker (`modules/`, `lips/`, `rims/`); see `docs/plans/2026-06-12-072-feat-q141-erf-open-game-archive-plan.md`.
+107. **Q142 (PR #132, 2026-06-12):** Archive Browser **Compare All with Override...** batch compare via `compare_member_batch_with_override`; see `docs/plans/2026-06-12-073-feat-q142-erf-compare-all-members-plan.md`.
+108. **Q143 (PR #133, 2026-06-12):** Archive Browser dirty path `*` indicator when document unsaved; see `docs/plans/2026-06-12-074-feat-q143-erf-dirty-path-indicator-plan.md`.
 
 ## Evidence Notes
 

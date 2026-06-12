@@ -164,12 +164,13 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 
 | Q131 | LTR parser + workspace editor | `LTRParser`/`LTRWriter`, Letter Table workspace tab, `.ltr` routing, install/export. | `test_ltr_parser.gd`, `test_ltr_workspace_editor.gd`. | See `docs/plans/2026-06-12-062-feat-q131-ltr-parser-workspace-plan.md`. |
 | Q132 | Savegame inspector foundations | Read-only `.sav` metadata workspace tab extracting savenfo/partytable/globalvars summaries; member browse + open routing. | Headless `test_savegame_inspector.gd` + `test_savegame_workspace_editor.gd`. | Holocron `savegame.py` parity foundations. |
+| Q133 | MDL write-back phase 0 | `MDLWriter` passthrough + `MdlResource` + pipeline `mdl` serialize; MDL editor export/install via typed resource. | Headless `test_mdl_writer.gd`. | Geometry rebuild deferred. |
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q133 | MDL write-back phase 0 | Trimesh metadata mutation boundaries + writer scaffold. | Q132 shipped *(PR #122)*. | Holocron `mdl.py`; see PR #123. |
+| Q144+ | Next capability wave (TBD) | Plan next slices after Q130–Q133 stack lands on `main`. | #120–#123 merged. | Holocron parity roadmap / BIF-KEY / DLG depth TBD. |
 
 ## Next Slices (Deferred)
 

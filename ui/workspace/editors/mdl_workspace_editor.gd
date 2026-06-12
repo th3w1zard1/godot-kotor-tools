@@ -7,6 +7,8 @@ const MdlGamefsBatchExporter := preload("../../../formats/mdl_gamefs_batch_expor
 const MdlGamefsBatchImporter := preload("../../../formats/mdl_gamefs_batch_importer.gd")
 const KotorModdingPipeline := preload("../../../editor/modding/kotor_modding_pipeline.gd")
 const MdlModelMetadataHelper := preload("../../../editor/tools/mdl_model_metadata_helper.gd")
+const MdlResource := preload("../../../resources/mdl_resource.gd")
+const MDLWriter := preload("../../../formats/mdl_writer.gd")
 const MdlPreviewViewport := preload("../panels/mdl_preview_viewport.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
@@ -20,6 +22,7 @@ var _export_mdx_btn: Button
 var _preflight_dialog: KotorPreflightDialog
 
 var _mutation_service: RefCounted
+var _resource: MdlResource
 var _mdl_bytes: PackedByteArray = PackedByteArray()
 var _mdx_bytes: PackedByteArray = PackedByteArray()
 var _source_path := ""
@@ -70,8 +73,15 @@ func open_mdl_bytes(
 		_pending_source_path = source_path
 		_pending_file_name = file_name
 		return
-	_mdl_bytes = mdl_bytes
-	_mdx_bytes = mdx_bytes
+	_resource = MdlResource.from_bytes(mdl_bytes, mdx_bytes)
+	if _resource == null:
+		_mdl_bytes = PackedByteArray()
+		_mdx_bytes = PackedByteArray()
+		_status_text = "Failed to load MDL trimesh data."
+		_refresh_view()
+		return
+	_mdl_bytes = _resource.serialize_mdl()
+	_mdx_bytes = _resource.serialize_mdx()
 	_source_path = source_path if source_path.is_absolute_path() else ""
 	_file_name = file_name.get_file() if not file_name.is_empty() else "model.mdl"
 	_status_text = ""
@@ -98,11 +108,15 @@ func is_document_dirty() -> bool:
 	return false
 
 
+func get_resource() -> MdlResource:
+	return _resource
+
+
 func save_document_to_path(path: String) -> Dictionary:
-	if _mdl_bytes.is_empty():
+	if _resource == null:
 		return {}
 	var target_path := _ensure_extension(path, "mdl")
-	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, _mdl_bytes)
+	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, _resource)
 	if not preview.get("ok", false):
 		_status_text = preview.get("message", "Export failed")
 		_refresh_status()
@@ -122,12 +136,12 @@ func save_document_to_path(path: String) -> Dictionary:
 
 
 func install_document_to_override() -> Dictionary:
-	if _mdl_bytes.is_empty():
+	if _resource == null:
 		return {}
 	var preview: Dictionary = _mutation_service.preview_install_to_override(
 		_resolve_gamefs(),
 		_current_file_name(),
-		_mdl_bytes
+		_resource
 	)
 	if not preview.get("ok", false):
 		_status_text = preview.get("message", "Install failed")
@@ -245,7 +259,10 @@ func _refresh_metadata() -> void:
 	if _export_mdx_btn != null:
 		_export_mdx_btn.visible = not _mdx_bytes.is_empty()
 	if _mdl_bytes.is_empty():
-		_meta_label.text = "[color=gray]No MDL loaded.[/color]"
+		if not _status_text.is_empty():
+			_meta_label.text = "[color=red]%s[/color]" % _status_text
+		else:
+			_meta_label.text = "[color=gray]No MDL loaded.[/color]"
 		return
 	var metadata := MdlModelMetadataHelper.summarize_bytes(_mdl_bytes, _mdx_bytes)
 	if not metadata.get("ok", false):
@@ -313,8 +330,11 @@ func _export_mdx() -> void:
 
 
 func _export_mdx_to_path(path: String) -> void:
+	if _resource == null:
+		return
 	var target_path := _ensure_extension(path, "mdx")
-	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, _mdx_bytes)
+	var mdx_payload := _resource.serialize_mdx()
+	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, mdx_payload)
 	if not preview.get("ok", false):
 		_status_text = preview.get("message", "MDX export failed")
 		_refresh_status()
@@ -533,7 +553,11 @@ func _on_preflight_cancelled() -> void:
 
 
 func _apply_export(target_path: String, _preview: Dictionary, is_mdx: bool) -> Dictionary:
-	var payload := _mdx_bytes if is_mdx else _mdl_bytes
+	var payload: Variant = _resource.serialize_mdx() if is_mdx else _resource
+	if is_mdx and (payload as PackedByteArray).is_empty():
+		_status_text = "MDX payload is empty."
+		_refresh_status()
+		return {}
 	var result: Dictionary = _mutation_service.apply_export_to_path(target_path, payload, true)
 	_status_text = _mutation_message(result)
 	if result.get("applied", false) and not is_mdx:
@@ -547,7 +571,7 @@ func _apply_install(_preview: Dictionary) -> Dictionary:
 	var result: Dictionary = _mutation_service.apply_install_to_override(
 		_resolve_gamefs(),
 		_current_file_name(),
-		_mdl_bytes,
+		_resource,
 		true
 	)
 	_status_text = _mutation_message(result)
@@ -570,8 +594,8 @@ func _register_controller_document() -> void:
 	var entry: Dictionary = controller.call(
 		"register_document",
 		"mdl",
+		_resource,
 		null,
-		_mdl_bytes,
 		_source_path,
 		_current_file_name(),
 		{}

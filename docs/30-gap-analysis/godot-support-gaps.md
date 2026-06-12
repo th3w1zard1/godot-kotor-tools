@@ -21,7 +21,7 @@ Project target: **Godot 4.6**.
 | Workspace editors (DLG, 2DA, TLK, NSS, area tools) | **Supported** | Shipped (Q1–Q5) | Core workspace surfaces are shipped and routable. |
 | Module Designer (GIT/PTH/LYT/VIS/WOK, instance CRUD, walkmesh paint) | **Partial** | Shipped on `main` (Q15–Q73; Q124–Q128c4 via PR #119) | Full Holocron module designer depth still deferred (DLG graph, advanced BWM tools). |
 | Media editors (TPC/WAV/LIP/SSF) + batch/compare tooling | **Partial** | Shipped (Q27–Q31, Q77–Q118) | Workspace + install-scoped batch flows; not full Holocron media suite parity. |
-| Model Editor + MDL/BWM batch/compare | **Partial** | Shipped (Q84–Q85, Q91–Q123) | Preview, batch, compare, install-copy; MDL write-back authoring deferred. |
+| Model Editor + MDL/BWM batch/compare | **Partial** | Shipped (Q84–Q85, Q91–Q123, Q133 phase 0) | Preview, batch, compare, install-copy; Q133 passthrough write-back plumbing (`MDLWriter`/`MdlResource`); geometry mutation deferred. |
 | Browser-like visual verification for UI surfaces | **Missing** | Deferred | Repo has no web surface; UI validation relies on Godot script tests and editor flows. |
 
 ## High-Priority Gaps
