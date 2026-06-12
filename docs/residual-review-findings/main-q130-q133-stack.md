@@ -4,7 +4,8 @@
 
 ## Residual Review Findings
 
-- **P1** `editor/modding/kotor_modding_pipeline.gd:523-537` — MdlResource install serializes MDL with MDX-aware validation but writes only `.mdl`; defer paired `.mdx` sidecar install (mirror `mdl_gamefs_batch_importer.gd` pairing).
-- **P1** `ui/workspace/editors/mdl_workspace_editor.gd:570-576` — Install MDL to Override never installs paired MDX sidecar when `has_mdx()`; extend install flow after successful MDL write.
+- ~~**P1** `ui/workspace/editors/mdl_workspace_editor.gd:570-576` — Install MDL to Override never installs paired MDX sidecar~~ **Resolved** in `ebe7c3d` follow-up (plan 079): install path writes `{resref}.mdx` when `MdlResource.has_mdx()`.
 
-**Deferred:** Not applied in LFG step 4 — behavior change requiring design sign-off (confidence 85).
+- **P1** `editor/modding/kotor_modding_pipeline.gd:523-537` — Pipeline single-payload install still serializes one file per call; MDX sidecar is handled at editor layer. Batch importers already pair MDL/MDX.
+
+**Deferred:** Pipeline-level multi-file atomic install remains out of scope for phase 0.

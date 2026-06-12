@@ -1,7 +1,7 @@
 ---
 title: "feat: Q121 resource browser WOK/MDL install copy to override"
 type: feat
-status: active
+status: completed
 date: 2026-06-10
 origin: lfg-next-after-q120-auto-selected
 phase: Q121

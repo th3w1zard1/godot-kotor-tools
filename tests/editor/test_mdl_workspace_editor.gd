@@ -3,6 +3,7 @@ extends SceneTree
 
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
 const KotorMDLWorkspaceEditor := preload("../../ui/workspace/editors/mdl_workspace_editor.gd")
+const KotorWorkspaceController := preload("../../editor/workspace/kotor_workspace_controller.gd")
 const MdlPreviewViewport := preload("../../ui/workspace/panels/mdl_preview_viewport.gd")
 const KotorResourceLocator := preload("../../editor/navigation/kotor_resource_locator.gd")
 const MDLParser := preload("../../formats/mdl_parser.gd")
@@ -22,6 +23,7 @@ func _run_tests() -> void:
 	await _test_mdx_button_visibility()
 	await _test_mdl_preview_viewport()
 	_test_resource_locator_mdl_metadata()
+	await _test_install_mdl_with_mdx_sidecar()
 	var button_ok := await _test_mdl_editor_toolbar_buttons()
 	_cleanup()
 	if not button_ok:
@@ -147,6 +149,47 @@ func _test_resource_locator_mdl_metadata() -> void:
 	var enriched := KotorResourceLocator.append_mdl_metadata_details(base, entry, gamefs)
 	assert(enriched.contains("vertices"))
 	print("✓ Resource locator MDL metadata passed")
+
+
+func _test_install_mdl_with_mdx_sidecar() -> void:
+	var editor_state := KotorEditorState.new()
+	editor_state.game_path = _install_root
+	editor_state.refresh_gamefs()
+	var controller := KotorWorkspaceController.new(editor_state)
+	var editor := KotorMDLWorkspaceEditor.new()
+	editor.setup(editor_state, controller)
+	editor._skip_preflight_for_testing = true
+	var holder := Node.new()
+	root.add_child(holder)
+	holder.add_child(editor)
+	await process_frame
+
+	var mdl_bytes := _build_minimal_mdl(
+		[Vector3(0.0, 0.0, 0.0), Vector3(2.0, 0.0, 0.0), Vector3(0.0, 2.0, 0.0)],
+		[0, 1, 2]
+	)
+	var mdx_bytes := PackedByteArray([0x01, 0x02, 0x03])
+	editor.open_mdl_bytes(mdl_bytes, "", "sidecar_probe.mdl", mdx_bytes)
+	await process_frame
+
+	var result := editor.install_document_to_override()
+	assert(result.get("applied", false), str(result))
+
+	var override_dir := str(editor_state.gamefs.ensure_override_path())
+	var mdl_path := override_dir.path_join("sidecar_probe.mdl")
+	var mdx_path := override_dir.path_join("sidecar_probe.mdx")
+	assert(FileAccess.file_exists(mdl_path))
+	assert(FileAccess.file_exists(mdx_path))
+
+	var mdx_file := FileAccess.open(mdx_path, FileAccess.READ)
+	assert(mdx_file.get_buffer(mdx_file.get_length()) == mdx_bytes)
+	mdx_file.close()
+	DirAccess.remove_absolute(mdl_path)
+	DirAccess.remove_absolute(mdx_path)
+
+	holder.queue_free()
+	await process_frame
+	print("✓ MDL install with MDX sidecar passed")
 
 
 func _test_mdl_editor_toolbar_buttons() -> bool:

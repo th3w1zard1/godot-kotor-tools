@@ -1,7 +1,7 @@
 ---
 title: "feat: Q120 WOK/MDL install batch copy to override"
 type: feat
-status: active
+status: completed
 date: 2026-06-10
 origin: lfg-next-after-q119-auto-selected
 phase: Q120

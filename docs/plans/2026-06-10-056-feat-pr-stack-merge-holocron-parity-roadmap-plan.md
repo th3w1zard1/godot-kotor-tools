@@ -1,7 +1,7 @@
 ---
 title: "feat: PR stack consolidation and Holocron parity roadmap (Q124+)"
 type: feat
-status: active
+status: completed
 date: 2026-06-10
 origin: user-request-pr-cleanup-and-parity-roadmap
 parent: docs/plans/2026-05-29-018-feat-holocron-full-parity-master-plan.md

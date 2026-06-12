@@ -1,7 +1,7 @@
 ---
 title: "feat: Q128 DLG graph editor depth"
 type: feat
-status: active
+status: completed
 shipped_units:
   - Q128a
   - Q128b

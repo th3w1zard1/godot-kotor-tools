@@ -1,7 +1,7 @@
 ---
 title: "feat: Q122 Module/MDL compare with override toolbar parity"
 type: feat
-status: active
+status: completed
 date: 2026-06-10
 origin: lfg-next-after-q121-auto-selected
 phase: Q122

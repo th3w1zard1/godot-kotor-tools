@@ -21,7 +21,7 @@ Project target: **Godot 4.6**.
 | Workspace editors (DLG, 2DA, TLK, NSS, area tools) | **Supported** | Shipped (Q1–Q5) | Core workspace surfaces are shipped and routable. |
 | Module Designer (GIT/PTH/LYT/VIS/WOK, instance CRUD, walkmesh paint) | **Partial** | Shipped on `main` (Q15–Q73; Q124–Q128c4 via PR #119) | Full Holocron module designer depth still deferred (DLG graph, advanced BWM tools). |
 | Media editors (TPC/WAV/LIP/SSF) + batch/compare tooling | **Partial** | Shipped (Q27–Q31, Q77–Q118) | Workspace + install-scoped batch flows; not full Holocron media suite parity. |
-| Model Editor + MDL/BWM batch/compare | **Partial** | Shipped (Q84–Q85, Q91–Q123, Q133 phase 0) | Preview, batch, compare, install-copy; Q133 passthrough write-back plumbing (`MDLWriter`/`MdlResource`); geometry mutation deferred. |
+| Model Editor + MDL/BWM batch/compare | **Partial** | Shipped (Q84–Q85, Q91–Q123, Q133 phase 0) | Preview, batch, compare, install-copy; Q133 passthrough write-back plumbing (`MDLWriter`/`MdlResource`); paired MDX install on single-file override path; geometry mutation deferred. |
 | Browser-like visual verification for UI surfaces | **Missing** | Deferred | Repo has no web surface; UI validation relies on Godot script tests and editor flows. |
 
 ## High-Priority Gaps
@@ -60,9 +60,27 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 
 For Phase 2 and beyond, use these reference documents in order:
 
-1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices (Q1–Q123 on `main`; Q124–Q128c4 via PR #119; Q134–Q143 via PRs #124–#133) and active/deferred next slices (Q131+) with readiness criteria and dependencies.
+1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices through Q143 (ERF wave) and Q130–Q133 (NSS/LTR/savegame/MDL); active slice **Q144+ TBD**.
 2. **Requirement source:** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md) — Detailed requirement grounding for the next implementation wave (when Q6+ readiness criteria are met).
 3. **This document:** Gap inventory and Godot capability opportunities for strategic context.
+
+## Post-Q133 Gap Audit (2026-06-12)
+
+**PR queue:** Zero open PRs — all stacked waves (#119–#123, #124–#133, #120–#123) merged to `main`.
+
+| Tier | Gap | Status | Notes |
+| --- | --- | --- | --- |
+| **P1** | MDX sidecar on single-file MDL install | **Fixed** | Model Editor `Install MDL to Override` now installs paired `.mdx` when loaded. |
+| **P1** | BIF/KEY archive browsing | Open | Parity matrix: archive family still Partial beyond ERF/RIM/MOD. |
+| **P1** | DLG graph depth (Holocron-only fields, animations) | Open | Q128a–c shipped; interactive graph polish + TSL fields deferred (`docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md`). |
+| **P2** | LTR doubles/triples grid editing | Open | Q131 ships singles edit; full table editor deferred. |
+| **P2** | Savegame write-back | Open | Q132 read-only inspector; `.sav` mutation deferred. |
+| **P2** | MDL geometry mutation / rebuild | Open | Q133 phase 0 passthrough only. |
+| **P2** | Plan authority drift | **Fixed** | Q119–Q123 module-tool plans + Q128/Q131–Q133 marked `completed` (plan 079). |
+| **P3** | Browser/visual UI verification | Deferred | No web surface; headless Godot tests remain gate. |
+| **P3** | GitHub Actions CI | Open | No workflow checks on repo. |
+
+**Q144+ candidates (not selected):** Holocron parity roadmap continuation, BIF/KEY tooling, DLG graph interactive wave, MDL geometry edit, LTR grid, savegame edit.
 
 ## Refresh Triggers
 

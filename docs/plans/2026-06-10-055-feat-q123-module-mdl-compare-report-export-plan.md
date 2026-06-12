@@ -1,7 +1,7 @@
 ---
 title: "feat: Q123 Module/MDL compare report export toolbar parity"
 type: feat
-status: active
+status: completed
 date: 2026-06-10
 origin: lfg-next-after-q122-auto-selected
 phase: Q123

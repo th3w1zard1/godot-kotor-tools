@@ -577,6 +577,21 @@ func _apply_install(_preview: Dictionary) -> Dictionary:
 	_status_text = _mutation_message(result)
 	if result.get("applied", false):
 		_refresh_gamefs()
+		if _resource != null and _resource.has_mdx():
+			var mdx_name := "%s.mdx" % _current_file_name().get_basename()
+			var mdx_result: Dictionary = _mutation_service.apply_install_to_override(
+				_resolve_gamefs(),
+				mdx_name,
+				_resource.serialize_mdx(),
+				true
+			)
+			if mdx_result.get("applied", false):
+				_status_text = "%s MDX sidecar installed." % _status_text
+			elif not mdx_result.get("ok", false):
+				_status_text = "%s (MDX install failed: %s)" % [
+					_status_text,
+					mdx_result.get("message", "unknown error"),
+				]
 	return result
 
 

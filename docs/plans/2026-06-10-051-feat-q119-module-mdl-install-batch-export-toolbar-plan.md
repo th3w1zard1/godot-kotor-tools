@@ -1,7 +1,7 @@
 ---
 title: "feat: Q119 Module/MDL install batch export toolbar parity"
 type: feat
-status: active
+status: completed
 date: 2026-06-10
 origin: lfg-next-after-q118-auto-selected
 phase: Q119
