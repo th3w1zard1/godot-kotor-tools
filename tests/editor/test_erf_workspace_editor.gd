@@ -37,6 +37,8 @@ func _run_tests() -> void:
 	await _test_extract_all_members_to_folder_skips_invalid()
 	await _test_export_selected_member_to_path()
 	_test_export_selected_member_requires_selection()
+	_test_resolve_game_archive_dialog_dir()
+	_test_open_game_archive_blocked_without_game_path()
 	_cleanup()
 	print("✓ ERF workspace editor tests passed")
 	quit()
@@ -368,6 +370,28 @@ func _test_export_selected_member_requires_selection() -> void:
 	var result := editor.export_selected_member_to_path("/tmp/unused.git")
 	assert(not result.get("ok", true))
 	print("✓ ERF export selected member requires selection passed")
+
+
+func _test_resolve_game_archive_dialog_dir() -> void:
+	var editor := _build_editor()
+	var expected := _install_root.path_join("modules")
+	assert(editor.resolve_game_archive_dialog_dir() == expected)
+	var open_game_btn := _find_button(editor, "Open Game Archive...")
+	assert(open_game_btn != null, "Open Game Archive toolbar button missing")
+	print("✓ ERF resolve game archive dialog dir passed")
+
+
+func _test_open_game_archive_blocked_without_game_path() -> void:
+	var editor_state := KotorEditorState.new()
+	var controller := KotorWorkspaceController.new(editor_state)
+	var editor := KotorErfWorkspaceEditor.new()
+	editor.setup(editor_state, controller)
+	var root := get_root()
+	root.add_child(editor)
+	assert(editor.resolve_game_archive_dialog_dir().is_empty())
+	editor._open_game_archive_dialog()
+	assert(editor._status_text.find("valid game install") >= 0)
+	print("✓ ERF open game archive blocked without game path passed")
 
 
 func _test_invalid_extract_file_name() -> void:

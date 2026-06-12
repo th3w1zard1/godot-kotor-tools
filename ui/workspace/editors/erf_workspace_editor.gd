@@ -48,6 +48,27 @@ static func modules_install_allowed(extension: String) -> bool:
 	return MODULE_INSTALL_EXTENSIONS.has(extension.strip_edges().to_lower())
 
 
+func resolve_game_archive_dialog_dir() -> String:
+	var editor_state := get_editor_state()
+	if editor_state == null or not editor_state.has_method("has_valid_game_path"):
+		return ""
+	if not editor_state.call("has_valid_game_path"):
+		return ""
+	var game_path := str(editor_state.get("game_path"))
+	var candidates: Array[String] = [
+		game_path.path_join("modules"),
+		game_path.path_join("lips"),
+		game_path.path_join("rims"),
+		game_path,
+	]
+	if editor_state.has_method("find_first_existing_dir"):
+		return str(editor_state.call("find_first_existing_dir", candidates))
+	for candidate: String in candidates:
+		if DirAccess.dir_exists_absolute(candidate):
+			return candidate
+	return game_path
+
+
 func _on_workspace_setup() -> void:
 	if _editor_state == null:
 		_editor_state = KotorEditorState.new()
@@ -518,6 +539,11 @@ func _build_ui() -> void:
 	open_btn.pressed.connect(_open_archive_dialog)
 	_toolbar.add_child(open_btn)
 
+	var open_game_btn := Button.new()
+	open_game_btn.text = "Open Game Archive..."
+	open_game_btn.pressed.connect(_open_game_archive_dialog)
+	_toolbar.add_child(open_game_btn)
+
 	var open_member_btn := Button.new()
 	open_member_btn.text = "Open Member"
 	open_member_btn.pressed.connect(_open_selected_member)
@@ -795,6 +821,25 @@ func _open_archive_dialog() -> void:
 		EditorFileDialog.FILE_MODE_OPEN_FILE,
 		PackedStringArray(["*.erf,*.rim,*.mod,*.sav ; KotOR Archives"]),
 		"Open Archive"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		open_archive_file(path)
+	)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _open_game_archive_dialog() -> void:
+	var start_dir := resolve_game_archive_dialog_dir()
+	if start_dir.is_empty():
+		_status_text = "Configure a valid game install before opening game archives."
+		_refresh_status()
+		return
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_FILE,
+		PackedStringArray(["*.erf,*.rim,*.mod,*.sav ; KotOR Archives"]),
+		"Open Game Archive",
+		start_dir
 	)
 	dialog.file_selected.connect(func(path: String) -> void:
 		open_archive_file(path)
