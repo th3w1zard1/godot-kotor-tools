@@ -29,6 +29,13 @@ const ENUM_FIELD_MAPPING := {
 		9: "Twilek Female",
 		10: "Unknown",
 	},
+	"FadeType": {
+		0: "None",
+		1: "Fade to Black",
+		2: "Fade from Black",
+		3: "Fade to White",
+		4: "Fade from White",
+	},
 }
 
 const MAX_RESREF_LENGTH := 16
