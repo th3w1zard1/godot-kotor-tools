@@ -387,6 +387,11 @@ func _build_ui() -> void:
 	graph_view_btn.toggled.connect(_on_graph_view_toggled)
 	_toolbar.add_child(graph_view_btn)
 
+	var fit_graph_btn := Button.new()
+	fit_graph_btn.text = "Fit Graph"
+	fit_graph_btn.pressed.connect(_on_fit_graph_pressed)
+	_toolbar.add_child(fit_graph_btn)
+
 	var back_btn := Button.new()
 	back_btn.text = "Back"
 	back_btn.pressed.connect(_on_navigation_back_pressed)
@@ -1237,6 +1242,7 @@ func _select_dlg_metadata(metadata: Dictionary) -> void:
 		item.select(0)
 		_dlg_selection = metadata
 		_refresh_dlg_detail()
+		_sync_graph_focus_to_selection()
 
 
 func _find_tree_item_by_metadata(item: TreeItem, metadata: Dictionary) -> TreeItem:
@@ -1708,6 +1714,27 @@ func _on_graph_view_toggled(pressed: bool) -> void:
 		_dlg_graph_view.visible = pressed
 	if pressed:
 		_refresh_dlg_graph()
+		_sync_graph_focus_to_selection()
+		if _dlg_graph_view != null:
+			_dlg_graph_view.fit_all_nodes()
+
+
+func _on_fit_graph_pressed() -> void:
+	if _dlg_graph_view == null or not _show_graph_view:
+		return
+	if _dlg_graph_view.fit_all_nodes():
+		_dlg_status_text = "Framed dialogue graph in view."
+	else:
+		_dlg_status_text = "No graph nodes to frame."
+	_refresh_dlg_status()
+
+
+func _sync_graph_focus_to_selection() -> void:
+	if _dlg_graph_view == null or not _show_graph_view:
+		return
+	if not _dlg_graph_view.metadata_is_graph_focusable(_dlg_selection):
+		return
+	_dlg_graph_view.focus_metadata(_dlg_selection)
 
 
 func _on_graph_node_metadata_selected(metadata: Dictionary) -> void:

@@ -124,11 +124,21 @@ const GRAPH_ROW_HEIGHT := 120.0
 
 
 func build_graph_node_id(kind: String, index: int) -> String:
-	return "%s:%d" % [kind.to_lower(), index]
+	return build_graph_node_name(kind, index)
+
+
+static func build_graph_node_name(kind: String, index: int) -> String:
+	return "%s_%d" % [kind.to_lower(), index]
 
 
 static func parse_graph_node_id(node_id: String) -> Dictionary:
-	var parts := node_id.split(":")
+	var normalized := node_id.strip_edges()
+	if normalized.is_empty():
+		return {}
+	var separator := "_"
+	if normalized.contains(":"):
+		separator = ":"
+	var parts := normalized.split(separator, false, 1)
 	if parts.size() != 2:
 		return {}
 	var kind := str(parts[0]).to_lower()
