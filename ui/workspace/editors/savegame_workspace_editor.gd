@@ -122,6 +122,57 @@ func install_selected_member_to_override() -> Dictionary:
 	return install_member_to_override(index)
 
 
+func extract_all_members_to_override() -> Dictionary:
+	if _resource == null or not _resource.is_valid():
+		_status_text = "No savegame is loaded."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var entries: Array = _parsed_archive.get("entries", [])
+	if entries.is_empty():
+		_status_text = "Savegame has no members to extract."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var applied := 0
+	var unchanged := 0
+	var skipped := 0
+	var failed := 0
+	for index in range(entries.size()):
+		var result := _apply_member_install_to_override(index, true)
+		if result.is_empty():
+			skipped += 1
+			continue
+		if not result.get("ok", false):
+			var entry := entries[index] as ERFParser.ERFEntry
+			if entry == null or entry.resref.strip_edges().is_empty():
+				skipped += 1
+			else:
+				failed += 1
+			continue
+		if result.get("applied", false):
+			applied += 1
+		elif result.get("action", "") == "noop":
+			unchanged += 1
+		else:
+			failed += 1
+	if applied > 0:
+		_refresh_gamefs()
+	_status_text = "Extracted %d member(s) to override (%d unchanged, %d skipped, %d failed)." % [
+		applied,
+		unchanged,
+		skipped,
+		failed,
+	]
+	_refresh_status()
+	return {
+		"ok": failed == 0,
+		"applied": applied,
+		"unchanged": unchanged,
+		"skipped": skipped,
+		"failed": failed,
+		"message": _status_text,
+	}
+
+
 func install_member_to_override(entry_index: int) -> Dictionary:
 	if _resource == null or not _resource.is_valid() or entry_index < 0:
 		return {}
@@ -208,6 +259,11 @@ func _build_ui() -> void:
 	install_btn.text = "Extract to Override"
 	install_btn.pressed.connect(install_selected_member_to_override)
 	_toolbar.add_child(install_btn)
+
+	var extract_all_btn := Button.new()
+	extract_all_btn.text = "Extract All to Override"
+	extract_all_btn.pressed.connect(extract_all_members_to_override)
+	_toolbar.add_child(extract_all_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL

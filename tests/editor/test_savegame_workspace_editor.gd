@@ -25,6 +25,8 @@ func _run_tests() -> void:
 	_test_member_payload_access()
 	_test_member_open_routes_gff_inspect()
 	await _test_extract_member_to_override()
+	await _test_extract_all_members_to_override()
+	await _test_extract_all_skips_invalid_members()
 	_cleanup()
 	print("✓ Savegame workspace editor tests passed")
 	quit()
@@ -82,6 +84,72 @@ func _test_extract_member_to_override() -> void:
 	print("✓ Savegame extract member to override passed")
 
 
+func _test_extract_all_members_to_override() -> void:
+	var editor := _build_editor()
+	editor.open_save_bytes("slot1.sav", _build_multi_member_sav_bytes(), "")
+	await process_frame
+
+	var savenfo_path := _install_root.path_join("override").path_join("savenfo.txt")
+	var partytable_path := _install_root.path_join("override").path_join("partytable.txt")
+	for path in [savenfo_path, partytable_path]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
+
+	var result := editor.extract_all_members_to_override()
+	assert(result.get("ok", false), "Extract all failed: %s" % str(result))
+	assert(int(result.get("applied", 0)) == 2, str(result))
+	assert(FileAccess.file_exists(savenfo_path))
+	assert(FileAccess.file_exists(partytable_path))
+	print("✓ Savegame extract all members to override passed")
+
+
+func _test_extract_all_skips_invalid_members() -> void:
+	var editor := _build_editor()
+	editor.open_save_bytes("slot1.sav", _build_sav_bytes_with_invalid_member(), "")
+	await process_frame
+
+	var savenfo_path := _install_root.path_join("override").path_join("savenfo.txt")
+	if FileAccess.file_exists(savenfo_path):
+		DirAccess.remove_absolute(savenfo_path)
+
+	var result := editor.extract_all_members_to_override()
+	assert(result.get("ok", false), str(result))
+	assert(int(result.get("applied", 0)) == 1)
+	assert(int(result.get("skipped", 0)) == 1)
+	assert(int(result.get("failed", 0)) == 0)
+	assert(FileAccess.file_exists(savenfo_path))
+	print("✓ Savegame extract all skips invalid members passed")
+
+
+func _build_multi_member_sav_bytes() -> PackedByteArray:
+	return ERFWriter.build("SAV ", [
+		{"resref": "savenfo", "extension": "res", "bytes": _build_gff_bytes(_build_savenfo_parsed())},
+		{"resref": "partytable", "extension": "res", "bytes": _build_gff_bytes(_build_partytable_parsed())},
+	])
+
+
+func _build_sav_bytes_with_invalid_member() -> PackedByteArray:
+	return ERFWriter.build("SAV ", [
+		{"resref": "savenfo", "extension": "res", "bytes": _build_gff_bytes(_build_savenfo_parsed())},
+		{"resref": "", "extension": "res", "bytes": _build_gff_bytes(_build_partytable_parsed())},
+	])
+
+
+func _build_partytable_parsed() -> Dictionary:
+	return {
+		"file_type": "GFF ",
+		"root": {
+			"PT_MEMBER_COUNT": 1,
+		},
+		"schema": {
+			"struct_type": 0xFFFFFFFF,
+			"fields": [
+				{"name": "PT_MEMBER_COUNT", "type": GFFParser.FIELD_DWORD},
+			],
+		},
+	}
+
+
 func _build_editor() -> KotorSavegameWorkspaceEditor:
 	var editor_state := KotorEditorState.new()
 	editor_state.game_path = _install_root
@@ -128,9 +196,10 @@ func _build_savenfo_parsed() -> Dictionary:
 
 func _cleanup() -> void:
 	var override_dir := _install_root.path_join("override")
-	var target_path := override_dir.path_join("savenfo.txt")
-	if FileAccess.file_exists(target_path):
-		DirAccess.remove_absolute(target_path)
+	for file_name in ["savenfo.txt", "partytable.txt"]:
+		var target_path := override_dir.path_join(file_name)
+		if FileAccess.file_exists(target_path):
+			DirAccess.remove_absolute(target_path)
 	if DirAccess.dir_exists_absolute(override_dir):
 		DirAccess.remove_absolute(override_dir)
 	if DirAccess.dir_exists_absolute(_install_root):
