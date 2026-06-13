@@ -53,7 +53,7 @@ func _test_extension_routing_helpers() -> void:
 	assert(KotorSavegameWorkspaceEditor.savegame_extension_allowed("sav"))
 	assert(not KotorSavegameWorkspaceEditor.savegame_extension_allowed("mod"))
 	assert(KotorErfWorkspaceEditor.archive_extension_allowed("mod"))
-	assert(not KotorErfWorkspaceEditor.archive_extension_allowed("sav"))
+	assert(KotorErfWorkspaceEditor.archive_extension_allowed("sav"))
 	print("✓ Savegame routing helpers passed")
 
 

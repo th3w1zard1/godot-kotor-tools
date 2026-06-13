@@ -14,11 +14,15 @@ var _members: Array = []
 var _dirty: bool = false
 
 
-static func from_bytes(source_path: String, bytes: PackedByteArray) -> KotorErfDocument:
+static func from_bytes(source_path: String, bytes: PackedByteArray, document_class: Variant = null) -> KotorErfDocument:
 	var parsed := ERFParser.parse_bytes(bytes)
 	if parsed.is_empty():
 		return null
-	var document = load("res://resources/documents/kotor_erf_document.gd").new()
+	var document: KotorErfDocument
+	if document_class != null:
+		document = document_class.new()
+	else:
+		document = load("res://resources/documents/kotor_erf_document.gd").new()
 	document.source_path = source_path
 	document.file_type = str(parsed.get("file_type", ""))
 	document.version = str(parsed.get("version", ""))

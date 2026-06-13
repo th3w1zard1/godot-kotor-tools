@@ -7,6 +7,9 @@ signal member_open_requested(resref: String, extension: String, payload: PackedB
 const ERFParser := preload("../../../formats/erf_parser.gd")
 const SavegameInspector := preload("../../../formats/savegame_inspector.gd")
 const SavegameInspectorResource := preload("../../../resources/savegame_inspector_resource.gd")
+const KotorErfDocument := preload("../../../resources/documents/kotor_erf_document.gd")
+const SavegameDocumentScript := preload("../../../resources/documents/kotor_savegame_document.gd")
+const KotorSavegameDocument := preload("../../../resources/documents/kotor_savegame_document.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
@@ -22,6 +25,7 @@ var _preflight_pending_preview: Dictionary = {}
 var _preflight_pending_entry_index := -1
 
 var _resource: SavegameInspectorResource
+var _document: KotorErfDocument
 var _parsed_archive: Dictionary = {}
 var _source_path := ""
 var _file_name := "savegame.sav"
@@ -79,8 +83,16 @@ func open_save_bytes(label: String, data: PackedByteArray, source_path: String =
 	if _parsed_archive.is_empty():
 		_clear_document_state("Failed to load %s" % _guess_loaded_file_name(label, "savegame.sav"))
 		return
+	_document = SavegameDocumentScript.open_savegame(
+		source_path if source_path.is_absolute_path() else "",
+		data
+	)
+	if _document == null:
+		_clear_document_state("Failed to parse savegame container.")
+		return
+	_parsed_archive = ERFParser.parse_bytes(_document.get_repacked_bytes())
 	_resource = SavegameInspectorResource.from_bytes(
-		data,
+		_document.get_repacked_bytes(),
 		source_path if source_path.is_absolute_path() else "",
 		_guess_loaded_file_name(label, "savegame.sav")
 	)
@@ -103,14 +115,83 @@ func get_selected_entry_index() -> int:
 	return int(item.get_metadata(0))
 
 
+func get_document() -> KotorErfDocument:
+	return _document
+
+
+func is_document_dirty() -> bool:
+	return _document != null and _document.is_dirty()
+
+
 func get_entry_payload(entry_index: int) -> PackedByteArray:
-	var entries: Array = _parsed_archive.get("entries", [])
-	if entry_index < 0 or entry_index >= entries.size():
-		return PackedByteArray()
-	var entry := entries[entry_index] as ERFParser.ERFEntry
-	if entry == null:
-		return PackedByteArray()
-	return entry.read_data()
+	if _document != null:
+		return _document.get_entry_payload(entry_index)
+	return PackedByteArray()
+
+
+func replace_member_at(entry_index: int, bytes: PackedByteArray) -> Dictionary:
+	if _document == null:
+		return {"ok": false, "message": "No savegame is loaded."}
+	var result := _document.replace_member_at(entry_index, bytes)
+	if result.get("ok", false):
+		_sync_archive_from_document()
+		_refresh_inspection_resource()
+		_register_controller_document()
+		_update_controller_dirty_state()
+		_refresh_view()
+		_status_text = str(result.get("message", "Member updated."))
+		_refresh_status()
+	return result
+
+
+func replace_member_from_file(path: String) -> Dictionary:
+	var index := get_selected_entry_index()
+	if index < 0:
+		_status_text = "Select a save member to replace."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		_status_text = "Failed to read %s" % path.get_file()
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	var bytes := file.get_buffer(file.get_length())
+	file.close()
+	return replace_member_at(index, bytes)
+
+
+func save_savegame_to_path(path: String) -> Dictionary:
+	if _document == null:
+		return {"ok": false, "message": "No savegame is loaded."}
+	var target_path := path if path.get_extension().to_lower() == "sav" else "%s.sav" % path
+	var payload: Dictionary = _document.serialize_for_pipeline()
+	var preview: Dictionary = _mutation_service.preview_export_to_path(target_path, payload)
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Save failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_document.mark_clean()
+		_update_controller_dirty_state()
+		_status_text = preview.get("message", "File is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		var result: Dictionary = _mutation_service.apply_export_to_path(target_path, payload, true)
+		_status_text = _mutation_message(result)
+		if result.get("ok", false):
+			if str(result.get("action", "")) != "noop":
+				_source_path = target_path
+				_file_name = target_path.get_file()
+			_document.mark_clean()
+			_register_controller_document()
+			_update_controller_dirty_state()
+		_refresh_status()
+		return result
+	_preflight_pending_preview = preview
+	_preflight_pending_entry_index = -2
+	_show_preflight_dialog(preview)
+	return {}
 
 
 func install_selected_member_to_override() -> Dictionary:
@@ -127,8 +208,8 @@ func extract_all_members_to_override() -> Dictionary:
 		_status_text = "No savegame is loaded."
 		_refresh_status()
 		return {"ok": false, "message": _status_text}
-	var entries: Array = _parsed_archive.get("entries", [])
-	if entries.is_empty():
+	var entries_count := _document.get_entry_count() if _document != null else 0
+	if entries_count == 0:
 		_status_text = "Savegame has no members to extract."
 		_refresh_status()
 		return {"ok": false, "message": _status_text}
@@ -136,13 +217,13 @@ func extract_all_members_to_override() -> Dictionary:
 	var unchanged := 0
 	var skipped := 0
 	var failed := 0
-	for index in range(entries.size()):
+	for index in range(entries_count):
 		var result := _apply_member_install_to_override(index, true)
 		if result.is_empty():
 			skipped += 1
 			continue
 		if not result.get("ok", false):
-			var entry := entries[index] as ERFParser.ERFEntry
+			var entry := _document.get_entry(index) if _document != null else null
 			if entry == null or entry.resref.strip_edges().is_empty():
 				skipped += 1
 			else:
@@ -201,10 +282,9 @@ func install_member_to_override(entry_index: int) -> Dictionary:
 
 
 func _apply_member_install_to_override(entry_index: int, proceed: bool) -> Dictionary:
-	var entries: Array = _parsed_archive.get("entries", [])
-	if entry_index < 0 or entry_index >= entries.size():
+	if _document == null or entry_index < 0 or entry_index >= _document.get_entry_count():
 		return {}
-	var entry := entries[entry_index] as ERFParser.ERFEntry
+	var entry := _document.get_entry(entry_index)
 	if entry == null or entry.resref.strip_edges().is_empty():
 		return _mutation_service.preview_install_to_override(_resolve_gamefs(), "", PackedByteArray())
 	var file_name := _entry_file_name(entry_index)
@@ -230,13 +310,9 @@ func _apply_member_install_to_override(entry_index: int, proceed: bool) -> Dicti
 
 
 func _entry_file_name(entry_index: int) -> String:
-	var entries: Array = _parsed_archive.get("entries", [])
-	if entry_index < 0 or entry_index >= entries.size():
+	if _document == null:
 		return ""
-	var entry := entries[entry_index] as ERFParser.ERFEntry
-	if entry == null:
-		return ""
-	return "%s.%s" % [entry.resref, entry.extension]
+	return _document.entry_file_name(entry_index)
 
 
 func _build_ui() -> void:
@@ -251,7 +327,7 @@ func _build_ui() -> void:
 	_toolbar.add_child(open_btn)
 
 	var open_member_btn := Button.new()
-	open_member_btn.text = "Open Member"
+	open_member_btn.text = "Edit Member"
 	open_member_btn.pressed.connect(_open_selected_member)
 	_toolbar.add_child(open_member_btn)
 
@@ -264,6 +340,16 @@ func _build_ui() -> void:
 	extract_all_btn.text = "Extract All to Override"
 	extract_all_btn.pressed.connect(extract_all_members_to_override)
 	_toolbar.add_child(extract_all_btn)
+
+	var replace_member_btn := Button.new()
+	replace_member_btn.text = "Replace Member..."
+	replace_member_btn.pressed.connect(_replace_member_dialog)
+	_toolbar.add_child(replace_member_btn)
+
+	var save_btn := Button.new()
+	save_btn.text = "Save SAV..."
+	save_btn.pressed.connect(_save_savegame_dialog)
+	_toolbar.add_child(save_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -329,12 +415,11 @@ func _refresh_tree() -> void:
 	if _tree == null:
 		return
 	_tree.clear()
-	if _resource == null or not _resource.is_valid():
+	if _resource == null or not _resource.is_valid() or _document == null:
 		return
 	var root_item := _tree.create_item()
-	var entries: Array = _parsed_archive.get("entries", [])
-	for index in range(entries.size()):
-		var entry := entries[index] as ERFParser.ERFEntry
+	for index in range(_document.get_entry_count()):
+		var entry := _document.get_entry(index)
 		if entry == null:
 			continue
 		var item := _tree.create_item(root_item)
@@ -350,10 +435,9 @@ func _open_selected_member() -> void:
 		_status_text = "Select a save member to open."
 		_refresh_status()
 		return
-	var entries: Array = _parsed_archive.get("entries", [])
-	if index >= entries.size():
+	if _document == null:
 		return
-	var entry := entries[index] as ERFParser.ERFEntry
+	var entry := _document.get_entry(index)
 	if entry == null:
 		return
 	var payload := get_entry_payload(index)
@@ -387,6 +471,7 @@ func _open_save_dialog() -> void:
 
 func _clear_document_state(message: String) -> void:
 	_resource = null
+	_document = null
 	_parsed_archive = {}
 	_source_path = ""
 	_file_name = "savegame.sav"
@@ -481,7 +566,22 @@ func _show_preflight_dialog(preview: Dictionary) -> void:
 
 
 func _on_preflight_proceed() -> void:
-	if _preflight_pending_entry_index >= 0:
+	if _preflight_pending_entry_index == -2:
+		var target_path := str(_preflight_pending_preview.get("target_path", ""))
+		if not target_path.is_empty() and _document != null:
+			var result: Dictionary = _mutation_service.apply_export_to_path(
+				target_path,
+				_document.serialize_for_pipeline(),
+				true
+			)
+			_status_text = _mutation_message(result)
+			if result.get("ok", false) and str(result.get("action", "")) != "noop":
+				_source_path = target_path
+				_file_name = target_path.get_file()
+				_document.mark_clean()
+				_register_controller_document()
+				_update_controller_dirty_state()
+	elif _preflight_pending_entry_index >= 0:
 		var result: Dictionary = _apply_member_install_to_override(_preflight_pending_entry_index, true)
 		_status_text = _mutation_message(result)
 		if result.get("applied", false):
@@ -499,3 +599,61 @@ func _on_preflight_cancelled() -> void:
 func _clear_preflight_state() -> void:
 	_preflight_pending_preview = {}
 	_preflight_pending_entry_index = -1
+
+
+func _sync_archive_from_document() -> void:
+	if _document == null:
+		_parsed_archive = {}
+		return
+	_parsed_archive = ERFParser.parse_bytes(_document.get_repacked_bytes())
+
+
+func _refresh_inspection_resource() -> void:
+	if _document == null:
+		return
+	_resource = SavegameInspectorResource.from_bytes(
+		_document.get_repacked_bytes(),
+		_source_path,
+		_current_file_name()
+	)
+
+
+func _replace_member_dialog() -> void:
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_OPEN_FILE,
+		PackedStringArray(["*.res ; GFF Resources", "*.gff ; GFF Files"]),
+		"Replace Save Member"
+	)
+	dialog.file_selected.connect(func(path: String) -> void:
+		replace_member_from_file(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _save_savegame_dialog() -> void:
+	var dialog := _make_dialog(
+		EditorFileDialog.FILE_MODE_SAVE_FILE,
+		PackedStringArray(["*.sav ; KotOR Savegames"]),
+		"Save Savegame"
+	)
+	if not _source_path.is_empty():
+		dialog.current_file = _source_path
+	else:
+		dialog.current_file = _current_file_name()
+	dialog.file_selected.connect(func(path: String) -> void:
+		save_savegame_to_path(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	EditorInterface.get_editor_main_screen().add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+
+
+func _update_controller_dirty_state() -> void:
+	var controller := get_controller()
+	if controller == null or _document_key.is_empty() or not controller.has_method("update_document_dirty"):
+		return
+	controller.call("update_document_dirty", _document_key, is_document_dirty())
