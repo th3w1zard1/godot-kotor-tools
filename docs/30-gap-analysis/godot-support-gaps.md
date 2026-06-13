@@ -60,18 +60,18 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 
 For Phase 2 and beyond, use these reference documents in order:
 
-1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices through Q143 (ERF wave) and Q130–Q133 (NSS/LTR/savegame/MDL); active slice **Q144+ TBD**.
+1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices through Q145 (chitin BIF catalog); active slice **Q146+ TBD**.
 2. **Requirement source:** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md) — Detailed requirement grounding for the next implementation wave (when Q6+ readiness criteria are met).
 3. **This document:** Gap inventory and Godot capability opportunities for strategic context.
 
 ## Post-Q133 Gap Audit (2026-06-12)
 
-**PR queue:** PRs #136 (Q145), #137 (Q146), #138 (Q147), #139 (Q148), #140 (Q149), #141 (Q150) open; prior waves merged to `main`.
+**PR queue:** PR #141 (Q150) open; Q145–Q149 merged to `main`; prior waves merged to `main`.
 
 | Tier | Gap | Status | Notes |
 | --- | --- | --- | --- |
 | **P1** | MDX sidecar on single-file MDL install | **Fixed** | Model Editor `Install MDL to Override` now installs paired `.mdx` when loaded. |
-| **P1** | BIF/KEY archive browsing | Open | Parity matrix: archive family still Partial beyond ERF/RIM/MOD. |
+| **P1** | BIF/KEY archive browsing | **Partial** | Q145 — chitin BIF catalog API, source filter, catalog browse mode; Q151–Q152 Holocron backlog planned. |
 | **P1** | DLG graph depth (Holocron-only fields, animations) | **Partial** | Q128a–c4 + Q148 fit/focus + Q150 port alignment shipped; minimap, animated edges, TSL fields deferred. |
 | **P2** | LTR doubles/triples grid editing | **Fixed** | Q144 — edit double contexts + selected triple context in LTR workspace editor. |
 | **P2** | Savegame write-back | **Partial** | Q147 single-member + Q149 batch extract to override; full `.sav` mutation deferred. |

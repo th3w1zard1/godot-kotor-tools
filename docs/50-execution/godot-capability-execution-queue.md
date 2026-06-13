@@ -163,20 +163,20 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q132 | Savegame inspector foundations | Read-only `.sav` metadata workspace tab (`savenfo`/`partytable`/`globalvars`), member browse + GFF inspect routing; headless `test_savegame_inspector.gd` + `test_savegame_workspace_editor.gd`. |
 | Q133 | MDL write-back phase 0 | `MDLWriter` passthrough + `MdlResource` + pipeline `mdl` serialize; MDL editor export/install via typed resource; headless `test_mdl_writer.gd`. Geometry rebuild deferred. |
 | Q144 | LTR doubles/triples editing | Letter Table editor edits double contexts in tree and triple contexts via row/col selectors; round-trip save/install; headless `test_ltr_workspace_editor.gd`. |
-| Q145 | Chitin BIF catalog browse foundations | `list_chitin_bif_catalog`, resource browser source filter + BIF catalog mode; headless `test_key_bif_parser.gd` + `test_gamefs_chitin_catalog.gd` (PR #136). |
-| Q146 | GitHub Actions headless editor test CI | `.github/workflows/headless-editor-tests.yml` + `scripts/run_headless_editor_tests.sh`; runs all `tests/editor/test_*.gd` on PR/push (PR #137). |
-| Q147 | Savegame member extract to override | Savegame Inspector **Extract to Override** for selected SAV member via mutation pipeline; headless `test_savegame_workspace_editor.gd` (PR #138). |
+| Q145 | Chitin BIF catalog browse foundations | `list_chitin_bif_catalog`, resource browser source filter + BIF catalog mode; headless `test_key_bif_parser.gd` + `test_gamefs_chitin_catalog.gd`. |
+| Q146 | GitHub Actions headless editor test CI | `.github/workflows/headless-editor-tests.yml` + `scripts/run_headless_editor_tests.sh`; runs all `tests/editor/test_*.gd` on PR/push. |
+| Q147 | Savegame member extract to override | Savegame Inspector **Extract to Override** for selected SAV member via mutation pipeline; headless `test_savegame_workspace_editor.gd`. |
 | Q148 | DLG graph fit view + selection focus | **Fit Graph** toolbar + `focus_metadata` scroll sync for entry/reply nodes; headless `test_dlg_graph_layout.gd`. |
 | Q149 | Savegame extract all members to override | Savegame Inspector **Extract All to Override** batch install; headless `test_savegame_workspace_editor.gd`. |
 | Q150 | DLG graph port index alignment | `connect_node` / `connection_request` use output port `0` to match single `set_slot(0)`; headless `test_dlg_graph_layout.gd`. |
 
-> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Q144 LTR depth via PR #135. Q145–Q150 open as PRs #136–#141. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
+> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Q144 LTR depth via PR #135. Q145–Q149 merged to `main`; Q150 open as PR #141. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q150+ | Next capability wave (TBD) | Select and plan next vertical slices on `main`. | Q150 DLG graph port fix landed. | Full `.sav` write-back, MDL geometry, DLG minimap TBD. |
+| Q151+ | Holocron parity Wave B (archives) | Plan and ship Q151 BIF extract + Q152 KEY browse per Holocron backlog. | Q150 DLG graph port fix ready to merge. | See `docs/plans/2026-06-13-087-feat-holocron-parity-wave-b-archives-plan.md`. |
 
 ## Next Slices (Deferred)
 
