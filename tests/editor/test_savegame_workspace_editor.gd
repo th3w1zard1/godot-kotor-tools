@@ -12,13 +12,20 @@ const KotorWorkspaceController := preload("../../editor/workspace/kotor_workspac
 
 
 func _initialize() -> void:
+	_install_root = ProjectSettings.globalize_path("user://savegame_workspace_test")
+	DirAccess.make_dir_recursive_absolute(_install_root.path_join("override"))
 	call_deferred("_run_tests")
+
+
+var _install_root := ""
 
 
 func _run_tests() -> void:
 	_test_open_save_and_summary()
 	_test_member_payload_access()
 	_test_member_open_routes_gff_inspect()
+	await _test_extract_member_to_override()
+	_cleanup()
 	print("✓ Savegame workspace editor tests passed")
 	quit()
 
@@ -55,11 +62,34 @@ func _test_member_open_routes_gff_inspect() -> void:
 	print("✓ Savegame GFF inspect open passed")
 
 
+func _test_extract_member_to_override() -> void:
+	var editor := _build_editor()
+	editor.open_save_bytes("slot1.sav", _build_test_sav_bytes(), "")
+	await process_frame
+
+	var target_path := _install_root.path_join("override").path_join("savenfo.txt")
+	if FileAccess.file_exists(target_path):
+		DirAccess.remove_absolute(target_path)
+
+	var result := editor.install_member_to_override(0)
+	assert(result.get("ok", false), "Extract failed: %s" % str(result))
+	assert(result.get("applied", false), "Extract not applied: %s" % str(result))
+	assert(FileAccess.file_exists(target_path))
+	var file := FileAccess.open(target_path, FileAccess.READ)
+	var parsed := GFFParser.parse_bytes(file.get_buffer(file.get_length()))
+	file.close()
+	assert(not parsed.is_empty())
+	print("✓ Savegame extract member to override passed")
+
+
 func _build_editor() -> KotorSavegameWorkspaceEditor:
 	var editor_state := KotorEditorState.new()
+	editor_state.game_path = _install_root
+	editor_state.refresh_gamefs()
 	var controller := KotorWorkspaceController.new(editor_state)
 	var editor := KotorSavegameWorkspaceEditor.new()
 	editor.setup(editor_state, controller)
+	editor._skip_preflight_for_testing = true
 	root.add_child(editor)
 	editor._ready()
 	return editor
@@ -94,3 +124,14 @@ func _build_savenfo_parsed() -> Dictionary:
 			],
 		},
 	}
+
+
+func _cleanup() -> void:
+	var override_dir := _install_root.path_join("override")
+	var target_path := override_dir.path_join("savenfo.txt")
+	if FileAccess.file_exists(target_path):
+		DirAccess.remove_absolute(target_path)
+	if DirAccess.dir_exists_absolute(override_dir):
+		DirAccess.remove_absolute(override_dir)
+	if DirAccess.dir_exists_absolute(_install_root):
+		DirAccess.remove_absolute(_install_root)

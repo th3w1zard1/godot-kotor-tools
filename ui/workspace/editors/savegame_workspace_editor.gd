@@ -8,12 +8,14 @@ const ERFParser := preload("../../../formats/erf_parser.gd")
 const SavegameInspector := preload("../../../formats/savegame_inspector.gd")
 const SavegameInspectorResource := preload("../../../resources/savegame_inspector_resource.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
+const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
 
 var _toolbar: HBoxContainer
 var _path_label: Label
 var _summary_label: Label
 var _metadata_label: Label
 var _tree: Tree
+var _mutation_service: RefCounted
 
 var _resource: SavegameInspectorResource
 var _parsed_archive: Dictionary = {}
@@ -21,6 +23,7 @@ var _source_path := ""
 var _file_name := "savegame.sav"
 var _status_text := ""
 var _document_key := ""
+var _skip_preflight_for_testing := false
 
 var _pending_source_path := ""
 var _pending_file_name := ""
@@ -35,6 +38,7 @@ func _on_workspace_setup() -> void:
 	if _editor_state == null:
 		_editor_state = KotorEditorState.new()
 		_editor_state.load_settings()
+	_mutation_service = _resolve_mutation_service()
 	_build_ui()
 	if not _pending_bytes.is_empty():
 		var pending_bytes := _pending_bytes
@@ -105,6 +109,80 @@ func get_entry_payload(entry_index: int) -> PackedByteArray:
 	return entry.read_data()
 
 
+func install_selected_member_to_override() -> Dictionary:
+	var index := get_selected_entry_index()
+	if index < 0:
+		_status_text = "Select a save member first."
+		_refresh_status()
+		return {"ok": false, "message": _status_text}
+	return install_member_to_override(index)
+
+
+func install_member_to_override(entry_index: int) -> Dictionary:
+	if _resource == null or not _resource.is_valid() or entry_index < 0:
+		return {}
+	var preview: Dictionary = _apply_member_install_to_override(entry_index, false)
+	if preview.is_empty():
+		return preview
+	if not preview.get("ok", false):
+		_status_text = preview.get("message", "Install failed")
+		_refresh_status()
+		return preview
+	if preview.get("action", "") == "noop":
+		_status_text = preview.get("message", "File is already up to date")
+		_refresh_status()
+		return preview
+	if _skip_preflight_for_testing:
+		var result: Dictionary = _apply_member_install_to_override(entry_index, true)
+		_status_text = _mutation_message(result)
+		if result.get("applied", false):
+			_refresh_gamefs()
+		_refresh_status()
+		return result
+	_status_text = "Save member install requires preflight confirmation in the editor."
+	_refresh_status()
+	return {"ok": false, "message": _status_text}
+
+
+func _apply_member_install_to_override(entry_index: int, proceed: bool) -> Dictionary:
+	var entries: Array = _parsed_archive.get("entries", [])
+	if entry_index < 0 or entry_index >= entries.size():
+		return {}
+	var entry := entries[entry_index] as ERFParser.ERFEntry
+	if entry == null or entry.resref.strip_edges().is_empty():
+		return _mutation_service.preview_install_to_override(_resolve_gamefs(), "", PackedByteArray())
+	var file_name := _entry_file_name(entry_index)
+	var payload := get_entry_payload(entry_index)
+	var preview: Dictionary = _mutation_service.preview_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		payload
+	)
+	if not preview.get("ok", false):
+		return preview
+	if preview.get("action", "") == "noop":
+		preview["applied"] = false
+		return preview
+	if not proceed:
+		return preview
+	return _mutation_service.apply_install_to_override(
+		_resolve_gamefs(),
+		file_name,
+		payload,
+		true
+	)
+
+
+func _entry_file_name(entry_index: int) -> String:
+	var entries: Array = _parsed_archive.get("entries", [])
+	if entry_index < 0 or entry_index >= entries.size():
+		return ""
+	var entry := entries[entry_index] as ERFParser.ERFEntry
+	if entry == null:
+		return ""
+	return "%s.%s" % [entry.resref, entry.extension]
+
+
 func _build_ui() -> void:
 	if _toolbar != null:
 		return
@@ -120,6 +198,11 @@ func _build_ui() -> void:
 	open_member_btn.text = "Open Member"
 	open_member_btn.pressed.connect(_open_selected_member)
 	_toolbar.add_child(open_member_btn)
+
+	var install_btn := Button.new()
+	install_btn.text = "Extract to Override"
+	install_btn.pressed.connect(install_selected_member_to_override)
+	_toolbar.add_child(install_btn)
 
 	_path_label = Label.new()
 	_path_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -299,3 +382,29 @@ func _make_dialog(
 	dialog.filters = filters
 	dialog.title = title
 	return dialog
+
+
+func _resolve_mutation_service() -> RefCounted:
+	var controller := get_controller()
+	if controller != null:
+		var service = controller.get("mutation_service")
+		if service != null:
+			return service
+	return KotorMutationService.new()
+
+
+func _resolve_gamefs() -> RefCounted:
+	var editor_state := get_editor_state()
+	if editor_state == null:
+		return null
+	return editor_state.get("gamefs") as RefCounted
+
+
+func _refresh_gamefs() -> void:
+	var editor_state := get_editor_state()
+	if editor_state != null and editor_state.has_method("refresh_gamefs"):
+		editor_state.call("refresh_gamefs")
+
+
+func _mutation_message(result: Dictionary) -> String:
+	return str(result.get("message", "Install complete"))
