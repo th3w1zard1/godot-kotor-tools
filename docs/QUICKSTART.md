@@ -91,11 +91,13 @@ Validate one script:
 godot --headless --quiet --check-only --script path/to/file.gd
 ```
 
-Validate all scripts in this repository:
+Run all headless editor tests:
 
 ```bash
-find . -name '*.gd' -print0 | xargs -0 -I{} godot --headless --quiet --check-only --script '{}'
+bash scripts/run_headless_editor_tests.sh
 ```
+
+CI runs the same script via `.github/workflows/headless-editor-tests.yml` on pull requests and pushes to `main`.
 
 ## Next reading
 

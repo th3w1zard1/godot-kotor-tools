@@ -9,6 +9,7 @@ const SavegameInspector := preload("../../../formats/savegame_inspector.gd")
 const SavegameInspectorResource := preload("../../../resources/savegame_inspector_resource.gd")
 const KotorEditorState := preload("../../../editor/core/kotor_editor_state.gd")
 const KotorMutationService := preload("../../../editor/transactions/kotor_mutation_service.gd")
+const KotorPreflightDialog := preload("../dialogs/kotor_preflight_dialog.gd")
 
 var _toolbar: HBoxContainer
 var _path_label: Label
@@ -16,6 +17,9 @@ var _summary_label: Label
 var _metadata_label: Label
 var _tree: Tree
 var _mutation_service: RefCounted
+var _preflight_dialog: KotorPreflightDialog
+var _preflight_pending_preview: Dictionary = {}
+var _preflight_pending_entry_index := -1
 
 var _resource: SavegameInspectorResource
 var _parsed_archive: Dictionary = {}
@@ -139,9 +143,10 @@ func install_member_to_override(entry_index: int) -> Dictionary:
 			_refresh_gamefs()
 		_refresh_status()
 		return result
-	_status_text = "Save member install requires preflight confirmation in the editor."
-	_refresh_status()
-	return {"ok": false, "message": _status_text}
+	_preflight_pending_preview = preview
+	_preflight_pending_entry_index = entry_index
+	_show_preflight_dialog(preview)
+	return {}
 
 
 func _apply_member_install_to_override(entry_index: int, proceed: bool) -> Dictionary:
@@ -408,3 +413,33 @@ func _refresh_gamefs() -> void:
 
 func _mutation_message(result: Dictionary) -> String:
 	return str(result.get("message", "Install complete"))
+
+
+func _show_preflight_dialog(preview: Dictionary) -> void:
+	if _preflight_dialog == null:
+		_preflight_dialog = KotorPreflightDialog.new()
+		_preflight_dialog.preflight_proceed.connect(_on_preflight_proceed)
+		_preflight_dialog.preflight_cancel.connect(_on_preflight_cancelled)
+		EditorInterface.get_editor_main_screen().add_child(_preflight_dialog)
+	_preflight_dialog.show_preflight(preview)
+
+
+func _on_preflight_proceed() -> void:
+	if _preflight_pending_entry_index >= 0:
+		var result: Dictionary = _apply_member_install_to_override(_preflight_pending_entry_index, true)
+		_status_text = _mutation_message(result)
+		if result.get("applied", false):
+			_refresh_gamefs()
+	_clear_preflight_state()
+	_refresh_status()
+
+
+func _on_preflight_cancelled() -> void:
+	_clear_preflight_state()
+	_status_text = "Extract cancelled."
+	_refresh_status()
+
+
+func _clear_preflight_state() -> void:
+	_preflight_pending_preview = {}
+	_preflight_pending_entry_index = -1

@@ -165,9 +165,9 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q144 | LTR doubles/triples editing | Letter Table editor edits double contexts in tree and triple contexts via row/col selectors; round-trip save/install; headless `test_ltr_workspace_editor.gd`. |
 | Q145 | Chitin BIF catalog browse foundations | `list_chitin_bif_catalog`, resource browser source filter + BIF catalog mode; headless `test_key_bif_parser.gd` + `test_gamefs_chitin_catalog.gd` (PR #136). |
 | Q146 | GitHub Actions headless editor test CI | `.github/workflows/headless-editor-tests.yml` + `scripts/run_headless_editor_tests.sh`; runs all `tests/editor/test_*.gd` on PR/push (PR #137). |
-| Q147 | Savegame member extract to override | Savegame Inspector **Extract to Override** for selected SAV member via mutation pipeline; headless `test_savegame_workspace_editor.gd`. |
+| Q147 | Savegame member extract to override | Savegame Inspector **Extract to Override** for selected SAV member via mutation pipeline; headless `test_savegame_workspace_editor.gd` (PR #138). |
 
-> **Branch note:** Q144 LTR depth via PR #135. Q145 chitin BIF catalog open as PR #136. Q146 CI open as PR #137. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
+> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Q144 LTR depth via PR #135. Q145–Q147 open as PRs #136–#138. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
 
 ## Active Slice
 

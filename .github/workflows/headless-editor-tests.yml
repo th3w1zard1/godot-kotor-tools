@@ -1,0 +1,34 @@
+name: Headless editor tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: headless-editor-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  headless-editor-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Godot
+        run: |
+          GODOT_VERSION="4.6-stable"
+          GODOT_ARCHIVE="Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          GODOT_URL="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/${GODOT_ARCHIVE}"
+          curl -fsSL "${GODOT_URL}" -o "${GODOT_ARCHIVE}"
+          unzip -q "${GODOT_ARCHIVE}"
+          GODOT_BIN="Godot_v${GODOT_VERSION}_linux.x86_64"
+          chmod +x "${GODOT_BIN}"
+          sudo mv "${GODOT_BIN}" /usr/local/bin/godot
+          godot --version
+
+      - name: Run headless editor tests
+        run: bash scripts/run_headless_editor_tests.sh

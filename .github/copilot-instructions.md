@@ -5,7 +5,9 @@
 - **Single-file GDScript validation:** `godot --headless --quiet --check-only --script path/to/file.gd`
 - **Repo-wide GDScript validation:** `find . -name '*.gd' -print0 | xargs -0 -I{} godot --headless --quiet --check-only --script '{}'`
 - **Single headless editor test:** `godot --headless --path . --script tests/editor/test_dock_workspace_routing.gd`
-- **All headless editor tests:** `find tests/editor -name 'test_*.gd' -print0 | xargs -0 -I{} godot --headless --path . --script '{}'`
+- **All headless editor tests:** `bash scripts/run_headless_editor_tests.sh`
+- **Legacy all-tests invocation:** `find tests/editor -name 'test_*.gd' -print0 | xargs -0 -I{} godot --headless --path . --script '{}'`
+- **CI:** GitHub Actions workflow `.github/workflows/headless-editor-tests.yml` runs the runner script on `push` to `main` and on pull requests.
 - There is no separate build or lint toolchain in this repository; use the Godot commands above as the validation baseline.
 
 ## High-level architecture
