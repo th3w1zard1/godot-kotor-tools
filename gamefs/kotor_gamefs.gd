@@ -5,6 +5,7 @@ class_name KotorGameFS
 const ERFParser := preload("../formats/erf_parser.gd")
 const KEYBIFParser := preload("../formats/key_bif_parser.gd")
 const TLKParser := preload("../formats/tlk_parser.gd")
+const KotorModdingPipeline := preload("../editor/modding/kotor_modding_pipeline.gd")
 
 const CHITIN_KEY_NAME := "chitin.key"
 const MODULES_DIR_NAME := "modules"
@@ -256,6 +257,151 @@ func list_chitin_bif_catalog() -> Array[Dictionary]:
 			"source": SOURCE_CHITIN,
 		})
 	return catalog
+
+
+func list_chitin_resource_entries(bif_index: int = -1) -> Array[Dictionary]:
+	var results: Array[Dictionary] = []
+	for entry: Dictionary in _resource_list:
+		if str(entry.get("source", "")) != SOURCE_CHITIN:
+			continue
+		if bif_index >= 0 and int(entry.get("bif_index", -1)) != bif_index:
+			continue
+		results.append(entry.duplicate(true))
+	return results
+
+
+func lookup_chitin_key_entry(resref: String, resource_type: int) -> Dictionary:
+	if key_index.is_empty():
+		return {}
+	var normalized_resref := resref.strip_edges().to_lower()
+	if normalized_resref.is_empty() or resource_type < 0:
+		return {}
+	var key_entry: KEYBIFParser.KEYEntry = KEYBIFParser.find_key_entry(
+		key_index,
+		normalized_resref,
+		resource_type
+	)
+	if key_entry == null:
+		return {}
+	for entry: Dictionary in _resource_list:
+		if str(entry.get("source", "")) != SOURCE_CHITIN:
+			continue
+		if str(entry.get("resref", "")).to_lower() != normalized_resref:
+			continue
+		if int(entry.get("resource_type", -1)) != resource_type:
+			continue
+		return entry.duplicate(true)
+	return {}
+
+
+func extract_bif_member_to_override(entry: Dictionary) -> Dictionary:
+	if str(entry.get("source", "")) != SOURCE_CHITIN:
+		return {"ok": false, "message": "Not a chitin.key catalog member."}
+	if str(entry.get("resref", "")).strip_edges().is_empty():
+		return {"ok": false, "message": "Resource entry has an invalid resref."}
+	var result := KotorModdingPipeline.install_gamefs_entry_to_override(self, entry)
+	return _normalize_install_result(result)
+
+
+func _normalize_install_result(result: Dictionary) -> Dictionary:
+	if not result.get("ok", false):
+		return result
+	var status := str(result.get("status", ""))
+	if status == "unchanged":
+		result["action"] = "noop"
+		result["applied"] = false
+	elif status == "written":
+		result["applied"] = true
+	return result
+
+
+func extract_bif_members_to_override(bif_index: int = -1) -> Dictionary:
+	var entries := list_chitin_resource_entries(bif_index)
+	if entries.is_empty():
+		return {
+			"ok": false,
+			"applied": 0,
+			"unchanged": 0,
+			"skipped": 0,
+			"failed": 0,
+			"message": "No chitin.key members to extract.",
+		}
+	var applied := 0
+	var unchanged := 0
+	var skipped := 0
+	var failed := 0
+	for entry: Dictionary in entries:
+		var result := extract_bif_member_to_override(entry)
+		if result.is_empty():
+			skipped += 1
+			continue
+		if not result.get("ok", false):
+			if str(entry.get("resref", "")).strip_edges().is_empty():
+				skipped += 1
+			else:
+				failed += 1
+			continue
+		var status := str(result.get("status", ""))
+		if result.get("applied", false) or status == "written":
+			applied += 1
+		elif result.get("action", "") == "noop" or status == "unchanged":
+			unchanged += 1
+		else:
+			failed += 1
+	var message := "Extracted %d chitin member(s) to override (%d unchanged, %d skipped, %d failed)." % [
+		applied,
+		unchanged,
+		skipped,
+		failed,
+	]
+	return {
+		"ok": failed == 0,
+		"applied": applied,
+		"unchanged": unchanged,
+		"skipped": skipped,
+		"failed": failed,
+		"message": message,
+	}
+
+
+func extract_bif_members_to_folder(dest_dir: String, bif_index: int = -1) -> Dictionary:
+	var folder := dest_dir.strip_edges()
+	if folder.is_empty():
+		return {"ok": false, "message": "Choose a destination folder.", "written": 0, "skipped": 0, "failed": 0}
+	var mkdir_err := DirAccess.make_dir_recursive_absolute(folder)
+	if mkdir_err != OK and not DirAccess.dir_exists_absolute(folder):
+		return {"ok": false, "message": "Could not create destination folder: %s" % folder, "written": 0, "skipped": 0, "failed": 0}
+	var entries := list_chitin_resource_entries(bif_index)
+	if entries.is_empty():
+		return {"ok": false, "message": "No chitin.key members to extract.", "written": 0, "skipped": 0, "failed": 0}
+	var written := 0
+	var skipped := 0
+	var failed := 0
+	for entry: Dictionary in entries:
+		var file_name := "%s.%s" % [entry.get("resref", ""), entry.get("extension", "")]
+		if file_name.strip_edges().is_empty() or file_name.find("..") != -1:
+			skipped += 1
+			continue
+		var out_path := folder.path_join(file_name)
+		var result := KotorModdingPipeline.export_gamefs_entry(self, entry, out_path)
+		if not result.get("ok", false):
+			failed += 1
+			continue
+		if result.get("action", "") == "noop":
+			skipped += 1
+		else:
+			written += 1
+	return {
+		"ok": failed == 0,
+		"written": written,
+		"skipped": skipped,
+		"failed": failed,
+		"message": "Extracted %d chitin member(s) to folder (%d skipped, %d failed)." % [
+			written,
+			skipped,
+			failed,
+		],
+	}
 
 
 func list_core_resources(

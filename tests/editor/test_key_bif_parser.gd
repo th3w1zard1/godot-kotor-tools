@@ -14,6 +14,7 @@ func _run_tests() -> void:
 	_test_parse_synthetic_key()
 	_test_parse_synthetic_bif()
 	_test_extract_resource_round_trip()
+	_test_key_resref_lookup()
 	print("✓ KEY/BIF parser tests passed")
 	quit()
 
@@ -57,6 +58,15 @@ func _test_extract_resource_round_trip() -> void:
 	var found := KEYBIFParser.find_key_entry(key_result, "test2da", RES_TYPE_2DA)
 	assert(found != null)
 	print("✓ KEY/BIF extract round-trip passed")
+
+
+func _test_key_resref_lookup() -> void:
+	var key_bytes := _build_minimal_key_bytes()
+	var key_result := KEYBIFParser.parse_key_bytes(key_bytes)
+	assert(KEYBIFParser.find_key_entry(key_result, "missing", RES_TYPE_2DA) == null)
+	var catalog: Array = key_result.get("bif_entries", [])
+	assert(catalog.size() == 1)
+	print("✓ KEY resref lookup passed")
 
 
 func _build_minimal_key_bytes() -> PackedByteArray:

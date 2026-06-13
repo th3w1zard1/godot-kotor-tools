@@ -1,7 +1,7 @@
 ---
 title: "feat: Holocron parity Wave B — BIF/KEY archives"
 type: feat
-status: active
+status: completed
 date: 2026-06-13
 origin: holocron-parity-backlog-roadmap
 phase: Q151-Q152
