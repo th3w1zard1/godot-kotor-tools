@@ -1,7 +1,7 @@
 ---
 title: "fix: Q150 DLG graph port index alignment"
 type: fix
-status: active
+status: completed
 date: 2026-06-13
 origin: lfg-next-after-q149-auto-selected
 phase: Q150
