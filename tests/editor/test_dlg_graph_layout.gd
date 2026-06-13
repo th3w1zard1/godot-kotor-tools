@@ -23,6 +23,8 @@ func _run_tests() -> void:
 	await _test_focus_metadata_rejects_non_graph_kinds()
 	await _test_fit_all_nodes_from_layout()
 	_test_build_layout_creates_graph_connections()
+	_test_compute_minimap_transform()
+	await _test_minimap_enabled_sync()
 	quit()
 
 
@@ -141,6 +143,43 @@ func _test_compute_center_scroll_offset() -> void:
 	assert(is_equal_approx(offset.x, -100.0))
 	assert(is_equal_approx(offset.y, 50.0))
 	print("✓ DLG graph center scroll offset passed")
+
+
+func _test_compute_viewport_rect_in_graph_space() -> void:
+	var viewport_rect := KotorDLGGraphView.compute_viewport_rect_in_graph_space(
+		Vector2(120, 80),
+		Vector2(640, 480)
+	)
+	assert(viewport_rect.position == Vector2(120, 80))
+	assert(viewport_rect.size == Vector2(640, 480))
+	print("✓ DLG graph viewport rect passed")
+
+
+func _test_compute_minimap_transform() -> void:
+	var bounds := Rect2(Vector2(100, 50), Vector2(400, 300))
+	var transform := KotorDLGGraphView.compute_minimap_transform(bounds, Vector2(160, 120))
+	assert(transform.get("scale", 0.0) > 0.0)
+	var scale: float = transform.get("scale", 1.0)
+	var offset: Vector2 = transform.get("offset", Vector2.ZERO)
+	var mapped := bounds.position * scale + offset
+	assert(mapped.x >= 0.0)
+	assert(mapped.y >= 0.0)
+	print("✓ DLG graph minimap transform passed")
+
+
+func _test_minimap_enabled_sync() -> void:
+	var graph_view := KotorDLGGraphView.new()
+	root.add_child(graph_view)
+	graph_view.size = Vector2(640, 480)
+	graph_view.build_from_layout(_build_document().build_graph_layout_metadata())
+	await process_frame
+	assert(not graph_view.is_custom_minimap_enabled())
+	graph_view.set_custom_minimap_enabled(true)
+	assert(graph_view.is_custom_minimap_enabled())
+	graph_view.set_custom_minimap_enabled(false)
+	assert(not graph_view.is_custom_minimap_enabled())
+	graph_view.queue_free()
+	print("✓ DLG graph minimap toggle passed")
 
 
 func _test_focus_metadata_rejects_non_graph_kinds() -> void:

@@ -11,6 +11,14 @@ const SLOT_TYPE := 0
 const SLOT_COLOR := Color(0.55, 0.75, 0.95)
 const DEFAULT_NODE_SIZE := Vector2(220, 96)
 const VIEWPORT_MARGIN := 32.0
+const MINIMAP_SIZE := Vector2(168, 120)
+const MINIMAP_MARGIN := 8.0
+
+var _custom_minimap_enabled: bool = false
+
+var _minimap_root: PanelContainer
+var _minimap_canvas: Control
+var _last_minimap_scroll := Vector2.INF
 
 
 func _init() -> void:
@@ -24,6 +32,30 @@ func _init() -> void:
 func _ready() -> void:
 	connection_request.connect(_on_connection_request)
 	node_selected.connect(_on_node_selected)
+	_ensure_minimap_overlay()
+	set_process(false)
+
+
+func _process(_delta: float) -> void:
+	if not _custom_minimap_enabled or _minimap_canvas == null:
+		return
+	if scroll_offset != _last_minimap_scroll:
+		_last_minimap_scroll = scroll_offset
+		_minimap_canvas.queue_redraw()
+
+
+func set_custom_minimap_enabled(enabled: bool) -> void:
+	_custom_minimap_enabled = enabled
+	if _minimap_root != null:
+		_minimap_root.visible = enabled
+	set_process(enabled)
+	if enabled:
+		_last_minimap_scroll = Vector2.INF
+		_update_minimap()
+
+
+func is_custom_minimap_enabled() -> bool:
+	return _custom_minimap_enabled
 
 
 func _on_connection_request(
@@ -56,6 +88,7 @@ func build_from_layout(layout: Dictionary) -> void:
 	_clear_graph_nodes()
 	_last_layout = layout
 	if layout.is_empty():
+		_update_minimap()
 		return
 
 	var node_ids := {}
@@ -77,6 +110,7 @@ func build_from_layout(layout: Dictionary) -> void:
 		if not node_ids.has(from_id) or not node_ids.has(to_id):
 			continue
 		connect_node(StringName(from_id), 0, StringName(to_id), 0)
+	_update_minimap()
 
 
 var _last_layout: Dictionary = {}
@@ -111,6 +145,27 @@ static func compute_center_scroll_offset(bounds: Rect2, viewport_size: Vector2) 
 	return center - viewport_size * 0.5
 
 
+static func compute_viewport_rect_in_graph_space(scroll_offset: Vector2, viewport_size: Vector2) -> Rect2:
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return Rect2()
+	return Rect2(scroll_offset, viewport_size)
+
+
+static func compute_minimap_transform(graph_bounds: Rect2, minimap_size: Vector2, padding: float = 4.0) -> Dictionary:
+	if graph_bounds.size == Vector2.ZERO or minimap_size.x <= 0.0 or minimap_size.y <= 0.0:
+		return {"scale": 1.0, "offset": Vector2.ZERO}
+	var padded_bounds := graph_bounds.grow(padding)
+	var scale := minf(
+		(minimap_size.x - padding * 2.0) / padded_bounds.size.x,
+		(minimap_size.y - padding * 2.0) / padded_bounds.size.y
+	)
+	if scale <= 0.0:
+		scale = 1.0
+	var drawn_size := padded_bounds.size * scale
+	var offset := (minimap_size - drawn_size) * 0.5 - padded_bounds.position * scale
+	return {"scale": scale, "offset": offset}
+
+
 func fit_all_nodes() -> bool:
 	var bounds := _compute_live_bounds()
 	if bounds.size == Vector2.ZERO:
@@ -121,6 +176,7 @@ func fit_all_nodes() -> bool:
 		bounds.size + Vector2(VIEWPORT_MARGIN, VIEWPORT_MARGIN) * 2.0
 	)
 	scroll_offset = compute_center_scroll_offset(padded, size)
+	_update_minimap()
 	return true
 
 
@@ -136,6 +192,7 @@ func focus_metadata(metadata: Dictionary) -> bool:
 	_highlight_graph_node(graph_node)
 	var node_bounds := Rect2(graph_node.position_offset, _graph_node_size(graph_node))
 	scroll_offset = compute_center_scroll_offset(node_bounds, size)
+	_update_minimap()
 	return true
 
 
@@ -228,4 +285,88 @@ func _clear_graph_nodes() -> void:
 	for graph_node in to_remove:
 		remove_child(graph_node)
 		graph_node.free()
+
+
+func _ensure_minimap_overlay() -> void:
+	if _minimap_root != null:
+		return
+	_minimap_root = PanelContainer.new()
+	_minimap_root.name = "GraphMinimap"
+	_minimap_root.visible = false
+	_minimap_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	_minimap_root.custom_minimum_size = MINIMAP_SIZE
+	_minimap_root.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_minimap_root.offset_left = -MINIMAP_SIZE.x - MINIMAP_MARGIN
+	_minimap_root.offset_top = -MINIMAP_SIZE.y - MINIMAP_MARGIN
+	_minimap_root.offset_right = -MINIMAP_MARGIN
+	_minimap_root.offset_bottom = -MINIMAP_MARGIN
+	add_child(_minimap_root)
+
+	_minimap_canvas = Control.new()
+	_minimap_canvas.name = "GraphMinimapCanvas"
+	_minimap_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_minimap_canvas.mouse_filter = Control.MOUSE_FILTER_STOP
+	_minimap_canvas.draw.connect(_draw_minimap)
+	_minimap_canvas.gui_input.connect(_on_minimap_gui_input)
+	_minimap_root.add_child(_minimap_canvas)
+
+
+func _update_minimap() -> void:
+	if _minimap_canvas != null and _custom_minimap_enabled:
+		_minimap_canvas.queue_redraw()
+
+
+func _draw_minimap() -> void:
+	if _minimap_canvas == null:
+		return
+	var canvas_size := _minimap_canvas.size
+	if canvas_size.x <= 0.0 or canvas_size.y <= 0.0:
+		return
+
+	_minimap_canvas.draw_rect(Rect2(Vector2.ZERO, canvas_size), Color(0.08, 0.1, 0.14, 0.92), true)
+	_minimap_canvas.draw_rect(Rect2(Vector2.ZERO, canvas_size), Color(0.35, 0.45, 0.55, 0.9), false, 1.0)
+
+	var graph_bounds := _compute_live_bounds()
+	if graph_bounds.size == Vector2.ZERO:
+		return
+
+	var transform := compute_minimap_transform(graph_bounds, canvas_size)
+	var scale: float = transform.get("scale", 1.0)
+	var offset: Vector2 = transform.get("offset", Vector2.ZERO)
+
+	for child in get_children():
+		if not child is GraphNode:
+			continue
+		var graph_node := child as GraphNode
+		var node_rect := Rect2(graph_node.position_offset, _graph_node_size(graph_node))
+		var top_left := node_rect.position * scale + offset
+		var node_size := node_rect.size * scale
+		var fill := Color(0.45, 0.65, 0.9, 0.85) if graph_node.selected else Color(0.3, 0.45, 0.65, 0.75)
+		_minimap_canvas.draw_rect(Rect2(top_left, node_size), fill, true)
+
+	var viewport_rect := compute_viewport_rect_in_graph_space(scroll_offset, size)
+	var viewport_top_left := viewport_rect.position * scale + offset
+	var viewport_size := viewport_rect.size * scale
+	_minimap_canvas.draw_rect(Rect2(viewport_top_left, viewport_size), Color(1.0, 0.85, 0.35, 0.18), true)
+	_minimap_canvas.draw_rect(Rect2(viewport_top_left, viewport_size), Color(1.0, 0.85, 0.35, 0.95), false, 1.0)
+
+
+func _on_minimap_gui_input(event: InputEvent) -> void:
+	if _minimap_canvas == null or not (event is InputEventMouseButton):
+		return
+	var mouse_event := event as InputEventMouseButton
+	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var graph_bounds := _compute_live_bounds()
+	if graph_bounds.size == Vector2.ZERO or size.x <= 0.0 or size.y <= 0.0:
+		return
+	var transform := compute_minimap_transform(graph_bounds, _minimap_canvas.size)
+	var scale: float = transform.get("scale", 1.0)
+	var offset: Vector2 = transform.get("offset", Vector2.ZERO)
+	if scale <= 0.0:
+		return
+	var graph_pos := (mouse_event.position - offset) / scale
+	scroll_offset = graph_pos - size * 0.5
+	_update_minimap()
+	accept_event()
 

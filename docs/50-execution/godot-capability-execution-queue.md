@@ -174,6 +174,7 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q153 | Savegame member replace | `KotorSavegameDocument` + **Replace Member...** in Savegame Inspector; headless `test_savegame_workspace_editor.gd`. |
 | Q154 | Savegame SAV write-back | **Save SAV...** with preflight, dirty tracking, round-trip serialize; headless `test_savegame_workspace_editor.gd`. |
 | Q155 | DLG animations panel | Entry/reply `AnimList` CRUD on `KotorDLGDocument` + detail-panel UI; headless `test_dlg_workspace_editor.gd`. |
+| Q156 | DLG graph minimap | Custom minimap overlay on `KotorDLGGraphView` + toolbar toggle; headless `test_dlg_graph_layout.gd`. |
 
 > **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Q144 LTR depth via PR #135. Q145–Q150 merged to `main` via PRs #136–#141 (2026-06-13). Holocron parity backlog waves B–J planned in `docs/50-execution/holocron-parity-backlog-roadmap.md`.
 

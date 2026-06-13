@@ -30,7 +30,7 @@ Track feature parity between upstream OpenKotOR toolchains and godot-kotor-tools
 | --- | --- | --- | --- |
 | Core GFF parsing/editing | Holocron editors: utc/utp/uti/utd/ute/utm/uts/utt/utw, gff; PyKotor `formats/gff/*` | Partial | Q13: typed factory for all Holocron blueprint families; Q14 (shipped 2026-05-29): script hooks, trap fields, map notes, appearance IDs in summaries and GFF tree pickers. |
 | Extended GFF-family routes | jrl, pth, fac editor surfaces in Holocron | Partial | Routing parity expanded in current slice (`jrl`, `pth`, `fac` route into GFF workspace editor). |
-| DLG editing | Holocron DLG editor stack (`editors/dlg/*`) | Partial | Q6 struct/array mutation; Q33 jump-to-target (2026-06-04). **Q128:** node CRUD, orphan dock, graph view, back-navigation, delete-all-references, graph drag-connect, orphan restore UX. **Q148–Q150:** graph fit/focus, port index alignment. **Q155 *(Wave D)*:** entry/reply `AnimList` animations panel (add/remove/reorder). Q156–Q157 planned: minimap, sound/VO/camera guided fields; TSL/K2 fields deferred to Q200+. |
+| DLG editing | Holocron DLG editor stack (`editors/dlg/*`) | Partial | Q6 struct/array mutation; Q33 jump-to-target (2026-06-04). **Q128:** node CRUD, orphan dock, graph view, back-navigation, delete-all-references, graph drag-connect, orphan restore UX. **Q148–Q150:** graph fit/focus, port index alignment. **Q155–Q157 *(Wave D)*:** animations list CRUD, graph minimap, camera/fade guided fields, Sound/VO ResRef pickers. TSL/K2-only fields deferred to Q200+. |
 | 2DA editing | Holocron `twoda` editor; PyKotor `formats/twoda/*` | Shipped | Parser/importer/editor/write-back available. |
 | TLK editing | Holocron `tlk` editor; PyKotor `formats/tlk/*` | Shipped | Parser/importer/editor/write-back available. |
 | NSS/script editing | Holocron `nss` editor; PyKotor NCS/NSS tooling | Partial | Q26 (shipped 2026-05-29): PyKotor CLI bridge for `assemble`/`decompile`/`disassemble` in Script tab (Compile/Decompile/Disassemble toolbar); reuses `pykotor_cli_path` + install inference. Q130 (shipped via PR #120): install compiled `.ncs` to override with preflight, auto-offer after successful compile. Prior: text editor, validation, counterpart lookup. |
@@ -196,7 +196,7 @@ Authority: [holocron-parity-backlog-roadmap.md](../50-execution/holocron-parity-
 | --- | --- | --- | --- |
 | B — Archives | Q151–Q152 | BIF extract, KEY browse | Shipped |
 | C — Saves | Q153–Q154 | `savegame.py` write-back | Shipped |
-| D — DLG K1 | Q155–Q157 | Animations, minimap, VO/camera | Partial (Q155 shipped) |
+| D — DLG K1 | Q155–Q157 | Animations, minimap, VO/camera | **Shipped** (PR #144) |
 | E/F — Spatial/Model | Q158–Q161 | BWM depth, MDL geometry rebuild | Planned |
 | G — Dedicated editors | Q162–Q164 | JRL, PTH, FAC panels | Planned |
 | H — Tooling | Q165–Q167 | NSS decompile pane, diff viewer, LTR preview | Planned |
