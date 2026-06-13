@@ -98,6 +98,7 @@ func _assert_editor_behavior() -> void:
 	_test_find_linkable_orphans_for_owner()
 	_test_restore_orphan_via_editor()
 	_test_orphan_double_click_restore()
+	_test_node_animations_crud()
 
 	_cleanup()
 	quit()
@@ -882,6 +883,26 @@ func _test_node_add_remove_undo_redo() -> void:
 		assert(doc.get_entry_count() == initial_entries, "Undo add entry should restore count")
 		ur.redo()
 		assert(doc.get_entry_count() == initial_entries + 1, "Redo add entry should restore added entry")
+
+
+	print("✓ DLG orphan double-click restore passed")
+
+
+func _test_node_animations_crud() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	assert(doc.add_node_animation("entry", 0, "talk1"))
+	assert(doc.get_node_animations("entry", 0) == ["talk1"])
+	assert(doc.add_node_animation("entry", 0, "talk2", 0))
+	assert(doc.get_node_animations("entry", 0) == ["talk2", "talk1"])
+	assert(doc.reorder_node_animation("entry", 0, 0, 1))
+	assert(doc.get_node_animations("entry", 0) == ["talk1", "talk2"])
+	assert(doc.set_node_animation("entry", 0, 1, "idle1"))
+	assert(doc.get_node_animations("entry", 0) == ["talk1", "idle1"])
+	assert(doc.remove_node_animation("entry", 0, 0))
+	assert(doc.get_node_animations("entry", 0) == ["idle1"])
+	print("✓ DLG node animations CRUD passed")
 
 
 func _cleanup() -> void:
