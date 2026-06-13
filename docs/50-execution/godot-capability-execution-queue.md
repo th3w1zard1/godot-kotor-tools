@@ -163,14 +163,15 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q132 | Savegame inspector foundations | Read-only `.sav` metadata workspace tab (`savenfo`/`partytable`/`globalvars`), member browse + GFF inspect routing; headless `test_savegame_inspector.gd` + `test_savegame_workspace_editor.gd`. |
 | Q133 | MDL write-back phase 0 | `MDLWriter` passthrough + `MdlResource` + pipeline `mdl` serialize; MDL editor export/install via typed resource; headless `test_mdl_writer.gd`. Geometry rebuild deferred. |
 | Q144 | LTR doubles/triples editing | Letter Table editor edits double contexts in tree and triple contexts via row/col selectors; round-trip save/install; headless `test_ltr_workspace_editor.gd`. |
+| Q145 | Chitin BIF catalog browse foundations | `list_chitin_bif_catalog`, resource browser source filter + BIF catalog mode; headless `test_key_bif_parser.gd` + `test_gamefs_chitin_catalog.gd`. |
 
-> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Q144 LTR depth via PR TBD. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
+> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Q144 LTR depth via PR #135. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q145+ | Next capability wave (TBD) | Select and plan next vertical slices on `main`. | Q144 LTR doubles/triples editing landed. | BIF/KEY, DLG graph depth, savegame edit, MDL geometry TBD. |
+| Q146+ | Next capability wave (TBD) | Select and plan next vertical slices on `main`. | Q145 chitin BIF catalog foundations landed. | DLG graph depth, savegame edit, MDL geometry, CI TBD. |
 
 ## Next Slices (Deferred)
 
