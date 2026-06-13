@@ -32,7 +32,7 @@ func _on_connection_request(
 		to_node: StringName,
 		to_port: int
 ) -> void:
-	if from_port != 1 or to_port != 0:
+	if from_port != 0 or to_port != 0:
 		return
 	var from_metadata := KotorDLGDocument.parse_graph_node_id(str(from_node))
 	var to_metadata := KotorDLGDocument.parse_graph_node_id(str(to_node))
@@ -76,7 +76,7 @@ func build_from_layout(layout: Dictionary) -> void:
 		var to_id := str(edge_data.get("to_id", ""))
 		if not node_ids.has(from_id) or not node_ids.has(to_id):
 			continue
-		connect_node(StringName(from_id), 1, StringName(to_id), 0)
+		connect_node(StringName(from_id), 0, StringName(to_id), 0)
 
 
 var _last_layout: Dictionary = {}
