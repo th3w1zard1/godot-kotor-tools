@@ -168,14 +168,15 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q147 | Savegame member extract to override | Savegame Inspector **Extract to Override** for selected SAV member via mutation pipeline; headless `test_savegame_workspace_editor.gd` (PR #138). |
 | Q148 | DLG graph fit view + selection focus | **Fit Graph** toolbar + `focus_metadata` scroll sync for entry/reply nodes; headless `test_dlg_graph_layout.gd`. |
 | Q149 | Savegame extract all members to override | Savegame Inspector **Extract All to Override** batch install; headless `test_savegame_workspace_editor.gd`. |
+| Q150 | DLG graph port index alignment | `connect_node` / `connection_request` use output port `0` to match single `set_slot(0)`; headless `test_dlg_graph_layout.gd`. |
 
-> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Q144 LTR depth via PR #135. Q145–Q149 open as PRs #136–#140. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
+> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Q144 LTR depth via PR #135. Q145–Q150 open as PRs #136–#141. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q150+ | Next capability wave (TBD) | Select and plan next vertical slices on `main`. | Q149 savegame batch extract landed. | Full `.sav` write-back, MDL geometry, DLG minimap TBD. |
+| Q150+ | Next capability wave (TBD) | Select and plan next vertical slices on `main`. | Q150 DLG graph port fix landed. | Full `.sav` write-back, MDL geometry, DLG minimap TBD. |
 
 ## Next Slices (Deferred)
 

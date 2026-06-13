@@ -22,6 +22,7 @@ func _run_tests() -> void:
 	_test_compute_center_scroll_offset()
 	await _test_focus_metadata_rejects_non_graph_kinds()
 	await _test_fit_all_nodes_from_layout()
+	_test_build_layout_creates_graph_connections()
 	quit()
 
 
@@ -104,9 +105,9 @@ func _test_connection_request_rejects_same_kind() -> void:
 		requested.append(from_metadata)
 		requested.append(to_metadata)
 	)
-	graph_view._on_connection_request(&"entry_0", 1, &"entry_1", 0)
+	graph_view._on_connection_request(&"entry_0", 0, &"entry_1", 0)
 	assert(requested.is_empty(), "Entry-to-entry connection should be ignored")
-	graph_view._on_connection_request(&"entry_0", 1, &"reply_0", 0)
+	graph_view._on_connection_request(&"entry_0", 0, &"reply_0", 0)
 	assert(requested.size() == 2, "Entry-to-reply connection should emit metadata pair")
 	assert(requested[0].get("kind", "") == "entry")
 	assert(int(requested[1].get("index", -1)) == 0)
@@ -164,3 +165,12 @@ func _test_fit_all_nodes_from_layout() -> void:
 	assert(graph_view.fit_all_nodes())
 	graph_view.queue_free()
 	print("✓ DLG graph fit all nodes passed")
+
+
+func _test_build_layout_creates_graph_connections() -> void:
+	var graph_view := KotorDLGGraphView.new()
+	root.add_child(graph_view)
+	graph_view.build_from_layout(_build_document().build_graph_layout_metadata())
+	assert(graph_view.get_connection_list().size() == 2)
+	graph_view.queue_free()
+	print("✓ DLG graph layout connections passed")
