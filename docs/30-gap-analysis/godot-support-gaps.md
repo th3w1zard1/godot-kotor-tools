@@ -66,7 +66,7 @@ For Phase 2 and beyond, use these reference documents in order:
 
 ## Post-Q133 Gap Audit (2026-06-12)
 
-**PR queue:** PR #139 (Q148) open; Q145–Q147 merged to `main`; prior waves merged to `main`.
+**PR queue:** PR #140 (Q149) open; Q145–Q148 merged to `main`; prior waves merged to `main`.
 
 | Tier | Gap | Status | Notes |
 | --- | --- | --- | --- |
@@ -74,7 +74,7 @@ For Phase 2 and beyond, use these reference documents in order:
 | **P1** | BIF/KEY archive browsing | **Partial** | Q145 — chitin BIF catalog API, source filter, catalog browse mode; full BIF mutation/editor deferred. |
 | **P1** | DLG graph depth (Holocron-only fields, animations) | **Partial** | Q128a–c4 + Q148 fit/focus shipped; minimap, animated edges, TSL fields deferred. |
 | **P2** | LTR doubles/triples grid editing | **Fixed** | Q144 — edit double contexts + selected triple context in LTR workspace editor. |
-| **P2** | Savegame write-back | **Partial** | Q147 — extract selected SAV member to override; full `.sav` mutation deferred. |
+| **P2** | Savegame write-back | **Partial** | Q147 single-member + Q149 batch extract to override; full `.sav` mutation deferred. |
 | **P2** | MDL geometry mutation / rebuild | Open | Q133 phase 0 passthrough only. |
 | **P2** | Plan authority drift | **Fixed** | Q119–Q123 module-tool plans + Q128/Q131–Q133 marked `completed` (plan 079). |
 | **P3** | Browser/visual UI verification | Deferred | No web surface; headless Godot tests remain gate. |
