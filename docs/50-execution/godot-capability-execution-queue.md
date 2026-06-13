@@ -170,13 +170,29 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 | Q149 | Savegame extract all members to override | Savegame Inspector **Extract All to Override** batch install; headless `test_savegame_workspace_editor.gd`. |
 | Q150 | DLG graph port index alignment | `connect_node` / `connection_request` use output port `0` to match single `set_slot(0)`; headless `test_dlg_graph_layout.gd`. |
 
-> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Q144 LTR depth via PR #135. Q145–Q149 merged to `main`; Q150 open as PR #141. Drop `*(PR #119)*` qualifiers in queue rows when editing legacy entries.
+> **Branch note:** Q124–Q128c4 shipped via [PR #119](https://github.com/th3w1zard1/godot-kotor-tools/pull/119) (merged 2026-06-11). Q134–Q143 ERF archive wave shipped on `main` via PRs #124–#133 (2026-06-12). Q130–Q133 NSS/LTR/savegame/MDL wave shipped via PRs #120–#123 (2026-06-12). Q144 LTR depth via PR #135. Q145–Q150 merged to `main` via PRs #136–#141 (2026-06-13). Holocron parity backlog waves B–J planned in `docs/50-execution/holocron-parity-backlog-roadmap.md`.
 
 ## Active Slice
 
 | Order | Capability slice | Goal | Readiness criteria | Notes |
 | --- | --- | --- | --- | --- |
-| Q151+ | Holocron parity Wave B (archives) | Plan and ship Q151 BIF extract + Q152 KEY browse per Holocron backlog. | Q150 DLG graph port fix ready to merge. | See `docs/plans/2026-06-13-087-feat-holocron-parity-wave-b-archives-plan.md`. |
+| Q151 | BIF member extract | Extract BIF catalog members to override/folder; open catalog assets in workspace editors. | Q145 BIF catalog browse on `main`. | Wave B — `docs/plans/2026-06-13-087-feat-holocron-parity-wave-b-archives-plan.md`. |
+| Q152 | KEY browse / inspect | Read-only KEY inspector + chitin browse integration in resource browser. | Q151 extract patterns landed or parallel-ready. | Wave B — same plan doc. |
+
+## Holocron Parity Backlog (Q151–Q190, K1-first)
+
+Roadmap index: [holocron-parity-backlog-roadmap.md](holocron-parity-backlog-roadmap.md)
+
+| Wave | Slices | Plan |
+| --- | --- | --- |
+| B — Archives | Q151–Q152 | `2026-06-13-087-feat-holocron-parity-wave-b-archives-plan.md` |
+| C — Saves | Q153–Q154 | `2026-06-13-088-feat-holocron-parity-wave-c-savegame-plan.md` |
+| D — DLG K1 | Q155–Q157 | `2026-06-13-089-feat-holocron-parity-wave-d-dlg-k1-plan.md` |
+| E/F — Spatial/Model | Q158–Q161 | `2026-06-13-090-feat-holocron-parity-wave-e-f-spatial-model-plan.md` |
+| G — Dedicated editors | Q162–Q164 | `2026-06-13-091-feat-holocron-parity-wave-g-dedicated-editors-plan.md` |
+| H — Tooling | Q165–Q167 | `2026-06-13-092-feat-holocron-parity-wave-h-tooling-plan.md` |
+| I — Platform | Q168–Q169 | `2026-06-13-093-feat-holocron-parity-wave-i-platform-plan.md` |
+| J — K2/TSL (deferred) | Q200+ | `2026-06-13-094-feat-holocron-parity-k2-track-plan.md` |
 
 ## Next Slices (Deferred)
 
@@ -197,4 +213,4 @@ Phase 2 Capability Expansion ([STRATEGY.md](../../STRATEGY.md)) has delivered th
 - Strategy grounding: `STRATEGY.md`
 - Gap inventory: `docs/30-gap-analysis/godot-support-gaps.md`
 - OpenKotOR parity matrix: `docs/30-gap-analysis/openkotor-parity-matrix.md`
-- Next-wave requirements: `docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md`
+- Holocron parity backlog: `docs/50-execution/holocron-parity-backlog-roadmap.md`

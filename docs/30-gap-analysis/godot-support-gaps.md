@@ -60,13 +60,14 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 
 For Phase 2 and beyond, use these reference documents in order:
 
-1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices through Q145 (chitin BIF catalog); active slice **Q146+ TBD**.
-2. **Requirement source:** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md) — Detailed requirement grounding for the next implementation wave (when Q6+ readiness criteria are met).
-3. **This document:** Gap inventory and Godot capability opportunities for strategic context.
+1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices through Q150 on `main`; active slice **Q151 BIF extract** (Wave B).
+2. **Holocron backlog roadmap:** [docs/50-execution/holocron-parity-backlog-roadmap.md](docs/50-execution/holocron-parity-backlog-roadmap.md) — K1-first waves B–I + deferred K2 track (Q200+).
+3. **Requirement source:** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md) — Detailed requirement grounding for the next implementation wave.
+4. **This document:** Gap inventory and Godot capability opportunities for strategic context.
 
-## Post-Q133 Gap Audit (2026-06-12)
+## Post-Q150 Gap Audit (2026-06-13)
 
-**PR queue:** PR #141 (Q150) open; Q145–Q149 merged to `main`; prior waves merged to `main`.
+**PR queue:** Q145–Q150 merged to `main` (PRs #136–#141). No open Holocron parity PRs.
 
 | Tier | Gap | Status | Notes |
 | --- | --- | --- | --- |
@@ -80,7 +81,7 @@ For Phase 2 and beyond, use these reference documents in order:
 | **P3** | Browser/visual UI verification | Deferred | No web surface; headless Godot tests remain gate. |
 | **P3** | GitHub Actions CI | **Fixed** | Q146 — `headless-editor-tests` workflow runs `scripts/run_headless_editor_tests.sh` on PR/push (PR #137). |
 
-**Q144+ candidates (not selected):** Holocron parity roadmap continuation, BIF/KEY tooling, DLG graph interactive wave, MDL geometry edit, LTR grid, savegame edit.
+**Q151+ backlog (planned):** See [holocron-parity-backlog-roadmap.md](../50-execution/holocron-parity-backlog-roadmap.md) — Waves B–I cover BIF/KEY extract, save write-back, DLG depth, BWM/MDL authoring, dedicated JRL/PTH/FAC editors, NSS/diff/LTR tooling, legacy dock migration.
 
 ## Refresh Triggers
 

@@ -28,9 +28,11 @@ We commit to a Godot-native, install-aware workspace where parser/importer/edito
 
 ### Phase 2 Capability Expansion
 
-**Status:** Active (Q1–Q144 shipped on `main`; Q124–Q128c4 via PR #119; Q134–Q143 ERF wave via PRs #124–#133; Q130–Q133 via #120–#123; active slice Q145+ TBD)
+**Status:** Active (Q1–Q150 shipped on `main`; Q124–Q128c4 via PR #119; Q134–Q143 ERF wave via PRs #124–#133; Q130–Q133 via #120–#123; Q145–Q150 via PRs #136–#141; active slice **Q151+ Holocron Wave B**)
 
 Deliver vertical capability slices that combine editor ergonomics, mutation safety, and native Godot integration. Each slice lands parser/importer/editor/write-back parity for a format family or major editing surface.
+
+Holocron parity backlog (K1-first): [docs/50-execution/holocron-parity-backlog-roadmap.md](docs/50-execution/holocron-parity-backlog-roadmap.md)
 
 _Why it serves the approach:_ Vertical slices reduce fragmentation and preserve coherent mutation semantics across the workspace.
 
