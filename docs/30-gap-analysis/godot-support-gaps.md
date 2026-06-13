@@ -66,7 +66,7 @@ For Phase 2 and beyond, use these reference documents in order:
 
 ## Post-Q133 Gap Audit (2026-06-12)
 
-**PR queue:** Zero open PRs — all stacked waves (#119–#123, #124–#133, #120–#123) merged to `main`.
+**PR queue:** PR #136 (Q145 chitin BIF catalog) open; prior waves merged to `main`.
 
 | Tier | Gap | Status | Notes |
 | --- | --- | --- | --- |
@@ -78,7 +78,7 @@ For Phase 2 and beyond, use these reference documents in order:
 | **P2** | MDL geometry mutation / rebuild | Open | Q133 phase 0 passthrough only. |
 | **P2** | Plan authority drift | **Fixed** | Q119–Q123 module-tool plans + Q128/Q131–Q133 marked `completed` (plan 079). |
 | **P3** | Browser/visual UI verification | Deferred | No web surface; headless Godot tests remain gate. |
-| **P3** | GitHub Actions CI | Open | No workflow checks on repo. |
+| **P3** | GitHub Actions CI | **Fixed** | Q146 — `headless-editor-tests` workflow runs `scripts/run_headless_editor_tests.sh` on PR/push. |
 
 **Q144+ candidates (not selected):** Holocron parity roadmap continuation, BIF/KEY tooling, DLG graph interactive wave, MDL geometry edit, LTR grid, savegame edit.
 

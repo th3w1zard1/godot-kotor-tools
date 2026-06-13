@@ -1,0 +1,28 @@
+name: Headless editor tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: headless-editor-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  headless-editor-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        uses: chickensoft-games/setup-godot@v1
+        with:
+          version: 4.6.stable
+          include-templates: false
+
+      - name: Run headless editor tests
+        run: bash scripts/run_headless_editor_tests.sh
