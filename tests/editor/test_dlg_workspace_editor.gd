@@ -98,6 +98,8 @@ func _assert_editor_behavior() -> void:
 	_test_find_linkable_orphans_for_owner()
 	_test_restore_orphan_via_editor()
 	_test_orphan_double_click_restore()
+	_test_node_animations_crud()
+	_test_camera_fade_fields()
 
 	_cleanup()
 	quit()
@@ -359,6 +361,11 @@ func _build_dialogue_resource() -> DLGResource:
 						"strref": 0xFFFFFFFF,
 						"strings": {0: "Hello there."},
 					},
+					"CameraAngle": 45.0,
+					"CameraID": 0,
+					"CameraAnim": "",
+					"FadeType": 0,
+					"FadeDelay": 0.0,
 					"RepliesList": [
 						{
 							"Index": 0,
@@ -409,6 +416,26 @@ func _build_dialogue_resource() -> DLGResource:
 								{
 									"name": "Text",
 									"type": GFFParser.FIELD_CEXOLOCSTR,
+								},
+								{
+									"name": "CameraAngle",
+									"type": GFFParser.FIELD_FLOAT,
+								},
+								{
+									"name": "CameraID",
+									"type": GFFParser.FIELD_INT,
+								},
+								{
+									"name": "CameraAnim",
+									"type": GFFParser.FIELD_CEXOSTRING,
+								},
+								{
+									"name": "FadeType",
+									"type": GFFParser.FIELD_INT,
+								},
+								{
+									"name": "FadeDelay",
+									"type": GFFParser.FIELD_FLOAT,
 								},
 								{
 									"name": "RepliesList",
@@ -882,6 +909,41 @@ func _test_node_add_remove_undo_redo() -> void:
 		assert(doc.get_entry_count() == initial_entries, "Undo add entry should restore count")
 		ur.redo()
 		assert(doc.get_entry_count() == initial_entries + 1, "Redo add entry should restore added entry")
+
+
+	print("✓ DLG orphan double-click restore passed")
+
+
+func _test_node_animations_crud() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var doc := _editor.get_document()
+	assert(doc.add_node_animation("entry", 0, "talk1"))
+	assert(doc.get_node_animations("entry", 0) == ["talk1"])
+	assert(doc.add_node_animation("entry", 0, "talk2", 0))
+	assert(doc.get_node_animations("entry", 0) == ["talk2", "talk1"])
+	assert(doc.reorder_node_animation("entry", 0, 0, 1))
+	assert(doc.get_node_animations("entry", 0) == ["talk1", "talk2"])
+	assert(doc.set_node_animation("entry", 0, 1, "idle1"))
+	assert(doc.get_node_animations("entry", 0) == ["talk1", "idle1"])
+	assert(doc.remove_node_animation("entry", 0, 0))
+	assert(doc.get_node_animations("entry", 0) == ["idle1"])
+	print("✓ DLG node animations CRUD passed")
+
+
+func _test_camera_fade_fields() -> void:
+	var resource := _build_dialogue_resource()
+	_editor.open_resource(resource, "", "test_dialogue.dlg")
+	var entry := _editor.get_document().get_node("entry", 0)
+	assert(entry.has("CameraAngle"))
+	assert(entry.has("FadeType"))
+	_editor._apply_int_edit(entry, "FadeType", 1.0)
+	assert(int(entry.get("FadeType", -1)) == 1)
+	_editor._apply_int_edit(entry, "CameraID", 42.0)
+	assert(int(entry.get("CameraID", -1)) == 42)
+	_editor._apply_string_edit(entry, "CameraAnim", "cam01")
+	assert(str(entry.get("CameraAnim", "")) == "cam01")
+	print("✓ DLG camera/fade guided fields passed")
 
 
 func _cleanup() -> void:

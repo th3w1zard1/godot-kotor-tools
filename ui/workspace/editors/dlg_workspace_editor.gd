@@ -23,6 +23,8 @@ var _orphan_list: ItemList
 var _dlg_graph_view: KotorDLGGraphView
 var _tree_column: VBoxContainer
 var _show_graph_view := false
+var _show_graph_minimap := false
+var _graph_minimap_btn: Button
 var _navigation_stack: Array[Dictionary] = []
 var _dlg_details: VBoxContainer
 var _validation_panel: KotorValidationPanel
@@ -391,6 +393,13 @@ func _build_ui() -> void:
 	fit_graph_btn.text = "Fit Graph"
 	fit_graph_btn.pressed.connect(_on_fit_graph_pressed)
 	_toolbar.add_child(fit_graph_btn)
+
+	var minimap_btn := Button.new()
+	minimap_btn.text = "Minimap"
+	minimap_btn.toggle_mode = true
+	minimap_btn.toggled.connect(_on_graph_minimap_toggled)
+	_toolbar.add_child(minimap_btn)
+	_graph_minimap_btn = minimap_btn
 
 	var back_btn := Button.new()
 	back_btn.text = "Back"
@@ -816,9 +825,11 @@ func _refresh_dlg_detail() -> void:
 				_dlg_node_preview(kind, index),
 			])
 			_build_dlg_struct_editor(node, [
-				"Text", "Speaker", "Listener", "Comment", "AnimList",
+				"Text", "Speaker", "Listener", "Comment",
 				"Script", "Delay", "Quest", "PlotIndex", "Sound", "VO_ResRef",
 			])
+			_add_dlg_camera_fade_panel(node)
+			_add_dlg_animations_panel(kind, index)
 			var delete_refs_btn := Button.new()
 			delete_refs_btn.text = "Delete All References"
 			delete_refs_btn.pressed.connect(func() -> void:
@@ -869,6 +880,87 @@ func _add_dlg_link_summary(kind: String, index: int) -> void:
 			_jump_to_link_target(kind, index, link_index)
 		)
 		_dlg_details.add_child(button)
+
+
+func _add_dlg_camera_fade_panel(node: Dictionary) -> void:
+	var camera_fields: Array[String] = [
+		"CameraAngle", "CameraID", "CameraAnim", "FadeType", "FadeDelay",
+	]
+	var has_camera_fields := false
+	for field_name in camera_fields:
+		if node.has(field_name):
+			has_camera_fields = true
+			break
+	if not has_camera_fields:
+		return
+	_add_dlg_section_title("Camera & Fade")
+	_build_dlg_struct_editor(node, camera_fields)
+
+
+func _add_dlg_animations_panel(kind: String, index: int) -> void:
+	if _dlg_document == null:
+		return
+	_add_dlg_section_title("Animations")
+	var animations := _dlg_document.get_node_animations(kind, index)
+	var list := ItemList.new()
+	list.allow_reselect = true
+	for anim_name in animations:
+		list.add_item(anim_name)
+	list.custom_minimum_size = Vector2(0, min(120, 24 * max(1, animations.size())))
+	_dlg_details.add_child(list)
+
+	var add_row := HBoxContainer.new()
+	_dlg_details.add_child(add_row)
+	var name_edit := LineEdit.new()
+	name_edit.placeholder_text = "Animation name"
+	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	add_row.add_child(name_edit)
+	var add_btn := Button.new()
+	add_btn.text = "Add"
+	add_btn.pressed.connect(func() -> void:
+		if _dlg_document.add_node_animation(kind, index, name_edit.text):
+			name_edit.text = ""
+			_refresh_dlg_detail()
+	)
+	add_row.add_child(add_btn)
+
+	var controls := HBoxContainer.new()
+	_dlg_details.add_child(controls)
+	var remove_btn := Button.new()
+	remove_btn.text = "Remove"
+	remove_btn.pressed.connect(func() -> void:
+		var selected := list.get_selected_items()
+		if selected.is_empty():
+			return
+		if _dlg_document.remove_node_animation(kind, index, selected[0]):
+			_refresh_dlg_detail()
+	)
+	controls.add_child(remove_btn)
+	var up_btn := Button.new()
+	up_btn.text = "Up"
+	up_btn.pressed.connect(func() -> void:
+		var selected := list.get_selected_items()
+		if selected.is_empty():
+			return
+		var anim_index := selected[0]
+		if anim_index > 0:
+			if _dlg_document.reorder_node_animation(kind, index, anim_index, anim_index - 1):
+				_refresh_dlg_detail()
+	)
+	controls.add_child(up_btn)
+	var down_btn := Button.new()
+	down_btn.text = "Down"
+	down_btn.pressed.connect(func() -> void:
+		var selected := list.get_selected_items()
+		if selected.is_empty():
+			return
+		var anim_index := selected[0]
+		var count := _dlg_document.get_node_animations(kind, index).size()
+		if anim_index < count - 1:
+			if _dlg_document.reorder_node_animation(kind, index, anim_index, anim_index + 1):
+				_refresh_dlg_detail()
+	)
+	controls.add_child(down_btn)
 
 
 func _build_dlg_struct_editor(struct_value: Dictionary, preferred_fields: Array[String]) -> void:
@@ -1712,11 +1804,35 @@ func _on_graph_view_toggled(pressed: bool) -> void:
 		_tree_column.visible = not pressed
 	if _dlg_graph_view != null:
 		_dlg_graph_view.visible = pressed
+		if not pressed:
+			_show_graph_minimap = false
+			_dlg_graph_view.set_custom_minimap_enabled(false)
+			if _graph_minimap_btn != null:
+				_graph_minimap_btn.set_pressed_no_signal(false)
 	if pressed:
 		_refresh_dlg_graph()
 		_sync_graph_focus_to_selection()
 		if _dlg_graph_view != null:
 			_dlg_graph_view.fit_all_nodes()
+			_dlg_graph_view.set_custom_minimap_enabled(_show_graph_minimap)
+
+
+func _on_graph_minimap_toggled(pressed: bool) -> void:
+	_show_graph_minimap = pressed
+	if _dlg_graph_view == null:
+		return
+	if pressed and not _show_graph_view:
+		_show_graph_view = true
+		if _tree_column != null:
+			_tree_column.visible = false
+		_dlg_graph_view.visible = true
+		_refresh_dlg_graph()
+	_dlg_graph_view.set_custom_minimap_enabled(pressed)
+	if pressed:
+		_dlg_status_text = "Graph minimap enabled."
+	else:
+		_dlg_status_text = "Graph minimap hidden."
+	_refresh_dlg_status()
 
 
 func _on_fit_graph_pressed() -> void:

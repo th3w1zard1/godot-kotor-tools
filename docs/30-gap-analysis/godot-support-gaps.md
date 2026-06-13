@@ -60,7 +60,7 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 
 For Phase 2 and beyond, use these reference documents in order:
 
-1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices through Q150 on `main`; active slice **Q151 BIF extract** (Wave B).
+1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped through Q155 on `main`; active slice **Q156 DLG minimap** (Wave D).
 2. **Holocron backlog roadmap:** [docs/50-execution/holocron-parity-backlog-roadmap.md](docs/50-execution/holocron-parity-backlog-roadmap.md) — K1-first waves B–I + deferred K2 track (Q200+).
 3. **Requirement source:** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md) — Detailed requirement grounding for the next implementation wave.
 4. **This document:** Gap inventory and Godot capability opportunities for strategic context.
@@ -72,10 +72,10 @@ For Phase 2 and beyond, use these reference documents in order:
 | Tier | Gap | Status | Notes |
 | --- | --- | --- | --- |
 | **P1** | MDX sidecar on single-file MDL install | **Fixed** | Model Editor `Install MDL to Override` now installs paired `.mdx` when loaded. |
-| **P1** | BIF/KEY archive browsing | **Partial** | Q145 — chitin BIF catalog API, source filter, catalog browse mode; Q151–Q152 Holocron backlog planned. |
-| **P1** | DLG graph depth (Holocron-only fields, animations) | **Partial** | Q128a–c4 + Q148 fit/focus + Q150 port alignment shipped; minimap, animated edges, TSL fields deferred. |
+| **P1** | BIF/KEY archive browsing | **Partial** | Q145 catalog browse; Q151–Q152 *(Wave B)* BIF extract + KEY inspector shipped. |
+| **P1** | DLG graph depth (Holocron-only fields, animations) | **Partial** | Q128 + Q148/Q150 shipped; Q155 animations panel shipped; Q156–Q157 minimap + VO/camera fields remain. |
 | **P2** | LTR doubles/triples grid editing | **Fixed** | Q144 — edit double contexts + selected triple context in LTR workspace editor. |
-| **P2** | Savegame write-back | **Partial** | Q147 single-member + Q149 batch extract to override; full `.sav` mutation deferred. |
+| **P2** | Savegame write-back | **Partial** | Q147/Q149 extract; Q153–Q154 *(Wave C)* member replace + Save SAV write-back shipped. |
 | **P2** | MDL geometry mutation / rebuild | Open | Q133 phase 0 passthrough only. |
 | **P2** | Plan authority drift | **Fixed** | Q119–Q123 module-tool plans + Q128/Q131–Q133 marked `completed` (plan 079). |
 | **P3** | Browser/visual UI verification | Deferred | No web surface; headless Godot tests remain gate. |

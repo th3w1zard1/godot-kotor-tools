@@ -1,7 +1,11 @@
 ---
 title: "feat: Holocron parity Wave D — DLG K1 depth"
 type: feat
-status: active
+status: completed
+shipped_units:
+  - Q155
+  - Q156
+  - Q157
 date: 2026-06-13
 origin: holocron-parity-backlog-roadmap
 phase: Q155-Q157

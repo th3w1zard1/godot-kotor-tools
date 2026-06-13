@@ -451,6 +451,83 @@ func set_struct_locstring_text(struct_value: Dictionary, field_name: String, tex
 	return true
 
 
+func get_node_animations(kind: String, index: int) -> Array[String]:
+	var nodes := _get_node_array_for_kind(kind)
+	if index < 0 or index >= nodes.size():
+		return []
+	var entry: Variant = nodes[index]
+	if typeof(entry) != TYPE_DICTIONARY:
+		return []
+	var anim_list: Variant = (entry as Dictionary).get("AnimList", [])
+	if typeof(anim_list) != TYPE_ARRAY:
+		return []
+	var result: Array[String] = []
+	for item in anim_list as Array:
+		result.append(String(item))
+	return result
+
+
+func add_node_animation(kind: String, index: int, animation_name: String, insert_index: int = -1) -> bool:
+	var nodes := _get_node_array_for_kind(kind)
+	if index < 0 or index >= nodes.size():
+		return false
+	var normalized := animation_name.strip_edges()
+	if normalized.is_empty():
+		return false
+	var anim_list := _ensure_anim_list_at(nodes, index)
+	var at := insert_index if insert_index >= 0 else anim_list.size()
+	if at < 0 or at > anim_list.size():
+		return false
+	anim_list.insert(at, normalized)
+	mark_changed()
+	return true
+
+
+func remove_node_animation(kind: String, index: int, anim_index: int) -> bool:
+	var nodes := _get_node_array_for_kind(kind)
+	if index < 0 or index >= nodes.size():
+		return false
+	var anim_list := _ensure_anim_list_at(nodes, index)
+	if anim_index < 0 or anim_index >= anim_list.size():
+		return false
+	anim_list.remove_at(anim_index)
+	mark_changed()
+	return true
+
+
+func reorder_node_animation(kind: String, index: int, from_index: int, to_index: int) -> bool:
+	var nodes := _get_node_array_for_kind(kind)
+	if index < 0 or index >= nodes.size():
+		return false
+	var anim_list := _ensure_anim_list_at(nodes, index)
+	if from_index < 0 or from_index >= anim_list.size() or to_index < 0 or to_index >= anim_list.size():
+		return false
+	if from_index == to_index:
+		return false
+	var item = anim_list[from_index]
+	anim_list.remove_at(from_index)
+	anim_list.insert(to_index, item)
+	mark_changed()
+	return true
+
+
+func set_node_animation(kind: String, index: int, anim_index: int, animation_name: String) -> bool:
+	var nodes := _get_node_array_for_kind(kind)
+	if index < 0 or index >= nodes.size():
+		return false
+	var normalized := animation_name.strip_edges()
+	if normalized.is_empty():
+		return false
+	var anim_list := _ensure_anim_list_at(nodes, index)
+	if anim_index < 0 or anim_index >= anim_list.size():
+		return false
+	if String(anim_list[anim_index]) == normalized:
+		return false
+	anim_list[anim_index] = normalized
+	mark_changed()
+	return true
+
+
 func validate(gamefs: RefCounted = null) -> Array[String]:
 	var issues: Array[String] = []
 	var entries := get_node_list(KIND_ENTRY)
@@ -626,6 +703,28 @@ func _incoming_link_count(target_kind: String, target_index: int) -> int:
 				if int(link.get("Index", -1)) == target_index:
 					count += 1
 	return count
+
+
+func _get_node_array_for_kind(kind: String) -> Array:
+	match kind.to_lower():
+		KIND_ENTRY:
+			return get_struct_list_array("EntryList")
+		KIND_REPLY:
+			return get_struct_list_array("ReplyList")
+		_:
+			return []
+
+
+func _ensure_anim_list_at(nodes: Array, index: int) -> Array:
+	if index < 0 or index >= nodes.size():
+		return []
+	var entry: Variant = nodes[index]
+	if typeof(entry) != TYPE_DICTIONARY:
+		return []
+	if not (entry as Dictionary).has("AnimList") or typeof((entry as Dictionary).get("AnimList")) != TYPE_ARRAY:
+		(entry as Dictionary)["AnimList"] = []
+	var anim_list: Variant = (entry as Dictionary)["AnimList"]
+	return anim_list as Array
 
 
 static func _duplicate_array_of_dicts(source: Array) -> Array:
