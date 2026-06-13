@@ -1,7 +1,7 @@
 ---
 title: "feat: Holocron parity Wave C — savegame write-back"
 type: feat
-status: active
+status: completed
 date: 2026-06-13
 origin: holocron-parity-backlog-roadmap
 phase: Q153-Q154

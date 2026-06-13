@@ -6,6 +6,7 @@ const GFFParser := preload("../../formats/gff_parser.gd")
 const GFFResourceFactory := preload("../../resources/gff_resource_factory.gd")
 const GFFWriter := preload("../../formats/gff_writer.gd")
 const KotorEditorState := preload("../../editor/core/kotor_editor_state.gd")
+const KotorErfDocument := preload("../../resources/documents/kotor_erf_document.gd")
 const KotorGFFWorkspaceEditor := preload("../../ui/workspace/editors/gff_workspace_editor.gd")
 const KotorSavegameWorkspaceEditor := preload("../../ui/workspace/editors/savegame_workspace_editor.gd")
 const KotorWorkspaceController := preload("../../editor/workspace/kotor_workspace_controller.gd")
@@ -27,6 +28,7 @@ func _run_tests() -> void:
 	await _test_extract_member_to_override()
 	await _test_extract_all_members_to_override()
 	await _test_extract_all_skips_invalid_members()
+	await _test_replace_member_and_save_round_trip()
 	_cleanup()
 	print("✓ Savegame workspace editor tests passed")
 	quit()
@@ -119,6 +121,51 @@ func _test_extract_all_skips_invalid_members() -> void:
 	assert(int(result.get("failed", 0)) == 0)
 	assert(FileAccess.file_exists(savenfo_path))
 	print("✓ Savegame extract all skips invalid members passed")
+
+
+func _test_replace_member_and_save_round_trip() -> void:
+	var editor := _build_editor()
+	editor.open_save_bytes("slot1.sav", _build_test_sav_bytes(), "")
+	await process_frame
+
+	var replacement := _build_gff_bytes({
+		"file_type": "GFF ",
+		"root": {"ModuleName": "Edited Save"},
+		"schema": {
+			"struct_type": 0xFFFFFFFF,
+			"fields": [{"name": "ModuleName", "type": GFFParser.FIELD_CEXOSTRING}],
+		},
+	})
+	var replace_result := editor.replace_member_at(0, replacement)
+	assert(replace_result.get("ok", false), str(replace_result))
+	assert(editor.is_document_dirty())
+
+	var out_path := _install_root.path_join("edited_slot.sav")
+	var save_result := editor.save_savegame_to_path(out_path)
+	assert(save_result.get("ok", false), str(save_result))
+	assert(FileAccess.file_exists(out_path))
+	assert(not editor.is_document_dirty())
+
+	var round_trip := KotorSavegameWorkspaceEditor.new()
+	round_trip.setup(_build_editor_state(), _build_controller())
+	root.add_child(round_trip)
+	round_trip._ready()
+	round_trip.open_save_file(out_path)
+	var reopened: KotorErfDocument = round_trip.get_document()
+	assert(reopened != null)
+	assert(reopened.get_entry_count() == 1)
+	print("✓ Savegame replace member + save round-trip passed")
+
+
+func _build_editor_state() -> KotorEditorState:
+	var editor_state := KotorEditorState.new()
+	editor_state.game_path = _install_root
+	editor_state.refresh_gamefs()
+	return editor_state
+
+
+func _build_controller() -> KotorWorkspaceController:
+	return KotorWorkspaceController.new(_build_editor_state())
 
 
 func _build_multi_member_sav_bytes() -> PackedByteArray:
