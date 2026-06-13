@@ -230,6 +230,34 @@ func list_resource_variants_for_entry(entry: Dictionary) -> Array[Dictionary]:
 	)
 
 
+func list_chitin_bif_catalog() -> Array[Dictionary]:
+	if key_index.is_empty():
+		return []
+
+	var key_counts: Dictionary = {}
+	for key_entry: KEYBIFParser.KEYEntry in key_index.get("key_entries", []):
+		var bif_index := key_entry.bif_index
+		key_counts[bif_index] = int(key_counts.get(bif_index, 0)) + 1
+
+	var catalog: Array[Dictionary] = []
+	var bif_entries: Array = key_index.get("bif_entries", [])
+	for bif_index in bif_entries.size():
+		var bif_entry: KEYBIFParser.BIFEntry = bif_entries[bif_index]
+		var absolute_path := str(_bif_path_cache.get(bif_index, ""))
+		if absolute_path.is_empty() and not str(bif_entry.filename).is_empty():
+			absolute_path = game_path.path_join(_normalize_game_path(str(bif_entry.filename)))
+		catalog.append({
+			"bif_index": bif_index,
+			"filename": bif_entry.filename,
+			"location": _relative_to_game_path(absolute_path),
+			"absolute_path": absolute_path,
+			"file_size": bif_entry.file_size,
+			"key_entry_count": int(key_counts.get(bif_index, 0)),
+			"source": SOURCE_CHITIN,
+		})
+	return catalog
+
+
 func list_core_resources(
 		query: String = "",
 		resource_type: Variant = null,

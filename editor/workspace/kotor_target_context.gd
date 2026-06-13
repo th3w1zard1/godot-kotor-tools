@@ -33,19 +33,27 @@ func has_ready_target() -> bool:
 
 
 func list_resources(query: String = "", limit: int = DEFAULT_RESULT_LIMIT) -> Array[Dictionary]:
-	return list_resources_filtered(query, "", limit)
+	return list_resources_filtered(query, "", "", limit)
 
 
 func list_resources_filtered(
 	query: String = "",
 	resource_type: String = "",
+	source: String = "",
 	limit: int = DEFAULT_RESULT_LIMIT
 ) -> Array[Dictionary]:
 	var gamefs := _resolve_gamefs()
 	if gamefs == null:
 		return []
 	var type_filter: Variant = resource_type.strip_edges().to_lower() if not resource_type.is_empty() else null
-	return gamefs.list_core_resources(query, type_filter, "", limit)
+	return gamefs.list_core_resources(query, type_filter, source.strip_edges(), limit)
+
+
+func list_chitin_bif_catalog() -> Array[Dictionary]:
+	var gamefs := _resolve_gamefs()
+	if gamefs == null or not gamefs.has_method("list_chitin_bif_catalog"):
+		return []
+	return gamefs.list_chitin_bif_catalog()
 
 
 func list_variants(entry: Dictionary) -> Array[Dictionary]:

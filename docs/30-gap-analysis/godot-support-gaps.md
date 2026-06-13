@@ -60,7 +60,7 @@ These are Godot capabilities that can be leveraged further in this plugin archit
 
 For Phase 2 and beyond, use these reference documents in order:
 
-1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices through Q143 (ERF wave) and Q130–Q133 (NSS/LTR/savegame/MDL); active slice **Q144+ TBD**.
+1. **Execution queue:** [docs/50-execution/godot-capability-execution-queue.md](docs/50-execution/godot-capability-execution-queue.md) — Shipped slices through Q145 (chitin BIF catalog); active slice **Q146+ TBD**.
 2. **Requirement source:** [docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md](docs/brainstorms/2026-05-24-godot-support-expansion-requirements.md) — Detailed requirement grounding for the next implementation wave (when Q6+ readiness criteria are met).
 3. **This document:** Gap inventory and Godot capability opportunities for strategic context.
 
@@ -71,7 +71,7 @@ For Phase 2 and beyond, use these reference documents in order:
 | Tier | Gap | Status | Notes |
 | --- | --- | --- | --- |
 | **P1** | MDX sidecar on single-file MDL install | **Fixed** | Model Editor `Install MDL to Override` now installs paired `.mdx` when loaded. |
-| **P1** | BIF/KEY archive browsing | Open | Parity matrix: archive family still Partial beyond ERF/RIM/MOD. |
+| **P1** | BIF/KEY archive browsing | **Partial** | Q145 — chitin BIF catalog API, source filter, catalog browse mode; full BIF mutation/editor deferred. |
 | **P1** | DLG graph depth (Holocron-only fields, animations) | Open | Q128a–c shipped; interactive graph polish + TSL fields deferred (`docs/plans/2026-06-10-058-feat-q128-dlg-graph-editor-depth-plan.md`). |
 | **P2** | LTR doubles/triples grid editing | **Fixed** | Q144 — edit double contexts + selected triple context in LTR workspace editor. |
 | **P2** | Savegame write-back | Open | Q132 read-only inspector; `.sav` mutation deferred. |
