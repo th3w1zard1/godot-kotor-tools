@@ -7,6 +7,9 @@ signal install_requested(entry: Dictionary)
 signal compare_requested(entry: Dictionary)
 signal export_requested(entry: Dictionary)
 signal references_requested(entry: Dictionary)
+signal extract_bif_batch_override_requested(bif_index: int)
+signal extract_bif_batch_folder_requested(bif_index: int)
+signal key_inspector_requested()
 
 const KotorResourceLocator := preload("../../../editor/navigation/kotor_resource_locator.gd")
 const KotorResRefReferenceScanner := preload("../../../editor/tools/kotor_resref_reference_scanner.gd")
@@ -23,6 +26,11 @@ var _bif_catalog_toggle: CheckButton
 var _tree: Tree
 var _detail: TextEdit
 var _selected_bif_index := -1
+var _chitin_actions: HBoxContainer
+var _extract_bif_override_btn: Button
+var _extract_bif_all_override_btn: Button
+var _extract_bif_all_folder_btn: Button
+var _key_inspector_btn: Button
 
 
 func _init(target_context: RefCounted = null) -> void:
@@ -124,6 +132,37 @@ func _build_ui() -> void:
 	batch_copy_mdl_btn.pressed.connect(_batch_copy_install_mdl_to_override)
 	actions_row.add_child(batch_copy_mdl_btn)
 
+	_chitin_actions = HBoxContainer.new()
+	add_child(_chitin_actions)
+
+	_extract_bif_override_btn = Button.new()
+	_extract_bif_override_btn.text = "Extract BIF Member → Override"
+	_extract_bif_override_btn.visible = false
+	_extract_bif_override_btn.pressed.connect(func() -> void:
+		var entry := _selected_resource_entry()
+		if not entry.is_empty():
+			install_requested.emit(entry)
+	)
+	_chitin_actions.add_child(_extract_bif_override_btn)
+
+	_extract_bif_all_override_btn = Button.new()
+	_extract_bif_all_override_btn.text = "Extract BIF → Override"
+	_extract_bif_all_override_btn.visible = false
+	_extract_bif_all_override_btn.pressed.connect(_request_extract_selected_bif_to_override)
+	_chitin_actions.add_child(_extract_bif_all_override_btn)
+
+	_extract_bif_all_folder_btn = Button.new()
+	_extract_bif_all_folder_btn.text = "Extract BIF → Folder…"
+	_extract_bif_all_folder_btn.visible = false
+	_extract_bif_all_folder_btn.pressed.connect(_request_extract_selected_bif_to_folder)
+	_chitin_actions.add_child(_extract_bif_all_folder_btn)
+
+	_key_inspector_btn = Button.new()
+	_key_inspector_btn.text = "Inspect KEY…"
+	_key_inspector_btn.visible = false
+	_key_inspector_btn.pressed.connect(func() -> void: key_inspector_requested.emit())
+	_chitin_actions.add_child(_key_inspector_btn)
+
 	var search_row := HBoxContainer.new()
 	add_child(search_row)
 
@@ -207,6 +246,7 @@ func _on_source_filter_changed(_index: int) -> void:
 		_bif_catalog_toggle.disabled = source != "chitin.key"
 		if _bif_catalog_toggle.disabled:
 			_bif_catalog_toggle.button_pressed = false
+	_update_chitin_action_visibility()
 	_refresh_view()
 
 
@@ -262,6 +302,7 @@ func _refresh_view() -> void:
 		item.set_metadata(0, entry)
 	_status_label.text = _target_context.call("get_status_text")
 	_refresh_selection()
+	_update_chitin_action_visibility()
 
 
 func _refresh_bif_catalog_view() -> void:
@@ -286,6 +327,7 @@ func _refresh_bif_catalog_view() -> void:
 		catalog.size(),
 	]
 	_refresh_selection()
+	_update_chitin_action_visibility()
 
 
 func _refresh_selection() -> void:
@@ -294,6 +336,7 @@ func _refresh_selection() -> void:
 	var entry := get_selected_entry()
 	if entry.is_empty() or _target_context == null:
 		_detail.text = ""
+		_update_chitin_action_visibility()
 		return
 	if bool(entry.get("catalog_entry", false)):
 		_detail.text = "BIF archive\nFilename: %s\nKey entries: %s\nDeclared size: %s\nPath: %s\n\nUncheck BIF catalog to browse resources in this BIF." % [
@@ -303,6 +346,7 @@ func _refresh_selection() -> void:
 			entry.get("location", ""),
 		]
 		_selected_bif_index = int(entry.get("bif_index", -1))
+		_update_chitin_action_visibility()
 		return
 
 	var variants: Array[Dictionary] = _target_context.call("list_variants", entry)
@@ -314,6 +358,56 @@ func _refresh_selection() -> void:
 			_target_context.get_gamefs()
 		)
 	_detail.text = details
+	_update_chitin_action_visibility()
+
+
+func _is_chitin_source_selected() -> bool:
+	return _get_selected_source_filter() == "chitin.key"
+
+
+func _update_chitin_action_visibility() -> void:
+	var chitin_mode := _is_chitin_source_selected()
+	if _chitin_actions == null:
+		return
+	_chitin_actions.visible = chitin_mode
+	if not chitin_mode:
+		return
+	var entry := get_selected_entry()
+	var catalog_mode := _bif_catalog_toggle != null and _bif_catalog_toggle.button_pressed
+	var catalog_entry := catalog_mode and bool(entry.get("catalog_entry", false))
+	var resource_entry := not entry.is_empty() and not bool(entry.get("catalog_entry", false))
+	if _extract_bif_override_btn != null:
+		_extract_bif_override_btn.visible = resource_entry
+	if _extract_bif_all_override_btn != null:
+		_extract_bif_all_override_btn.visible = catalog_entry or _selected_bif_index >= 0
+	if _extract_bif_all_folder_btn != null:
+		_extract_bif_all_folder_btn.visible = catalog_entry or _selected_bif_index >= 0
+	if _key_inspector_btn != null:
+		var has_chitin := false
+		if _target_context != null and _target_context.has_method("get_gamefs"):
+			var gamefs: RefCounted = _target_context.get_gamefs()
+			if gamefs != null and gamefs.has_method("has_chitin_key"):
+				has_chitin = bool(gamefs.call("has_chitin_key"))
+		_key_inspector_btn.visible = has_chitin
+
+
+func _current_bif_index_for_extract() -> int:
+	var entry := get_selected_entry()
+	if bool(entry.get("catalog_entry", false)):
+		return int(entry.get("bif_index", -1))
+	if _selected_bif_index >= 0:
+		return _selected_bif_index
+	return -1
+
+
+func _request_extract_selected_bif_to_override() -> void:
+	var bif_index := _current_bif_index_for_extract()
+	extract_bif_batch_override_requested.emit(bif_index)
+
+
+func _request_extract_selected_bif_to_folder() -> void:
+	var bif_index := _current_bif_index_for_extract()
+	extract_bif_batch_folder_requested.emit(bif_index)
 
 
 func get_selected_entry() -> Dictionary:

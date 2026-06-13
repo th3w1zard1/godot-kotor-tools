@@ -22,6 +22,7 @@ const KotorIndoorBuilderWorkspaceEditor := preload("./editors/indoor_builder_wor
 const KotorErfWorkspaceEditor := preload("./editors/erf_workspace_editor.gd")
 const KotorSavegameWorkspaceEditor := preload("./editors/savegame_workspace_editor.gd")
 const KotorResourceBrowserPanel := preload("./panels/resource_browser_panel.gd")
+const KotorKeyInspectorPanel := preload("./panels/key_inspector_panel.gd")
 const KotorTransactionHistoryPanel := preload("./panels/transaction_history_panel.gd")
 
 var _controller: RefCounted
@@ -91,6 +92,9 @@ func _ensure_shell() -> void:
 	_resource_browser.install_requested.connect(_on_resource_browser_install)
 	_resource_browser.compare_requested.connect(_on_resource_browser_compare)
 	_resource_browser.export_requested.connect(_on_resource_browser_export)
+	_resource_browser.extract_bif_batch_override_requested.connect(_on_resource_browser_extract_bif_override)
+	_resource_browser.extract_bif_batch_folder_requested.connect(_on_resource_browser_extract_bif_folder)
+	_resource_browser.key_inspector_requested.connect(_on_resource_browser_key_inspector)
 	_tabs.add_child(_resource_browser)
 
 	_transaction_history = KotorTransactionHistoryPanel.new()
@@ -568,6 +572,56 @@ func _on_resource_browser_install(entry: Dictionary) -> void:
 	if result.get("ok", false):
 		editor_state.call("refresh_gamefs")
 	_resource_browser.call("_set_detail_text", result.get("message", "Install failed"))
+
+
+func _on_resource_browser_extract_bif_override(bif_index: int) -> void:
+	var editor_state := _resolve_editor_state()
+	if editor_state == null:
+		return
+	var gamefs = editor_state.get("gamefs")
+	if gamefs == null or not gamefs.has_method("extract_bif_members_to_override"):
+		return
+	var result: Dictionary = gamefs.call("extract_bif_members_to_override", bif_index)
+	if result.get("ok", false) or int(result.get("applied", 0)) > 0:
+		editor_state.call("refresh_gamefs")
+	_resource_browser.call("_set_detail_text", result.get("message", "BIF extract failed"))
+
+
+func _on_resource_browser_extract_bif_folder(bif_index: int) -> void:
+	var editor_state := _resolve_editor_state()
+	if editor_state == null:
+		return
+	var gamefs = editor_state.get("gamefs")
+	if gamefs == null:
+		return
+	var dialog := FileDialog.new()
+	dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+	dialog.title = "Extract BIF Members to Folder"
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
+	dialog.dir_selected.connect(func(dir_path: String) -> void:
+		if not gamefs.has_method("extract_bif_members_to_folder"):
+			_resource_browser.call("_set_detail_text", "BIF folder extract is unavailable.")
+			dialog.queue_free()
+			return
+		var result: Dictionary = gamefs.call("extract_bif_members_to_folder", dir_path, bif_index)
+		_resource_browser.call("_set_detail_text", result.get("message", "BIF folder extract failed"))
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func() -> void: dialog.queue_free())
+
+
+func _on_resource_browser_key_inspector() -> void:
+	var editor_state := _resolve_editor_state()
+	if editor_state == null:
+		return
+	var gamefs = editor_state.get("gamefs")
+	var panel := KotorKeyInspectorPanel.new(gamefs)
+	add_child(panel)
+	panel.setup(gamefs)
+	panel.popup_centered_ratio(0.75)
+	panel.confirmed.connect(func() -> void: panel.queue_free())
+	panel.canceled.connect(func() -> void: panel.queue_free())
 
 
 func _on_resource_browser_compare(entry: Dictionary) -> void:

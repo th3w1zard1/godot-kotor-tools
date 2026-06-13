@@ -15,6 +15,10 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	_test_gamefs_catalog_and_source_filter()
+	_test_extract_bif_member_to_override()
+	_test_extract_bif_members_batch()
+	_test_lookup_chitin_key_entry()
+	_test_extract_bif_members_to_folder()
 	print("✓ GameFS chitin catalog tests passed")
 	quit()
 
@@ -48,6 +52,35 @@ func _test_gamefs_catalog_and_source_filter() -> void:
 
 	_cleanup(install_root)
 	print("✓ GameFS chitin catalog and source filter passed")
+
+
+func _test_lookup_chitin_key_entry() -> void:
+	var install_root := _make_install_root()
+	_seed_chitin_install(install_root)
+	var gamefs := KotorGameFS.new()
+	assert(gamefs.index_install(install_root))
+	var found := gamefs.lookup_chitin_key_entry("test2da", RES_TYPE_2DA)
+	assert(not found.is_empty())
+	assert(str(found.get("resref", "")) == "test2da")
+	assert(int(found.get("bif_index", -1)) == 0)
+	assert(gamefs.lookup_chitin_key_entry("missing", RES_TYPE_2DA).is_empty())
+	_cleanup(install_root)
+	print("✓ Chitin KEY lookup passed")
+
+
+func _test_extract_bif_members_to_folder() -> void:
+	var install_root := _make_install_root()
+	_seed_chitin_install(install_root)
+	var gamefs := KotorGameFS.new()
+	assert(gamefs.index_install(install_root))
+
+	var dest_dir := install_root.path_join("extract_out")
+	var result := gamefs.extract_bif_members_to_folder(dest_dir, 0)
+	assert(result.get("ok", false), str(result))
+	assert(FileAccess.file_exists(dest_dir.path_join("test2da.2da")))
+
+	_cleanup(install_root)
+	print("✓ GameFS BIF extract to folder passed")
 
 
 func _seed_chitin_install(install_root: String) -> void:
