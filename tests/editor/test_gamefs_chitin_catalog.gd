@@ -23,6 +23,38 @@ func _run_tests() -> void:
 	quit()
 
 
+func _test_extract_bif_member_to_override() -> void:
+	var install_root := _make_install_root()
+	_seed_chitin_install(install_root)
+	var gamefs := KotorGameFS.new()
+	assert(gamefs.index_install(install_root))
+	var entries: Array[Dictionary] = gamefs.list_chitin_resource_entries()
+	assert(entries.size() == 1)
+	var result := gamefs.extract_bif_member_to_override(entries[0])
+	assert(result.get("ok", false), str(result))
+	assert(str(result.get("status", "")) == "written")
+	var override_file := gamefs.ensure_override_path().path_join("test2da.2da")
+	assert(FileAccess.file_exists(override_file))
+	assert(FileAccess.get_file_as_bytes(override_file) == "2DA V2.0\n\n".to_utf8_buffer())
+	_cleanup(install_root)
+	print("✓ BIF member extract to override passed")
+
+
+func _test_extract_bif_members_batch() -> void:
+	var install_root := _make_install_root()
+	_seed_chitin_install(install_root)
+	var gamefs := KotorGameFS.new()
+	assert(gamefs.index_install(install_root))
+	var batch := gamefs.extract_bif_members_to_override(0)
+	assert(batch.get("ok", false), str(batch))
+	assert(int(batch.get("applied", 0)) >= 1)
+	var repeat := gamefs.extract_bif_members_to_override(0)
+	assert(repeat.get("ok", false), str(repeat))
+	assert(int(repeat.get("unchanged", 0)) >= 1)
+	_cleanup(install_root)
+	print("✓ BIF batch extract to override passed")
+
+
 func _test_gamefs_catalog_and_source_filter() -> void:
 	var install_root := _make_install_root()
 	_seed_chitin_install(install_root)

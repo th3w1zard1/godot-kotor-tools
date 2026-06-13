@@ -103,7 +103,7 @@ func _run_lookup() -> void:
 		return
 	var resref := _lookup_field.text.strip_edges()
 	var resource_type := int(_type_field.value)
-	var entry := _gamefs.lookup_chitin_key_entry(resref, resource_type)
+	var entry: Dictionary = _gamefs.lookup_chitin_key_entry(resref, resource_type)
 	if entry.is_empty():
 		_lookup_result.text = "No KEY entry for %s (type 0x%04X)." % [resref, resource_type]
 		return
